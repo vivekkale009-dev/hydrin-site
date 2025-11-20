@@ -1,0 +1,135 @@
+/* ===========================
+   GLOBAL PREMIUM ANIMATIONS
+   =========================== */
+
+/* Page fade-in */
+body {
+  opacity: 0;
+  animation: pageFade 1.1s ease-out forwards;
+}
+
+@keyframes pageFade {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* HERO TEXT ENTRANCE */
+.hero-copy {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: heroText 1.2s ease-out forwards;
+  animation-delay: 0.3s;
+}
+
+@keyframes heroText {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* BUTTON STAGGER */
+.hero-copy .btn:nth-child(1) {
+  opacity: 0;
+  animation: btnFade 0.9s ease-out forwards;
+  animation-delay: 0.6s;
+}
+
+.hero-copy .btn:nth-child(2) {
+  opacity: 0;
+  animation: btnFade 0.9s ease-out forwards;
+  animation-delay: 0.75s;
+}
+
+@keyframes btnFade {
+  to {
+    opacity: 1;
+  }
+}
+
+/* BOTTLE FLOAT ANIMATION */
+.bottle-wrap {
+  animation: floatBottle 4s ease-in-out infinite;
+}
+
+@keyframes floatBottle {
+  0%   { transform: translateY(-10px); }
+  50%  { transform: translateY(6px); }
+  100% { transform: translateY(-10px); }
+}
+
+/* Bottle shadow pulse */
+.bottle-reflection {
+  animation: pulseShadow 3.5s ease-in-out infinite;
+}
+
+@keyframes pulseShadow {
+  0%   { opacity: 0.05; transform: scaleX(0.9); }
+  50%  { opacity: 0.1; transform: scaleX(1); }
+  100% { opacity: 0.05; transform: scaleX(0.9); }
+}
+
+/* PARALLAX BACKGROUND LAYERS */
+.hero {
+  background: radial-gradient(circle at 40% 20%, rgba(255,255,255,0.05), transparent 60%);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  top: -50%;
+  left: -50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.06), transparent 70%);
+  opacity: 0.2;
+  transform: translateY(var(--parallax, 0px));
+  transition: transform 0.1s linear;
+  pointer-events: none;
+}
+
+/* Keep existing global CSS below this line (your color theme, fonts, layout, buttons, etc.) */
+
+
+
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------- GLOBAL RESET ---------- */
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #f8f8f8;
+  color: #111;
+  font-family: Inter, sans-serif;
+}
+
+/* ---------- SMOOTH SCROLL ---------- */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ---------- FIJI STYLE THEME ---------- */
+:root {
+  --hydrin-dark: #0d0d0d;
+  --hydrin-grey: #1a1a1a;
+  --hydrin-blue: #00aaff;
+  --hydrin-glow: rgba(0, 170, 255, 0.25);
+}
+
+/* ---------- HERO GRADIENT ---------- */
+.hero-gradient {
+  background: linear-gradient(to bottom, rgba(0,0,0,0.5), rgba(0,0,0,0.85));
+}
+
+/* ---------- GLASS EFFECT ---------- */
+.glass-box {
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+}
