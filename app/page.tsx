@@ -1,22 +1,29 @@
-// app/page.tsx
-import Hero from "./components/Hero";
-
-export default function Page() {
+export default function Home() {
   return (
-    <>
-      <main>
-        <Hero />
-        {/* Simple below-the-fold placeholder sections */}
-        <section id="learn" className="section-learn">
-          <div className="inner">
-            <h2>Purity & Source</h2>
-            <p>
-              OxyHydra is sourced from protected springs and bottled with minimal contact.
-              Our Purity Check provides batch-level analysis you can verify online.
-            </p>
-          </div>
-        </section>
-      </main>
-    </>
+    <main style={{ padding: "80px", textAlign: "center", color: "white" }}>
+      <h1 style={{ fontSize: "3rem", marginBottom: "20px" }}>
+        Welcome to Hydrin
+      </h1>
+
+      <p style={{ fontSize: "1.4rem" }}>
+        Premium hydration. Inspired by purity.
+      </p>
+
+      <a
+        href="/purity-check"
+        style={{
+          marginTop: "30px",
+          display: "inline-block",
+          padding: "12px 28px",
+          background: "white",
+          color: "black",
+          borderRadius: "8px",
+          fontWeight: "600",
+          textDecoration: "none",
+        }}
+      >
+        Check Purity
+      </a>
+    </main>
   );
 }
