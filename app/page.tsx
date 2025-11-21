@@ -8,7 +8,7 @@ export default function Home() {
       }}
     >
       <h1 style={{ fontSize: "3rem", marginBottom: "20px" }}>
-        Welcome to OxyHydra
+        Welcome to Hydrin
       </h1>
 
       <p style={{ fontSize: "1.4rem" }}>
