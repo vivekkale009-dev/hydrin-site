@@ -1,88 +1,117 @@
 // app/components/Hero.tsx
 "use client";
-
-import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 
 export default function Hero() {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const layer1Ref = useRef<HTMLDivElement | null>(null);
-  const layer2Ref = useRef<HTMLDivElement | null>(null);
-  const bottleRef = useRef<HTMLImageElement | null>(null);
-  const [buttonsVisible, setButtonsVisible] = useState(false);
-
-  useEffect(() => {
-    // Fade in buttons shortly after mount
-    const t = setTimeout(() => setButtonsVisible(true), 450);
-
-    // Parallax: tied to scroll
-    let rafId = 0;
-    const onScroll = () => {
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const centerY = window.innerHeight / 2;
-      const distance = rect.top - centerY;
-      // Normalize small range
-      const factor = Math.max(-1, Math.min(1, distance / (window.innerHeight || 600)));
-
-      if (layer1Ref.current) {
-        // deeper layer moves less
-        layer1Ref.current.style.transform = `translateY(${factor * 8}px)`;
-      }
-      if (layer2Ref.current) {
-        // surface moves more
-        layer2Ref.current.style.transform = `translateY(${factor * 18}px)`;
-      }
-      if (bottleRef.current) {
-        // parallax for bottle (right side)
-        bottleRef.current.style.transform = `translateY(${factor * 28}px) translateX(${Math.abs(factor) * 4}px)`;
-      }
-    };
-
-    const onScrollRAF = () => {
-      if (rafId) cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(onScroll);
-    };
-
-    window.addEventListener("scroll", onScrollRAF, { passive: true });
-    window.addEventListener("resize", onScrollRAF);
-
-    // initial call
-    onScroll();
-
-    return () => {
-      clearTimeout(t);
-      if (rafId) cancelAnimationFrame(rafId);
-      window.removeEventListener("scroll", onScrollRAF);
-      window.removeEventListener("resize", onScrollRAF);
-    };
-  }, []);
+  const scrollToLearn = () => {
+    const el = document.getElementById("learn");
+    if (el) el.scrollIntoView({ behavior: "smooth" });
+  };
 
   return (
-    <section className="hero-outer" ref={containerRef} aria-label="Hero">
-      <div className="hero-layer layer-deep" ref={layer1Ref} />
-      <div className="hero-layer layer-surface" ref={layer2Ref} />
+    <section
+      style={{
+        width: "100%",
+        minHeight: "100vh",
+        backgroundImage: "url('/images/hero-deep.jpg')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "0 8%",
+      }}
+    >
+      {/* LEFT SIDE */}
+      <div
+        style={{
+          maxWidth: "480px",
+          color: "white",
+          textAlign: "left",
+        }}
+      >
+        <h1
+          style={{
+            fontSize: "3.5rem",
+            fontWeight: 700,
+            marginBottom: "20px",
+            textShadow: "0 3px 10px rgba(0,0,0,0.4)",
+          }}
+        >
+          Pure. Clean. OxyHydra.
+        </h1>
 
-      <div className="hero-content">
-        <div className="hero-text">
-          <h1 className="brand-title">OXYHYDRA</h1>
-          <p className="tagline">Hydration That Breathes..!!</p>
+        <p
+          style={{
+            fontSize: "1.2rem",
+            opacity: 0.9,
+            marginBottom: "40px",
+            lineHeight: 1.5,
+          }}
+        >
+          Naturally filtered. Bottled with care. Verified instantly.
+        </p>
 
-          <div className={`hero-buttons ${buttonsVisible ? "visible" : ""}`}>
-            <a className="btn btn-primary" href="/purity-check">Purity Check</a>
-            <a className="btn btn-ghost" href="#learn">Learn More</a>
-          </div>
+        <div style={{ display: "flex", gap: "25px" }}>
+          <a
+            href="/purity-check"
+            style={{
+              padding: "14px 30px",
+              background: "white",
+              color: "#000",
+              borderRadius: "10px",
+              fontWeight: 600,
+              textDecoration: "none",
+              boxShadow: "0 3px 12px rgba(255,255,255,0.4)",
+            }}
+          >
+            Check Purity
+          </a>
+
+          <button
+            onClick={scrollToLearn}
+            style={{
+              padding: "14px 30px",
+              background: "rgba(255,255,255,0.15)",
+              border: "2px solid white",
+              color: "white",
+              borderRadius: "10px",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            Learn More
+          </button>
         </div>
+      </div>
 
-        <div className="hero-image-wrap" aria-hidden>
-          <img
-            ref={bottleRef}
-            src="/images/bottle.png"
-            alt="Hydrin bottle"
-            className="hero-bottle"
-            // the image should be approx 600px tall for desktop; CSS will handle scaling
-          />
-        </div>
+      {/* RIGHT SIDE BOTTLE */}
+      <div
+        style={{
+          width: "350px",
+          animation: "floatBottle 3s ease-in-out infinite",
+        }}
+      >
+        <style>{`
+          @keyframes floatBottle {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+            100% { transform: translateY(0); }
+          }
+        `}</style>
+
+        <Image
+          src="/images/bottle.png"
+          alt="OxyHydra Bottle"
+          width={350}
+          height={700}
+          style={{
+            objectFit: "contain",
+            filter: "drop-shadow(0px 10px 30px rgba(0,0,0,0.45))",
+          }}
+        />
       </div>
     </section>
   );
 }
+
