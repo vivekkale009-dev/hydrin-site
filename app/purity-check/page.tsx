@@ -126,14 +126,14 @@ export default function PurityCheck() {
                 </tr>
 
                 <tr>
-                  <td style={cell}>TDS Value</td>
+                  <td style={cell}>TDS Value Range</td>
                   <td style={value}>
                     {data.tds_display_min} – {data.tds_display_max}
                   </td>
                 </tr>
 
                 <tr>
-                  <td style={cell}>pH Value</td>
+                  <td style={cell}>pH Value Range</td>
                   <td style={value}>
                     {data.ph_display_min} – {data.ph_display_max}
                   </td>
