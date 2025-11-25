@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { customerTemplate, adminTemplate } from "./email-templates";
 
 export async function POST(req: Request) {
   try {
@@ -13,53 +14,50 @@ export async function POST(req: Request) {
     });
 
     // Generate Ticket ID
-    const ticketId =
-      "OX-" + String(Math.floor(Math.random() * 9999)).padStart(4, "0");
+    function generateTicketId() {
+      const now = new Date();
+      const yy = String(now.getFullYear()).slice(-2);
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const dd = String(now.getDate()).padStart(2, "0");
 
-    // --- EMAIL TO YOU (ADMIN) ---
+      const shortHash = (
+        Date.now().toString(36) +
+        Math.random().toString(36).slice(2)
+      )
+        .slice(-4)
+        .toUpperCase();
+
+      return `OH${yy}${mm}${dd}${shortHash}`;
+    }
+
+    const ticketId = generateTicketId();
+
+    // Send admin email
     await transporter.sendMail({
       from: process.env.MAIL_USER!,
-      to: process.env.MAIL_TO!, // your email
-      subject: `New Complaint Received | ${ticketId}`,
-      text: `
-A new complaint has been submitted.
-
-Ticket ID: ${ticketId}
-
-Name: ${body.name}
-Phone: ${body.phone}
-Email: ${body.email}
-
-Message:
-${body.message}
-      `,
+      to: process.env.MAIL_TO!,
+      subject: `New Complaint | ${ticketId}`,
+      html: adminTemplate({
+        name: body.name,
+        phone: body.phone,
+        email: body.email,
+        message: body.message,
+        ticketId,
+      }),
     });
 
-    // --- AUTO-REPLY TO CUSTOMER ---
+    // Send customer email
     await transporter.sendMail({
       from: process.env.MAIL_USER!,
       to: body.email,
-      subject: `Your Complaint Received | ${ticketId}`,
-      text: `
-Hi ${body.name},
-
-We have received your complaint.
-
-Your Ticket ID: ${ticketId}
-
-Our team will get back to you shortly.
-      
-Thanks,
-OxyHydra Support
-`,
+      subject: `Complaint Received | ${ticketId}`,
+      html: customerTemplate(body.name, ticketId),
     });
 
     return Response.json({ success: true, ticketId });
-  } catch (error: any) {
-    console.error("Email error:", error);
-    return Response.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+
+  } catch (err: any) {
+    console.error("SEND EMAIL ERROR:", err);
+    return Response.json({ success: false, error: err.message }, { status: 500 });
   }
 }

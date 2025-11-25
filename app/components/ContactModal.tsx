@@ -1,4 +1,73 @@
 "use client";
+
+import { useEffect } from "react";
+
+// Premium water-drop toast CSS
+const toastStyles = `
+  .oxy-toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #00b4db, #0083b0);
+    color: white;
+    padding: 16px 20px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 15px;
+    box-shadow: 0 6px 25px rgba(0,0,0,0.25);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: dropIn 0.45s ease-out forwards;
+  }
+
+  /* Water drop */
+  .oxy-drop {
+    width: 14px;
+    height: 14px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 0 12px rgba(255,255,255,0.7);
+    animation: drip 1.4s infinite ease-in-out;
+  }
+
+  @keyframes dropIn {
+    from { opacity: 0; transform: translateY(-20px) scale(0.95); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @keyframes drip {
+    0%   { transform: translateY(0px) }
+    50%  { transform: translateY(5px) scale(0.9); }
+    100% { transform: translateY(0px) }
+  }
+`;
+
+// Inject CSS once
+if (typeof window !== "undefined" && !document.getElementById("oxy-toast-style")) {
+  const style = document.createElement("style");
+  style.id = "oxy-toast-style";
+  style.innerHTML = toastStyles;
+  document.head.appendChild(style);
+}
+
+// Toast function
+const oxyToast = (msg: string) => {
+  const div = document.createElement("div");
+  div.className = "oxy-toast";
+  div.innerHTML = `<div class="oxy-drop"></div> ${msg}`;
+
+  document.body.appendChild(div);
+
+  setTimeout(() => {
+    div.style.opacity = "0";
+    div.style.transform = "translateY(-10px)";
+  }, 3000);
+
+  setTimeout(() => div.remove(), 3500);
+};
+
 import { useState } from "react";
 
 export default function ContactModal({ open, onClose }: any) {
@@ -13,16 +82,47 @@ export default function ContactModal({ open, onClose }: any) {
   });
 
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({
+  email: "",
+  phone: "",
+});
+
   const [loading, setLoading] = useState(false);
+  
+  const validateFields = () => {
+  let valid = true;
+  const errors: any = { email: "", phone: "" };
+
+  // Email validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(form.email)) {
+    errors.email = "Enter a valid email format";
+    valid = false;
+  }
+
+  // Phone validation
+  const phoneRegex = /^[0-9]{10}$/;
+  if (!phoneRegex.test(form.phone)) {
+    errors.phone = "Phone must be 10 digits";
+    valid = false;
+  }
+
+  setFieldErrors(errors);
+  return valid;
+};
+
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     setError("");
 
     if (!form.name || !form.phone || !form.email || !form.category) {
-      setError("Please fill all required fields.");
-      return;
-    }
+  setError("Please fill all required fields.");
+  return;
+}
+
+if (!validateFields()) return;
+
 
     setLoading(true);
 
@@ -50,9 +150,10 @@ export default function ContactModal({ open, onClose }: any) {
         });
       }
 
-      alert("Submitted successfully!");
-      setLoading(false);
-      onClose();
+		oxyToast("Submitted successfully!");
+		setLoading(false);
+		onClose();
+
     } catch (err) {
       console.error(err);
       setError("Network error. Please try again.");
@@ -104,6 +205,11 @@ export default function ContactModal({ open, onClose }: any) {
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
             style={input}
           />
+{fieldErrors.phone && (
+  <p style={{ color: "red", fontSize: "0.85rem", marginTop: "-10px" }}>
+    {fieldErrors.phone}
+  </p>
+)}
 
           <input
             placeholder="Email *"
@@ -111,6 +217,11 @@ export default function ContactModal({ open, onClose }: any) {
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             style={input}
           />
+{fieldErrors.email && (
+  <p style={{ color: "red", fontSize: "0.85rem", marginTop: "-10px" }}>
+    {fieldErrors.email}
+  </p>
+)}
 
           <select
             value={form.category}
