@@ -17,7 +17,7 @@ export default function Hero() {
 
       <section
         style={{
-          width: "100%",
+          width: "85%",
           minHeight: "100vh",
           backgroundImage: "url('/images/hero-deep.jpg')",
           backgroundSize: "cover",
@@ -58,22 +58,26 @@ export default function Hero() {
             Naturally filtered. Bottled with care. Verified instantly.
           </p>
 
-          <div style={{ display: "flex", gap: "25px" }}>
+          {/* BUTTON ROW */}
+          <div style={{ display: "flex", gap: "25px", flexWrap: "wrap" }}>
+            
+            {/* Check Purity */}
             <a
               href="/purity-check"
               style={{
-                padding: "14px 30px",
-                background: "white",
-                color: "#000",
+				padding: "14px 30px",
+                background: "rgba(255,255,255,0.15)",
+                border: "2px solid white",
+                color: "white",
                 borderRadius: "10px",
+                cursor: "pointer",
                 fontWeight: 600,
-                textDecoration: "none",
-                boxShadow: "0 3px 12px rgba(255,255,255,0.4)",
               }}
             >
               Check Purity
             </a>
 
+            {/* Learn More */}
             <button
               onClick={scrollToLearn}
               style={{
@@ -89,12 +93,12 @@ export default function Hero() {
               Learn More
             </button>
 
-            {/* NEW CONTACT BUTTON */}
+            {/* Contact Us */}
             <button
               onClick={() => setOpenContact(true)}
               style={{
-                padding: "14px 30px",
-                background: "#00c2ff",
+                 padding: "14px 30px",
+                background: "rgba(255,255,255,0.15)",
                 border: "2px solid white",
                 color: "white",
                 borderRadius: "10px",
@@ -104,13 +108,30 @@ export default function Hero() {
             >
               Contact Us
             </button>
+
+            {/* NEW HydraSphere Button */}
+            <a
+              href="/hydrasphere"
+              style={{
+              padding: "14px 30px",
+                background: "rgba(255,255,255,0.15)",
+                border: "2px solid white",
+                color: "white",
+                borderRadius: "10px",
+                cursor: "pointer",
+                fontWeight: 600,
+              }}
+            >
+              HydraSphere
+            </a>
+
           </div>
         </div>
 
         {/* RIGHT SIDE BOTTLE */}
         <div
           style={{
-            width: "350px",
+            width: "650px",
             animation: "floatBottle 3s ease-in-out infinite",
           }}
         >
@@ -125,8 +146,8 @@ export default function Hero() {
           <Image
             src="/images/bottle.png"
             alt="OxyHydra Bottle"
-            width={350}
-            height={700}
+            width={550}
+            height={600}
             style={{
               objectFit: "contain",
               filter: "drop-shadow(0px 10px 30px rgba(0,0,0,0.45))",
