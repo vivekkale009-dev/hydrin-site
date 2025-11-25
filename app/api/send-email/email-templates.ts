@@ -84,7 +84,7 @@ export function adminTemplate({
         <!-- HEADER -->
         <tr>
           <td style="background:#0A6CFF;padding:30px 20px;text-align:center;">
-            <img src="https://YOUR_DOMAIN/OxyHydraLogo.png" alt="OxyHydra" style="width:120px;margin-bottom:10px;">
+            <img src="https://hydrin-site.vercel.app/OxyHydraLogo.png" alt="OxyHydra" style="width:120px;margin-bottom:10px;">
             <h1 style="color:#fff;font-size:20px;margin:0;font-weight:600;">
               New Complaint Received
             </h1>
