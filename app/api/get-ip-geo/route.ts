@@ -8,10 +8,10 @@ export async function GET(req: Request) {
       req.headers.get("x-real-ip") ||
       "0.0.0.0";
 
-    // In local dev, you'll get ::1 – use Google IP just for testing
+    // Localhost fallback
     const ip = ipHeader === "::1" ? "8.8.8.8" : ipHeader;
 
-    // Use ipwho.is (free, no key, unlimited)
+    // Use ipwho.is (free)
     const geo = await fetch(`https://ipwho.is/${ip}`).then((res) => res.json());
 
     if (!geo.success) {
@@ -42,8 +42,13 @@ export async function GET(req: Request) {
     });
   } catch (err) {
     return NextResponse.json(
-      { error: "Geo lookup crashed", details: String(err) },
-      { status: String(err) },
+      {
+        error: "Geo lookup crashed",
+        details: String(err),
+      },
+      {
+        status: 500, // ✔ FIXED — must be a number
+      }
     );
   }
 }
