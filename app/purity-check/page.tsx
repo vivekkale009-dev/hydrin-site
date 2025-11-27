@@ -3,6 +3,7 @@
 import { useState, type CSSProperties } from "react";
 import { createClient } from "@supabase/supabase-js";
 import BackgroundWrapper from "../components/BackgroundWrapper";
+import Script from "next/script"; // for reCAPTCHA
 
 import jsPDF from "jspdf";
 
@@ -37,6 +38,66 @@ export default function PurityCheck() {
     setIsExpired(false);
     setLoading(true);
 
+    // ---- reCAPTCHA check ----
+    const captchaToken = (window as any).grecaptcha?.getResponse();
+    if (!captchaToken) {
+      setError("Please complete the CAPTCHA.");
+      setLoading(false);
+      return;
+    }
+
+    const captchaRes = await fetch("/api/verify-captcha", {
+      method: "POST",
+      body: JSON.stringify({ token: captchaToken }),
+    }).then((r) => r.json());
+
+    if (!captchaRes.success) {
+      setError("CAPTCHA failed. Try again.");
+      setLoading(false);
+      return;
+    }
+
+    (window as any).grecaptcha.reset();
+    // ---- end of reCAPTCHA ----
+
+    // ---- IP + GEO lookup ----
+    let ip = "unknown";
+    let geo: { country?: string | null; state?: string | null; city?: string | null; isp?: string | null } =
+      {};
+
+    try {
+      const geoRes = await fetch("/api/get-ip-geo");
+      if (geoRes.ok) {
+        const geoJson = await geoRes.json();
+        ip = geoJson.ip || "unknown";
+        geo = geoJson.geo || {};
+      }
+    } catch (e) {
+      console.warn("Geo lookup failed", e);
+    }
+
+    // ---- Check if IP is blocked ----
+    try {
+      const { data: blocked, error: blockedErr } = await supabase
+        .from("blocked_ips")
+        .select("*")
+        .eq("ip_address", ip)
+        .eq("is_blocked", true)
+        .maybeSingle();
+
+      if (!blockedErr && blocked) {
+        setError(
+          "Too many suspicious scans detected from your network. Please contact support."
+        );
+        setLoading(false);
+        return;
+      }
+    } catch (e) {
+      console.warn("Blocked IP check failed", e);
+      // do NOT block user if DB check fails – just continue
+    }
+
+    // ---- your original logic from here ----
     if (!batch.trim()) {
       setError("Please enter batch number.");
       setLoading(false);
@@ -60,11 +121,19 @@ export default function PurityCheck() {
     if (!batchData) {
       setIsFake(true);
 
-      // Log fake scan
-      await supabase.from("scans").insert({
-        batch_code: batch.trim(),
-        status: "fake",
-      });
+      // Log fake scan (with location)
+   await supabase.from("scans").insert({
+  batch_code: batch.trim(),
+  status: "fake",
+  ip_address: ip,
+  country: geo.country ?? null,
+  state: geo.state ?? null,
+  city: geo.city ?? null,
+  isp: geo.isp ?? null,
+  latitude: geo.latitude ?? null,
+  longitude: geo.longitude ?? null,
+});
+
 
       setLoading(false);
       return;
@@ -79,11 +148,19 @@ export default function PurityCheck() {
     if (expiry < today) {
       setIsExpired(true);
 
-      // Log expired scan
-      await supabase.from("scans").insert({
-        batch_code: batch.trim(),
-        status: "expired",
-      });
+      // Log expired scan (with location)
+ await supabase.from("scans").insert({
+  batch_code: batch.trim(),
+  status: "expired",
+  ip_address: ip,
+  country: geo.country ?? null,
+  state: geo.state ?? null,
+  city: geo.city ?? null,
+  isp: geo.isp ?? null,
+  latitude: geo.latitude ?? null,
+  longitude: geo.longitude ?? null,
+});
+
 
       setLoading(false);
       return; // do NOT proceed to verified UI
@@ -92,10 +169,18 @@ export default function PurityCheck() {
     // VALID BOTTLE
     setData(batchData);
 
-    await supabase.from("scans").insert({
-      batch_code: batch.trim(),
-      status: "verified",
-    });
+await supabase.from("scans").insert({
+  batch_code: batch.trim(),
+  status: "verified",
+  ip_address: ip,
+  country: geo.country ?? null,
+  state: geo.state ?? null,
+  city: geo.city ?? null,
+  isp: geo.isp ?? null,
+  latitude: geo.latitude ?? null,
+  longitude: geo.longitude ?? null,
+});
+
 
     setLoading(false);
   }
@@ -265,159 +350,72 @@ export default function PurityCheck() {
   // RENDER
   // =======================================================================
   return (
-    <BackgroundWrapper
-      backgroundStyle={{
-        backgroundImage: "url('/purity-bg.jpg')",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundAttachment: "fixed",
-      }}
-    >
-      <main style={page}>
-        <div style={inner}>
-          <h1 style={title}>OxyHydra Purity Check</h1>
-          <p style={subtitle}>
-            Verify your bottle using the batch number printed on the label.
-          </p>
+    <>
+      {/* reCAPTCHA script */}
+      <Script src="https://www.google.com/recaptcha/api.js" />
 
-          {/* Input */}
-          <div style={inputRow}>
-            <input
-              style={inputStyle}
-              placeholder="Enter batch number"
-              value={batch}
-              onChange={(e) => setBatch(e.target.value)}
-            />
-            <button style={verifyButton} onClick={handleVerify}>
-              {loading ? "Checking..." : "Verify"}
-            </button>
-          </div>
+      <BackgroundWrapper
+        backgroundStyle={{
+          backgroundImage: "url('/purity-bg.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundAttachment: "fixed",
+        }}
+      >
+        <main style={page}>
+          <div style={inner}>
+            <h1 style={title}>OxyHydra Purity Check</h1>
+            <p style={subtitle}>
+              Verify your bottle using the batch number printed on the label.
+            </p>
 
-          {error && <p style={{ color: "#ff6b6b", marginTop: 8 }}>{error}</p>}
-
-          {/* Fake Bottle */}
-          {isFake && (
-            <div style={card}>
-              <h2 style={{ ...sectionTitle, color: "#ff6b6b" }}>
-                Fake / Invalid Bottle ❌
-              </h2>
-              <p>
-                This batch number is not present in OxyHydra’s secure database.
-                Please check the code again or contact our team.
-              </p>
+            {/* Input */}
+            <div style={inputRow}>
+              <input
+                style={inputStyle}
+                placeholder="Enter batch number"
+                value={batch}
+                onChange={(e) => setBatch(e.target.value)}
+              />
+              <button style={verifyButton} onClick={handleVerify}>
+                {loading ? "Checking..." : "Verify"}
+              </button>
             </div>
-          )}
 
-          {/* EXPIRED BOTTLE */}
-          {isExpired && (
-            <div style={card}>
-              <h2 style={{ ...sectionTitle, color: "#ff6b6b" }}>
-                Bottle Expired ❌
-              </h2>
-              <p>This bottle has passed its expiry date and should not be consumed.</p>
-              <p style={{ marginTop: 10 }}>
-                Please contact our support team for assistance.
-              </p>
-
-              <a href="mailto:quality@oxyhydra.com">
-                <button
-                  style={{
-                    marginTop: 16,
-                    padding: "12px 24px",
-                    borderRadius: 10,
-                    border: "1px solid white",
-                    background: "transparent",
-                    color: "white",
-                    cursor: "pointer",
-                    fontWeight: 600,
-                  }}
-                >
-                  Contact Support
-                </button>
-              </a>
-            </div>
-          )}
-
-          {/* VERIFIED BOTTLE */}
-          {data && !isExpired && (
-            <>
-              <div style={card}>
-                <h2 style={sectionTitle}>Bottle Verified ✔</h2>
-                <p>Authentic and safe for consumption.</p>
-
-                <p>
-                  <strong>Batch:</strong> {data.batch_code}
-                </p>
-                <p>
-                  <strong>Manufactured:</strong> {data.production_date}
-                </p>
-                <p>
-                  <strong>Expires:</strong> {data.expiry_date}
-                </p>
-                <p>
-                  <strong>Status:</strong> {data.status}</p>
-
-                <p>✔ Batch verified from OxyHydra database</p>
-
-                <button
-                  onClick={downloadCertificate}
-                  style={{
-                    marginTop: 20,
-                    padding: "12px 24px",
-                    background: "white",
-                    color: "black",
-                    fontWeight: 700,
-                    borderRadius: 10,
-                    cursor: "pointer",
-                    border: "none",
-                  }}
-                >
-                  Download Purity Certificate
-                </button>
-              </div>
-
-              {/* Safety Cards */}
+            {/* CAPTCHA widget */}
+            <div style={{ marginTop: 20 }}>
               <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(230px,1fr))",
-                  gap: 18,
-                }}
-              >
-                <div style={smallCard}>
-                  <div style={{ fontSize: "2rem" }}>🧪</div>
-                  <h3 style={{ fontWeight: 600 }}>Microbiological Safety</h3>
-                  <p>No harmful bacteria detected.</p>
-                </div>
+                className="g-recaptcha"
+                data-sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}
+              ></div>
+            </div>
 
-                <div style={smallCard}>
-                  <div style={{ fontSize: "2rem" }}>⚗️</div>
-                  <h3 style={{ fontWeight: 600 }}>Chemical Safety</h3>
-                  <p>Meets BIS limits for all chemical parameters.</p>
-                </div>
+            {error && <p style={{ color: "#ff6b6b", marginTop: 8 }}>{error}</p>}
 
-                <div style={smallCard}>
-                  <div style={{ fontSize: "2rem" }}>🔄</div>
-                  <h3 style={{ fontWeight: 600 }}>Purification</h3>
-                  <p>RO + UV + UF + Ozonation process.</p>
-                </div>
-
-                <div style={smallCard}>
-                  <div style={{ fontSize: "2rem" }}>🪨</div>
-                  <h3 style={{ fontWeight: 600 }}>Mineral Balance</h3>
-                  <p>Essential minerals preserved.</p>
-                </div>
-              </div>
-
+            {/* Fake Bottle */}
+            {isFake && (
               <div style={card}>
-                <h2 style={sectionTitle}>Our Purity Promise</h2>
+                <h2 style={{ ...sectionTitle, color: "#ff6b6b" }}>
+                  Fake / Invalid Bottle ❌
+                </h2>
                 <p>
-                  Every OxyHydra bottle undergoes strict physical, chemical, and
-                  microbiological testing before dispatch.
+                  This batch number is not present in OxyHydra’s secure database.
+                  Please check the code again or contact our team.
                 </p>
+              </div>
+            )}
+
+            {/* EXPIRED BOTTLE */}
+            {isExpired && (
+              <div style={card}>
+                <h2 style={{ ...sectionTitle, color: "#ff6b6b" }}>
+                  Bottle Expired ❌
+                </h2>
                 <p>
-                  We follow BIS-approved standards and internal QA protocols to
-                  keep every batch consistent and safe.
+                  This bottle has passed its expiry date and should not be consumed.
+                </p>
+                <p style={{ marginTop: 10 }}>
+                  Please contact our support team for assistance.
                 </p>
 
                 <a href="mailto:quality@oxyhydra.com">
@@ -433,14 +431,125 @@ export default function PurityCheck() {
                       fontWeight: 600,
                     }}
                   >
-                    Contact Quality Team
+                    Contact Support
                   </button>
                 </a>
               </div>
-            </>
-          )}
-        </div>
-      </main>
-    </BackgroundWrapper>
+            )}
+
+            {/* VERIFIED BOTTLE */}
+            {data && !isExpired && (
+              <>
+                <div style={card}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <h2 style={sectionTitle}>Bottle Verified</h2>
+                    <img
+                      src="/VerifiedTick.png"
+                      alt="verified"
+                      style={{ width: "32px", height: "32px" }}
+                    />
+                  </div>
+
+                  <p>Authentic and safe for consumption.</p>
+
+                  <p>
+                    <strong>Batch:</strong> {data.batch_code}
+                  </p>
+                  <p>
+                    <strong>Manufactured:</strong> {data.production_date}
+                  </p>
+                  <p>
+                    <strong>Expires:</strong> {data.expiry_date}
+                  </p>
+                  <p>
+                    <strong>Status:</strong> {data.status}
+                  </p>
+
+                  <p>✔ Batch verified from OxyHydra database</p>
+
+                  <button
+                    onClick={downloadCertificate}
+                    style={{
+                      marginTop: 20,
+                      padding: "12px 24px",
+                      background: "white",
+                      color: "black",
+                      fontWeight: 700,
+                      borderRadius: 10,
+                      cursor: "pointer",
+                      border: "none",
+                    }}
+                  >
+                    Download Purity Certificate
+                  </button>
+                </div>
+
+                {/* Safety Cards */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(230px,1fr))",
+                    gap: 18,
+                  }}
+                >
+                  <div style={smallCard}>
+                    <div style={{ fontSize: "2rem" }}>🧪</div>
+                    <h3 style={{ fontWeight: 600 }}>Microbiological Safety</h3>
+                    <p>No harmful bacteria detected.</p>
+                  </div>
+
+                  <div style={smallCard}>
+                    <div style={{ fontSize: "2rem" }}>⚗️</div>
+                    <h3 style={{ fontWeight: 600 }}>Chemical Safety</h3>
+                    <p>Meets BIS limits for all chemical parameters.</p>
+                  </div>
+
+                  <div style={smallCard}>
+                    <div style={{ fontSize: "2rem" }}>🔄</div>
+                    <h3 style={{ fontWeight: 600 }}>Purification</h3>
+                    <p>RO + UV + UF + Ozonation process.</p>
+                  </div>
+
+                  <div style={smallCard}>
+                    <div style={{ fontSize: "2rem" }}>🪨</div>
+                    <h3 style={{ fontWeight: 600 }}>Mineral Balance</h3>
+                    <p>Essential minerals preserved.</p>
+                  </div>
+                </div>
+
+                <div style={card}>
+                  <h2 style={sectionTitle}>Our Purity Promise</h2>
+                  <p>
+                    Every OxyHydra bottle undergoes strict physical, chemical, and
+                    microbiological testing before dispatch.
+                  </p>
+                  <p>
+                    We follow BIS-approved standards and internal QA protocols to
+                    keep every batch consistent and safe.
+                  </p>
+
+                  <a href="mailto:quality@oxyhydra.com">
+                    <button
+                      style={{
+                        marginTop: 16,
+                        padding: "12px 24px",
+                        borderRadius: 10,
+                        border: "1px solid white",
+                        background: "transparent",
+                        color: "white",
+                        cursor: "pointer",
+                        fontWeight: 600,
+                      }}
+                    >
+                      Contact Quality Team
+                    </button>
+                  </a>
+                </div>
+              </>
+            )}
+          </div>
+        </main>
+      </BackgroundWrapper>
+    </>
   );
 }
