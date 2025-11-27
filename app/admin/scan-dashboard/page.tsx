@@ -19,6 +19,8 @@ type ScanRow = {
   state: string | null;
   city: string | null;
   isp: string | null;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 type BlockedIp = {
@@ -186,14 +188,15 @@ export default function ScanDashboard() {
           points={
             scans
               .filter(
-                (s) => s.city && s.country && (s.latitude && s.longitude)
+                .filter((s) => s.latitude && s.longitude)
+
               )
               .map((s) => ({
                 id: s.id,
                 batch_code: s.batch_code,
                 status: s.status,
-                latitude: s.latitude as any,
-                longitude: s.longitude as any,
+                latitude: s.latitude!,
+                longitude: s.longitude!,
                 city: s.city,
                 state: s.state,
                 country: s.country,
