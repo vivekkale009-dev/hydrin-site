@@ -5,6 +5,14 @@ import { useState, useMemo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
+// --- Fix Vercel TypeScript error for MapContainer ---
+declare module "react-leaflet" {
+  interface MapContainerProps {
+    center?: any;
+    zoom?: number;
+  }
+}
+
 // Dynamically import Map components to avoid SSR errors
 const MapContainer = dynamic(
   () => import("react-leaflet").then((m) => m.MapContainer),
