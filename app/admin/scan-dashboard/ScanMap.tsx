@@ -5,15 +5,17 @@ import { useState, useMemo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-// --- Fix Vercel TypeScript error for MapContainer ---
+// --- Fix Vercel TypeScript errors for MapContainer props ---
 declare module "react-leaflet" {
   interface MapContainerProps {
     center?: any;
     zoom?: number;
+    scrollWheelZoom?: boolean;
+    style?: any;
   }
 }
 
-// Dynamically import Map components to avoid SSR errors
+// Dynamically import Map components to avoid SSR issues
 const MapContainer = dynamic(
   () => import("react-leaflet").then((m) => m.MapContainer),
   { ssr: false }
@@ -81,10 +83,10 @@ export default function ScanMap({ points }: { points: MapPoint[] }) {
     };
   }, [filteredPoints]);
 
-  const getIcon = (s: string) =>
-    s === "verified"
+  const getIcon = (status: string) =>
+    status === "verified"
       ? verifiedIcon
-      : s === "expired"
+      : status === "expired"
       ? expiredIcon
       : fakeIcon;
 
@@ -122,7 +124,8 @@ export default function ScanMap({ points }: { points: MapPoint[] }) {
                 <br />
                 <strong>ISP:</strong> {p.isp}
                 <br />
-                <strong>Time:</strong> {new Date(p.created_at).toLocaleString()}
+                <strong>Time:</strong>{" "}
+                {new Date(p.created_at).toLocaleString()}
               </Popup>
             </Marker>
           ))}
