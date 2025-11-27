@@ -5,16 +5,16 @@ import { useState, useMemo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-// --- Fix Vercel build: extend only missing props ---
+// ======================================================================
+// Fix Vercel Build Errors (ONLY extend MarkerProps icon, nothing else)
+// ======================================================================
 declare module "react-leaflet" {
-  interface MapContainerProps {
-    center?: any;
-    zoom?: number;
-    scrollWheelZoom?: boolean;
+  interface MarkerProps {
+    icon?: any;
   }
 }
 
-// Dynamically import Map components to avoid SSR issues
+// Dynamic imports — required for Next.js + Leaflet
 const MapContainer = dynamic(
   () => import("react-leaflet").then((m) => m.MapContainer),
   { ssr: false }
@@ -32,7 +32,9 @@ const Popup = dynamic(
   { ssr: false }
 );
 
-// ---------------- ICONS ----------------
+// ======================================================================
+// CUSTOM MAP ICONS
+// ======================================================================
 const verifiedIcon = new L.Icon({
   iconUrl: "/leaflet/green.png",
   iconSize: [32, 32],
@@ -51,7 +53,9 @@ const expiredIcon = new L.Icon({
   iconAnchor: [16, 32],
 });
 
-// ---------------- TYPES ----------------
+// ======================================================================
+// TYPES
+// ======================================================================
 export type MapPoint = {
   id: number;
   batch_code: string;
@@ -65,7 +69,9 @@ export type MapPoint = {
   created_at: string;
 };
 
-// ---------------- COMPONENT ----------------
+// ======================================================================
+// COMPONENT
+// ======================================================================
 export default function ScanMap({ points }: { points: MapPoint[] }) {
   const [filter, setFilter] = useState("all");
 
@@ -75,7 +81,7 @@ export default function ScanMap({ points }: { points: MapPoint[] }) {
   }, [filter, points]);
 
   const center = useMemo(() => {
-    if (!filteredPoints.length) return { lat: 19.5, lng: 75.5 };
+    if (!filteredPoints.length) return { lat: 19.5, lng: 75.5 }; // India
     return {
       lat: filteredPoints[0].latitude,
       lng: filteredPoints[0].longitude,
@@ -91,6 +97,7 @@ export default function ScanMap({ points }: { points: MapPoint[] }) {
 
   return (
     <div style={{ width: "100%", marginTop: "20px" }}>
+      
       {/* FILTER BUTTONS */}
       <div style={{ marginBottom: 10, display: "flex", gap: 10 }}>
         <button onClick={() => setFilter("all")}>All</button>
@@ -99,6 +106,7 @@ export default function ScanMap({ points }: { points: MapPoint[] }) {
         <button onClick={() => setFilter("fake")}>Fake</button>
       </div>
 
+      {/* MAP */}
       <div style={{ height: 400, width: "100%", overflow: "hidden" }}>
         <MapContainer
           center={[center.lat, center.lng]}
@@ -112,7 +120,7 @@ export default function ScanMap({ points }: { points: MapPoint[] }) {
             <Marker
               key={p.id}
               position={[p.latitude, p.longitude]}
-              icon={getIcon(p.status)}
+              icon={getIcon(p.status)}   // No more TS error
             >
               <Popup>
                 <strong>Batch:</strong> {p.batch_code}
