@@ -1,47 +1,49 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import dynamic from "next/dynamic";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import { useMemo, useState } from "react";
 
-// --------------------------
-// DEFAULT & CUSTOM ICONS
-// --------------------------
-
+// custom icons
 const verifiedIcon = new L.Icon({
   iconUrl: "/leaflet/green.png",
   iconSize: [32, 32],
   iconAnchor: [16, 32],
-  popupAnchor: [0, -32],
 });
 
 const fakeIcon = new L.Icon({
   iconUrl: "/leaflet/red.png",
   iconSize: [32, 32],
   iconAnchor: [16, 32],
-  popupAnchor: [0, -32],
 });
 
 const expiredIcon = new L.Icon({
   iconUrl: "/leaflet/orange.png",
   iconSize: [32, 32],
   iconAnchor: [16, 32],
-  popupAnchor: [0, -32],
 });
 
-const fallbackIcon = new L.Icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
+// dynamic import for SSR-safety
+const MapContainer = dynamic(
+  () => import("react-leaflet").then((m) => m.MapContainer),
+  { ssr: false }
+);
+const TileLayer = dynamic(
+  () => import("react-leaflet").then((m) => m.TileLayer),
+  { ssr: false }
+);
+const Marker = dynamic(
+  () => import("react-leaflet").then((m) => m.Marker),
+  { ssr: false }
+);
+const Popup = dynamic(
+  () => import("react-leaflet").then((m) => m.Popup),
+  { ssr: false }
+);
 
 // --------------------------
-// TYPE
+// TYPES
 // --------------------------
 export type MapPoint = {
   id: number;
@@ -57,19 +59,21 @@ export type MapPoint = {
 };
 
 // --------------------------
-// COMPONENT
+// MAP COMPONENT
 // --------------------------
 export default function ScanMap({ points }: { points: MapPoint[] }) {
-  const [filter, setFilter] = useState<"all" | "verified" | "fake" | "expired">("all");
+  const [filter, setFilter] = useState<"all" | "verified" | "fake" | "expired">(
+    "all"
+  );
 
+  // filter points  
   const filteredPoints = useMemo(() => {
     if (filter === "all") return points;
     return points.filter((p) => p.status === filter);
-  }, [points, filter]);
+  }, [filter, points]);
 
   const center = useMemo(() => {
-    if (!filteredPoints.length)
-      return { lat: 19.5, lng: 75.5 }; // India
+    if (!filteredPoints.length) return { lat: 19.5, lng: 75.5 };
     return {
       lat: filteredPoints[0].latitude,
       lng: filteredPoints[0].longitude,
@@ -77,46 +81,34 @@ export default function ScanMap({ points }: { points: MapPoint[] }) {
   }, [filteredPoints]);
 
   return (
-    <div>
+    <div style={{ width: "100%" }}>
       {/* FILTER BUTTONS */}
-      <div style={{ marginBottom: 12, display: "flex", gap: 10 }}>
-        <button
-          onClick={() => setFilter("all")}
-          style={btn(filter === "all")}
-        >
-          All
-        </button>
-
-        <button
-          onClick={() => setFilter("verified")}
-          style={btn(filter === "verified", "#22c55e")}
-        >
-          Verified
-        </button>
-
-        <button
-          onClick={() => setFilter("fake")}
-          style={btn(filter === "fake", "#ef4444")}
-        >
-          Fake
-        </button>
-
-        <button
-          onClick={() => setFilter("expired")}
-          style={btn(filter === "expired", "#f97316")}
-        >
-          Expired
-        </button>
+      <div style={{ marginBottom: 12, display: "flex", gap: 8 }}>
+        {["all", "verified", "fake", "expired"].map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f as any)}
+            style={{
+              padding: "6px 12px",
+              borderRadius: 8,
+              border: "1px solid #666",
+              cursor: "pointer",
+              background: filter === f ? "#2563eb" : "#1f2937",
+              color: "white",
+              fontSize: "0.8rem",
+            }}
+          >
+            {f.toUpperCase()}
+          </button>
+        ))}
       </div>
 
-      {/* MAP */}
       <div
         style={{
-          height: 400,
+          height: 500,
           width: "100%",
           borderRadius: 12,
           overflow: "hidden",
-          border: "1px solid rgba(255,255,255,0.2)",
         }}
       >
         <MapContainer
@@ -125,10 +117,7 @@ export default function ScanMap({ points }: { points: MapPoint[] }) {
           style={{ height: "100%", width: "100%" }}
           scrollWheelZoom
         >
-          <TileLayer
-            attribution='&copy; OpenStreetMap contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
           {filteredPoints.map((p) => (
             <Marker
@@ -139,26 +128,18 @@ export default function ScanMap({ points }: { points: MapPoint[] }) {
                   ? verifiedIcon
                   : p.status === "expired"
                   ? expiredIcon
-                  : p.status === "fake"
-                  ? fakeIcon
-                  : fallbackIcon
+                  : fakeIcon
               }
             >
               <Popup>
                 <div style={{ fontSize: "0.8rem" }}>
+                  <div><strong>Batch:</strong> {p.batch_code}</div>
+                  <div><strong>Status:</strong> {p.status}</div>
                   <div>
-                    <strong>Batch:</strong> {p.batch_code}
+                    <strong>Location:</strong> {p.city || "-"}, {p.state || "-"},{" "}
+                    {p.country || "-"}
                   </div>
-                  <div>
-                    <strong>Status:</strong> {p.status}
-                  </div>
-                  <div>
-                    <strong>Location:</strong>{" "}
-                    {p.city || "-"}, {p.state || "-"}, {p.country || "-"}
-                  </div>
-                  <div>
-                    <strong>ISP:</strong> {p.isp || "-"}
-                  </div>
+                  <div><strong>ISP:</strong> {p.isp || "-"}</div>
                   <div>
                     <strong>Time:</strong>{" "}
                     {new Date(p.created_at).toLocaleString()}
@@ -171,22 +152,4 @@ export default function ScanMap({ points }: { points: MapPoint[] }) {
       </div>
     </div>
   );
-}
-
-// --------------------------
-// BUTTON STYLE HELPER
-// --------------------------
-
-function btn(active: boolean, color?: string): React.CSSProperties {
-  return {
-    padding: "6px 14px",
-    borderRadius: 8,
-    cursor: "pointer",
-    border: active ? `2px solid ${color || "white"}` : "1px solid gray",
-    background: active ? (color ? `${color}22` : "#ffffff22") : "transparent",
-    color: "white",
-    fontSize: "0.85rem",
-    fontWeight: 600,
-    transition: "0.2s",
-  };
 }
