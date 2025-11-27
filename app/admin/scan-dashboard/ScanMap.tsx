@@ -6,15 +6,23 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 // ======================================================================
-// Fix Vercel Build Errors (ONLY extend MarkerProps icon, nothing else)
+// FIX TYPES FOR VERCEL (ONLY these 2 overrides, nothing else!)
 // ======================================================================
 declare module "react-leaflet" {
+  interface MapContainerProps {
+    center?: any;
+    zoom?: number;
+    scrollWheelZoom?: boolean;
+  }
+
   interface MarkerProps {
     icon?: any;
   }
 }
 
-// Dynamic imports — required for Next.js + Leaflet
+// ======================================================================
+// Dynamic imports to avoid SSR crash
+// ======================================================================
 const MapContainer = dynamic(
   () => import("react-leaflet").then((m) => m.MapContainer),
   { ssr: false }
@@ -33,20 +41,18 @@ const Popup = dynamic(
 );
 
 // ======================================================================
-// CUSTOM MAP ICONS
+// ICONS
 // ======================================================================
 const verifiedIcon = new L.Icon({
   iconUrl: "/leaflet/green.png",
   iconSize: [32, 32],
   iconAnchor: [16, 32],
 });
-
 const fakeIcon = new L.Icon({
   iconUrl: "/leaflet/red.png",
   iconSize: [32, 32],
   iconAnchor: [16, 32],
 });
-
 const expiredIcon = new L.Icon({
   iconUrl: "/leaflet/orange.png",
   iconSize: [32, 32],
@@ -81,7 +87,7 @@ export default function ScanMap({ points }: { points: MapPoint[] }) {
   }, [filter, points]);
 
   const center = useMemo(() => {
-    if (!filteredPoints.length) return { lat: 19.5, lng: 75.5 }; // India
+    if (!filteredPoints.length) return { lat: 19.5, lng: 75.5 };
     return {
       lat: filteredPoints[0].latitude,
       lng: filteredPoints[0].longitude,
@@ -120,7 +126,7 @@ export default function ScanMap({ points }: { points: MapPoint[] }) {
             <Marker
               key={p.id}
               position={[p.latitude, p.longitude]}
-              icon={getIcon(p.status)}   // No more TS error
+              icon={getIcon(p.status)}
             >
               <Popup>
                 <strong>Batch:</strong> {p.batch_code}
