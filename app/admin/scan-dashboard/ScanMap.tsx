@@ -5,13 +5,12 @@ import { useState, useMemo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-// --- Fix Vercel TypeScript errors for MapContainer props ---
+// --- Fix Vercel build: extend only missing props ---
 declare module "react-leaflet" {
   interface MapContainerProps {
     center?: any;
     zoom?: number;
     scrollWheelZoom?: boolean;
-    style?: any;
   }
 }
 
