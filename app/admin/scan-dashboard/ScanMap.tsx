@@ -2,15 +2,21 @@
 
 import dynamic from "next/dynamic";
 import { useState, useMemo } from "react";
-import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 // ======================================================================
-// ICONS — created on client
+// SAFE LEAFLET LOAD (no `window` on server)
 // ======================================================================
+let Leaflet: typeof import("leaflet") | null = null;
+
+if (typeof window !== "undefined") {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  Leaflet = require("leaflet");
+}
+
 const createLeafletIcon = (url: string) => {
-  if (typeof window === "undefined") return null;
-  return new L.Icon({
+  if (typeof window === "undefined" || !Leaflet) return null;
+  return new Leaflet.Icon({
     iconUrl: url,
     iconSize: [32, 32],
     iconAnchor: [16, 32],
@@ -107,7 +113,7 @@ export default function ScanMap({ points }: { points: MapPoint[] }) {
             <Marker
               key={p.id}
               position={[p.latitude, p.longitude]}
-              icon={getIcon(p.status) || undefined}
+              icon={getIcon(p.status) || undefined} // guard in case icons are null during first render
             >
               <Popup>
                 <strong>Batch:</strong> {p.batch_code}
