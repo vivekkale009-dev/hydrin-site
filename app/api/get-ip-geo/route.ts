@@ -2,16 +2,13 @@ import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
   try {
-    // Get client IP from headers
     const ipHeader =
       req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
       req.headers.get("x-real-ip") ||
       "0.0.0.0";
 
-    // Localhost fallback
     const ip = ipHeader === "::1" ? "8.8.8.8" : ipHeader;
 
-    // Use ipwho.is (free)
     const geo = await fetch(`https://ipwho.is/${ip}`).then((res) => res.json());
 
     if (!geo.success) {
@@ -19,13 +16,14 @@ export async function GET(req: Request) {
         ip,
         geo: {
           country: null,
-          region: null,
+          state: null,
           city: null,
           isp: null,
           latitude: null,
           longitude: null,
+          pincode: null,
         },
-        error: geo.message || "Geo lookup failed",
+        error: geo.message,
       });
     }
 
@@ -33,11 +31,12 @@ export async function GET(req: Request) {
       ip,
       geo: {
         country: geo.country ?? null,
-        region: geo.region ?? null,
+        state: geo.region ?? null,
         city: geo.city ?? null,
         isp: geo.connection?.isp ?? null,
         latitude: geo.latitude ?? null,
         longitude: geo.longitude ?? null,
+        pincode: geo.postal ?? null,
       },
     });
   } catch (err) {
@@ -46,9 +45,7 @@ export async function GET(req: Request) {
         error: "Geo lookup crashed",
         details: String(err),
       },
-      {
-        status: 500, // ✔ FIXED — must be a number
-      }
+      { status: 500 }
     );
   }
 }

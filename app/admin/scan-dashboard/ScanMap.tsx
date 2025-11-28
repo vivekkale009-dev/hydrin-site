@@ -6,24 +6,10 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 // ======================================================================
-// FIX TYPES FOR VERCEL (ONLY these overrides)
-// ======================================================================
-declare module "react-leaflet" {
-  interface MapContainerProps {
-    center?: any;
-    zoom?: number;
-    scrollWheelZoom?: boolean;
-  }
-  interface MarkerProps {
-    icon?: any;
-  }
-}
-
-// ======================================================================
-// ICONS — but created only on CLIENT, never during SSR
+// ICONS — created on client
 // ======================================================================
 const createLeafletIcon = (url: string) => {
-  if (typeof window === "undefined") return null; // prevents SSR crash
+  if (typeof window === "undefined") return null;
   return new L.Icon({
     iconUrl: url,
     iconSize: [32, 32],
@@ -36,21 +22,21 @@ const fakeIcon = createLeafletIcon("/leaflet/red.png");
 const expiredIcon = createLeafletIcon("/leaflet/orange.png");
 
 // ======================================================================
-// Dynamic imports to avoid SSR crash
+// Dynamic imports to avoid SSR crash. Typed as `any` to shut TS up.
 // ======================================================================
-const MapContainer = dynamic(
+const MapContainer: any = dynamic(
   () => import("react-leaflet").then((m) => m.MapContainer),
   { ssr: false }
 );
-const TileLayer = dynamic(
+const TileLayer: any = dynamic(
   () => import("react-leaflet").then((m) => m.TileLayer),
   { ssr: false }
 );
-const Marker = dynamic(
+const Marker: any = dynamic(
   () => import("react-leaflet").then((m) => m.Marker),
   { ssr: false }
 );
-const Popup = dynamic(
+const Popup: any = dynamic(
   () => import("react-leaflet").then((m) => m.Popup),
   { ssr: false }
 );
@@ -99,7 +85,6 @@ export default function ScanMap({ points }: { points: MapPoint[] }) {
 
   return (
     <div style={{ width: "100%", marginTop: "20px" }}>
-      
       {/* FILTER BUTTONS */}
       <div style={{ marginBottom: 10, display: "flex", gap: 10 }}>
         <button onClick={() => setFilter("all")}>All</button>
@@ -122,7 +107,7 @@ export default function ScanMap({ points }: { points: MapPoint[] }) {
             <Marker
               key={p.id}
               position={[p.latitude, p.longitude]}
-              icon={getIcon(p.status) || undefined} // prevent SSR null crash
+              icon={getIcon(p.status) || undefined}
             >
               <Popup>
                 <strong>Batch:</strong> {p.batch_code}
