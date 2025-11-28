@@ -1,15 +1,16 @@
-export const dynamic = "force-dynamic";
 "use client";
+export const dynamic = "force-dynamic";
+export const revalidate = false;
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import ScanMap, { MapPoint } from "./ScanMap";
 
-
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
+
 
 type ScanRow = {
   id: number;
