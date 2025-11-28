@@ -1,5 +1,8 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import ScanMap, { MapPoint } from "./ScanMap";
@@ -51,7 +54,9 @@ export default function ScanDashboard() {
           .order("created_at", { ascending: false })
           .limit(1000);
 
-        const { data: ipData } = await supabase.from("blocked_ips").select("*");
+        const { data: ipData } = await supabase
+          .from("blocked_ips")
+          .select("*");
 
         setScans(scanData || []);
         setBlockedIps(ipData || []);
@@ -149,8 +154,6 @@ export default function ScanDashboard() {
         <MetricCard label="Fake Attempts" value={stats.fake} />
         <MetricCard label="Expired Scans" value={stats.expired} />
       </section>
-
-      {/* YOUR OTHER SECTIONS REMAIN UNTOUCHED */}
 
       {/* ⭐⭐⭐ MAP AT BOTTOM ⭐⭐⭐ */}
       <section
