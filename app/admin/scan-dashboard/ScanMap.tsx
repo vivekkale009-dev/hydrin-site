@@ -6,7 +6,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 // ======================================================================
-// FIX TYPES FOR VERCEL (ONLY these 2 overrides, nothing else!)
+// FIX TYPES FOR VERCEL (ONLY these overrides)
 // ======================================================================
 declare module "react-leaflet" {
   interface MapContainerProps {
@@ -14,11 +14,26 @@ declare module "react-leaflet" {
     zoom?: number;
     scrollWheelZoom?: boolean;
   }
-
   interface MarkerProps {
     icon?: any;
   }
 }
+
+// ======================================================================
+// ICONS — but created only on CLIENT, never during SSR
+// ======================================================================
+const createLeafletIcon = (url: string) => {
+  if (typeof window === "undefined") return null; // prevents SSR crash
+  return new L.Icon({
+    iconUrl: url,
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+  });
+};
+
+const verifiedIcon = createLeafletIcon("/leaflet/green.png");
+const fakeIcon = createLeafletIcon("/leaflet/red.png");
+const expiredIcon = createLeafletIcon("/leaflet/orange.png");
 
 // ======================================================================
 // Dynamic imports to avoid SSR crash
@@ -39,25 +54,6 @@ const Popup = dynamic(
   () => import("react-leaflet").then((m) => m.Popup),
   { ssr: false }
 );
-
-// ======================================================================
-// ICONS
-// ======================================================================
-const verifiedIcon = new L.Icon({
-  iconUrl: "/leaflet/green.png",
-  iconSize: [32, 32],
-  iconAnchor: [16, 32],
-});
-const fakeIcon = new L.Icon({
-  iconUrl: "/leaflet/red.png",
-  iconSize: [32, 32],
-  iconAnchor: [16, 32],
-});
-const expiredIcon = new L.Icon({
-  iconUrl: "/leaflet/orange.png",
-  iconSize: [32, 32],
-  iconAnchor: [16, 32],
-});
 
 // ======================================================================
 // TYPES
@@ -126,7 +122,7 @@ export default function ScanMap({ points }: { points: MapPoint[] }) {
             <Marker
               key={p.id}
               position={[p.latitude, p.longitude]}
-              icon={getIcon(p.status)}
+              icon={getIcon(p.status) || undefined} // prevent SSR null crash
             >
               <Popup>
                 <strong>Batch:</strong> {p.batch_code}
