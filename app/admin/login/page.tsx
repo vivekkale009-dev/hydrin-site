@@ -64,7 +64,7 @@ export default function AdminLoginPage() {
         }}
       >
         <h1 style={{ fontSize: "1.9rem", fontWeight: 800, marginBottom: 4 }}>
-          OxyHydra Admin
+          OxyHydra Admin Login
         </h1>
         <p style={{ opacity: 0.7, marginBottom: 18 }}>
           Enter admin password to access the scan dashboard.

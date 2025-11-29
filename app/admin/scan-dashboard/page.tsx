@@ -256,34 +256,70 @@ export default function ScanDashboard() {
   );
 
   // =============== BLOCK / UNBLOCK IP ===============
-  async function toggleIpBlock(ip: string, isCurrentlyBlocked: boolean) {
-    if (!ip) return;
+async function toggleIpBlock(ip: string, isCurrentlyBlocked: boolean) {
+  if (!ip) return;
 
-    try {
-      if (isCurrentlyBlocked) {
-        // Unblock
-        await supabase
+  try {
+    if (isCurrentlyBlocked) {
+      // UNBLOCK: always update existing rows to false
+      const { error } = await supabase
+        .from("blocked_ips")
+        .update({ is_blocked: false })
+        .eq("ip_address", ip);
+
+      if (error) {
+        console.error("Unblock failed:", error);
+        alert("Failed to unblock this IP. Check console.");
+        return;
+      }
+    } else {
+      // BLOCK: either insert new or update existing to true
+      const existing = blockedIps.find((b) => b.ip_address === ip);
+
+      if (existing) {
+        // If row already exists, just flip flag to true
+        const { error } = await supabase
           .from("blocked_ips")
-          .update({ is_blocked: false })
+          .update({ is_blocked: true, reason: "Manually blocked from dashboard" })
           .eq("ip_address", ip);
+
+        if (error) {
+          console.error("Re-block failed:", error);
+          alert("Failed to block this IP. Check console.");
+          return;
+        }
       } else {
-        // Block
-        await supabase.from("blocked_ips").insert({
+        // First time ever → insert
+        const { error } = await supabase.from("blocked_ips").insert({
           ip_address: ip,
           is_blocked: true,
           reason: "Manually blocked from dashboard",
         });
-      }
 
-      const { data: ipData } = await supabase
-        .from("blocked_ips")
-        .select("*");
-      setBlockedIps(ipData || []);
-    } catch (e) {
-      console.error("Failed to toggle block", e);
-      alert("Failed to update block status. Check console.");
+        if (error) {
+          console.error("Insert block failed:", error);
+          alert("Failed to block this IP. Check console.");
+          return;
+        }
+      }
     }
+
+    // Refresh local state after success
+    const { data: ipData, error: reloadErr } = await supabase
+      .from("blocked_ips")
+      .select("*");
+
+    if (reloadErr) {
+      console.error("Reload blocked_ips failed:", reloadErr);
+      return;
+    }
+
+    setBlockedIps(ipData || []);
+  } catch (e) {
+    console.error("Failed to toggle block", e);
+    alert("Failed to update block status. Check console.");
   }
+}
 
   const isIpBlocked = (ip: string) =>
     blockedIps.some((b) => b.ip_address === ip && b.is_blocked);
