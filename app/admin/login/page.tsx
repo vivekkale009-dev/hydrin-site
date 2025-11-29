@@ -1,16 +1,16 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const redirectTarget = searchParams.get("redirect") || "/admin/scan-dashboard";
+  // NO useSearchParams — default redirect
+  const redirectTarget = "/admin/scan-dashboard";
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -32,7 +32,6 @@ export default function AdminLoginPage() {
         return;
       }
 
-      // success – redirect to dashboard or requested page
       router.push(redirectTarget);
     } catch (e) {
       console.error(e);
@@ -81,12 +80,13 @@ export default function AdminLoginPage() {
           >
             Password
           </label>
+
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             style={{
-              width: "95%",
+              width: "95%",                   // ← shorter input width
               padding: "10px 12px",
               borderRadius: 10,
               border: "1px solid rgba(148,163,184,0.7)",
