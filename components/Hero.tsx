@@ -1,5 +1,3 @@
-// app/components/Hero.tsx
-
 "use client";
 import Image from "next/image";
 
@@ -10,108 +8,48 @@ export default function Hero() {
   };
 
   return (
-   <section
-  style={{
-    width: "100vw",
-    height: "100vh",
-    backgroundImage: "url('/hero-deep.jpg')",
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-    backgroundRepeat: "no-repeat",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "0 8%",
-    overflow: "hidden",      // IMPORTANT fix for white strip
-  }}
->
+    <section className="hero-wrapper">
+      {/* Background layers (match homepage.css design) */}
+      <div className="hero-bg layer-1"></div>
+      <div className="hero-bg layer-2"></div>
+      <div className="ripple-layer"></div>
+      <div className="particles"></div>
 
-      {/* LEFT SIDE CONTENT */}
-      <div
-        style={{
-          maxWidth: "480px",
-          color: "white",
-        }}
-      >
-        <h1
-          style={{
-            fontSize: "3.5rem",
-            fontWeight: 700,
-            marginBottom: "20px",
-            textShadow: "0 3px 10px rgba(0,0,0,0.4)",
-          }}
-        >
-          Pure. Clean. OxyHydra.
-        </h1>
+      {/* LEFT SIDE TEXT SECTION */}
+      <div className="hero-content">
+        <h1 className="brand-name">Pure. Clean. OxyHydra.</h1>
 
-        <p
-          style={{
-            fontSize: "1.2rem",
-            opacity: 0.9,
-            marginBottom: "30px",
-          }}
-        >
+        <p className="tagline">
           Naturally filtered. Bottled with care. Verified instantly.
         </p>
 
-        <div style={{ display: "flex", gap: "16px" }}>
-          <a
-            href="/purity-check"
-            style={{
-              padding: "14px 28px",
-              background: "white",
-              color: "#000",
-              borderRadius: "8px",
-              fontWeight: 600,
-              textDecoration: "none",
-              boxShadow: "0 2px 8px rgba(255,255,255,0.4)",
-            }}
-          >
+        {/* CTA BUTTONS from homepage.css */}
+        <div className="cta-buttons">
+          <a href="/purity-check" className="btn btn-primary">
             Check Purity
           </a>
 
-          <button
-            onClick={scrollToLearn}
-            style={{
-              padding: "14px 28px",
-              background: "rgba(255,255,255,0.2)",
-              border: "1px solid white",
-              color: "white",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-          >
+          <a href="/order" className="btn btn-primary" style={{ background: "#0ea5e9", color: "#fff" }}>
+            Place Order
+          </a>
+
+          <button onClick={scrollToLearn} className="btn btn-outline">
             Learn More
           </button>
         </div>
       </div>
 
       {/* RIGHT SIDE FLOATING BOTTLE */}
-      <div
-        style={{
-          position: "relative",
-          width: "350px",
-          animation: "floatBottle 3s ease-in-out infinite",
-        }}
-      >
-        <style>{`
-          @keyframes floatBottle {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-18px); }
-            100% { transform: translateY(0px); }
-          }
-        `}</style>
+      <div className="bottle-wrapper">
+        <div className="bottle-glow"></div>
+        <div className="light-sweep"></div>
 
         <Image
           src="/images/bottle.png"
           alt="OxyHydra Bottle"
-          width={350}
-          height={700}
-          style={{
-            objectFit: "contain",
-            filter: "drop-shadow(0px 8px 25px rgba(0,0,0,0.45))",
-          }}
+          width={380}
+          height={1100}
+          className="bottle-img"
         />
       </div>
     </section>

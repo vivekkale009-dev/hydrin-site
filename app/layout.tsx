@@ -8,6 +8,8 @@ export const metadata: Metadata = {
   description: "OxyHydra – smart packaged drinking water with live purity check.",
 };
 
+
+
 export default function RootLayout({
   children,
 }: {
@@ -23,3 +25,6 @@ export default function RootLayout({
     </html>
   );
 }
+
+
+
