@@ -10,19 +10,22 @@ export default function Hero() {
   };
 
   return (
-    <section
-      style={{
-        width: "100%",
-        minHeight: "100vh",
-        backgroundImage: "url('/hero-deep.jpg')",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "0 8%",
-      }}
-    >
+   <section
+  style={{
+    width: "100vw",
+    height: "100vh",
+    backgroundImage: "url('/hero-deep.jpg')",
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "0 8%",
+    overflow: "hidden",      // IMPORTANT fix for white strip
+  }}
+>
+
       {/* LEFT SIDE CONTENT */}
       <div
         style={{

@@ -1,7 +1,7 @@
 // app/page.tsx
 import Hero from "./components/Hero";
 
-export default function Page() {
+export default function HomePage() {
   return (
     <>
       <main style={{ margin: 0, padding: 0 }}>
@@ -20,7 +20,8 @@ export default function Page() {
             <h2>Purity & Source</h2>
             <p style={{ fontSize: "1.2rem", marginTop: "20px" }}>
               OxyHydra is sourced from protected springs and bottled with minimal
-              contact. Our Purity Check provides batch-level analysis you can verify online.
+              contact. Our Purity Check provides batch-level analysis you can
+              verify online.
             </p>
           </div>
         </section>
@@ -28,6 +29,3 @@ export default function Page() {
     </>
   );
 }
-
-
-
