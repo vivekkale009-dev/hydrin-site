@@ -81,8 +81,8 @@ export default function EliteHRDashboard() {
         ],
         foot: [['NET DISBURSEMENT', '', `Rs. ${selectedEmp.netPayable.toLocaleString()}`]],
         theme: 'grid',
-        headStyles: { fillColor: slateGreen },
-        footStyles: { fillColor: slateGreen },
+        headStyles: { fillColor: slateGreen as [101, 141, 109] },
+		footStyles: { fillColor: slateGreen as [101, 141, 109] },
       });
 
       const pdfBlob = doc.output('blob');
