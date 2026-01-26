@@ -84,15 +84,15 @@ export default function ChatWidget() {
       );
     } else if (t === "products") {
       setMessage(
-        "I want product details.\n\nWe currently offer 1L, 500ml, and 250ml premium OxyHydra bottles."
+        "I want product details.\n\nWe currently offer 1L, 500ml, and 250ml premium Earthy Source bottles."
       );
     } else if (t === "dealership") {
       setMessage(
-        "I am interested in OxyHydra dealership. Please share further details."
+        "I am interested in Earthy Source dealership. Please share further details."
       );
     } else if (t === "complaint") {
       setMessage(
-        "I want to raise a complaint regarding OxyHydra product/service."
+        "I want to raise a complaint regarding Earthy Source product/service."
       );
     } else {
       setMessage("");
@@ -157,7 +157,7 @@ export default function ChatWidget() {
             : "Other / General";
 
         const waText = encodeURIComponent(
-          `New OxyHydra chat query:\n\nTopic: ${topicLabel}\nName: ${name}\nPhone: ${phone}\nEmail: ${email}\nMessage: ${message}\n\nSource: Website chat widget`
+          `New Earthy Source chat query:\n\nTopic: ${topicLabel}\nName: ${name}\nPhone: ${phone}\nEmail: ${email}\nMessage: ${message}\n\nSource: Website chat widget`
         );
 
         window.open(`https://wa.me/${whatsappNumber}?text=${waText}`, "_blank");
@@ -223,7 +223,7 @@ export default function ChatWidget() {
               boxShadow: "0 8px 20px rgba(15,23,42,0.4)",
             }}
           >
-            Oxy – need any help?
+            Terra – May I help you ? 💧
           </div>
         )}
 
@@ -234,7 +234,7 @@ export default function ChatWidget() {
             if (!isOpen) openWidget();
             else closeWidget();
           }}
-          aria-label="Open OxyHydra chat assistant"
+          aria-label="Open Earthy Source chat assistant"
           style={{
             border: "none",
             background: "transparent",
@@ -299,11 +299,10 @@ export default function ChatWidget() {
           >
             <div>
               <div style={{ fontWeight: 800, fontSize: "0.95rem" }}>
-                Oxy – Water Drop Assistant
+                Terra – Your Earthy Source Guide
               </div>
               <div style={{ fontSize: "0.78rem", opacity: 0.9 }}>
-                “May I help you?” 💧
-              </div>
+                            </div>
             </div>
             <div style={{ display: "flex", gap: 6 }}>
               <button

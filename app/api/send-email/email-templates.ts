@@ -8,9 +8,9 @@ export function customerTemplate(name: string, ticketId: string) {
         <!-- HEADER -->
         <tr>
           <td style="background:#0A6CFF;padding:30px 20px;text-align:center;">
-            <img src="https://hydrin-site.vercel.app/OxyHydraLogo.png" alt="OxyHydra" style="width:120px;margin-bottom:10px;">
+            <img src="https://hydrin-site.vercel.app/EarthyLogo.JPG" alt="Earthy Source" style="width:120px;margin-bottom:10px;">
             <h1 style="color:#fff;font-size:20px;margin:0;font-weight:600;letter-spacing:0.5px;">
-              OxyHydra Support
+              Earthy Source Support
             </h1>
           </td>
         </tr>
@@ -38,14 +38,14 @@ export function customerTemplate(name: string, ticketId: string) {
 
             <p style="color:#555;margin-top:20px;line-height:1.55;">
               Our team will get back to you shortly.<br>
-              Thank you for choosing <strong>OxyHydra</strong>.
+              Thank you for choosing <strong>Earthy Source</strong>.
             </p>
           </td>
         </tr>
 
         <tr>
           <td style="background:#f1f3f6;text-align:center;padding:20px 10px;color:#777;font-size:12px;">
-            © 2025 OxyHydra • All Rights Reserved
+            © 2025 Earthy Source • All Rights Reserved
           </td>
         </tr>
 
@@ -84,7 +84,7 @@ export function adminTemplate({
         <!-- HEADER -->
         <tr>
           <td style="background:#0A6CFF;padding:30px 20px;text-align:center;">
-            <img src="https://hydrin-site.vercel.app/OxyHydraLogo.png" alt="OxyHydra" style="width:120px;margin-bottom:10px;">
+            <img src="https://hydrin-site.vercel.app/EarthyLogo.JPG" alt="Earthy Source" style="width:120px;margin-bottom:10px;">
             <h1 style="color:#fff;font-size:20px;margin:0;font-weight:600;">
               New Complaint Received
             </h1>
@@ -143,7 +143,7 @@ export function adminTemplate({
         <!-- FOOTER -->
         <tr>
           <td style="background:#f1f3f6;text-align:center;padding:20px 10px;color:#777;font-size:12px;">
-            © 2025 OxyHydra • Internal Notification
+            © 2025 Earthy Source • Internal Notification
           </td>
         </tr>
 

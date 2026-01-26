@@ -16,7 +16,7 @@ const supabase = createClient(
 
 // ==== STATIC VALUES (not from Supabase) ====
 const STATIC_PLANT =
-  "OxyHydra Bottling plant Khairi nimgaon Shrirampur, Ahmednagar";
+  "Gut N0 253 Earthy Source Foods And Beverages Khairi nimgaon Shrirampur, Ahilyanagar";
 const STATIC_LICENSE = "12345678901234";
 const STATIC_FSSAI = "12345678901234";
 
@@ -283,7 +283,7 @@ export default function PurityCheck() {
 
     doc.setTextColor(235, 235, 235);
     doc.setFontSize(60);
-    doc.text("OXYHYDRA", 100, 420, { angle: 30 });
+    doc.text("EarthySource", 100, 420, { angle: 30 });
 
     try {
       doc.addImage("/OxyHydraLogo.png", "PNG", 215, 60, 150, 150);
@@ -300,7 +300,7 @@ export default function PurityCheck() {
     doc.setFontSize(14);
     doc.setTextColor(text);
     doc.text(
-      "This certifies that the following OxyHydra bottle batch has been verified",
+      "This certifies that the following Earthy’s bottle batch has been verified",
       100,
       280
     );
@@ -351,7 +351,7 @@ export default function PurityCheck() {
     doc.setTextColor(text);
     doc.text("Quality Assurance Team", 110, 770);
 
-    doc.save(`OxyHydra-Certificate-${data.batch_code}.pdf`);
+    doc.save(`EarthySource-Certificate-${data.batch_code}.pdf`);
   };
 
   // =======================================================================
@@ -437,7 +437,7 @@ export default function PurityCheck() {
 
       <BackgroundWrapper
         backgroundStyle={{
-          backgroundImage: "url('/purity-bg.jpg')",
+          backgroundImage: "url('/new-bg.png')",
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundAttachment: "fixed",
@@ -445,7 +445,7 @@ export default function PurityCheck() {
       >
         <main style={page}>
           <div style={inner}>
-            <h1 style={title}>OxyHydra Purity Check</h1>
+            <h1 style={title}>Earthy Source Purity Check</h1>
             <p style={subtitle}>
               Verify your bottle using the batch number printed on the label.
             </p>
@@ -480,7 +480,7 @@ export default function PurityCheck() {
                   Fake / Invalid Bottle ❌
                 </h2>
                 <p>
-                  This batch number is not present in OxyHydra’s secure
+                  This batch number is not present in Earthy’s secure
                   database. Please check the code again or contact our team.
                 </p>
               </div>
@@ -500,7 +500,7 @@ export default function PurityCheck() {
                   Please contact our support team for assistance.
                 </p>
 
-                <a href="mailto:quality@oxyhydra.com">
+                <a href="mailto:support@earthysource.in">
                   <button
                     style={{
                       marginTop: 16,
@@ -553,7 +553,7 @@ export default function PurityCheck() {
                     <strong>Status:</strong> {data.status}
                   </p>
 
-                  <p>✔ Batch verified from OxyHydra database</p>
+                  <p>✔ Batch verified from Earthy Source database</p>
 
                   <button
                     onClick={downloadCertificate}
@@ -611,7 +611,7 @@ export default function PurityCheck() {
                 <div style={card}>
                   <h2 style={sectionTitle}>Our Purity Promise</h2>
                   <p>
-                    Every OxyHydra bottle undergoes strict physical, chemical,
+                    Every Earthy bottle undergoes strict physical, chemical,
                     and microbiological testing before dispatch.
                   </p>
                   <p>
@@ -619,7 +619,7 @@ export default function PurityCheck() {
                     to keep every batch consistent and safe.
                   </p>
 
-                  <a href="mailto:quality@oxyhydra.com">
+                  <a href="mailto:support@earthysource.in">
                     <button
                       style={{
                         marginTop: 16,

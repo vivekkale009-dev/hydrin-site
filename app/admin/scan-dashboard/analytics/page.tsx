@@ -111,7 +111,7 @@ export default function ScanAnalytics() {
       }}
     >
       <h1 style={{ fontSize: "2.2rem", fontWeight: 800 }}>
-        OxyHydra Scan Analytics
+        Earthy Source Scan Analytics
       </h1>
 
       {/* Simple link back to Overview */}

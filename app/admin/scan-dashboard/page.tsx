@@ -36,7 +36,6 @@ type BlockedIp = {
   created_at: string;
 };
 
-// === AUTO-BLOCK THRESHOLDS (same idea as earlier) ===
 const AUTO_BLOCK_SCAN_THRESHOLD = 50;
 const AUTO_BLOCK_FAKE_THRESHOLD = 10;
 
@@ -45,12 +44,10 @@ export default function ScanDashboard() {
   const [blockedIps, setBlockedIps] = useState<BlockedIp[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  // date range for IP/Recent/Batches/Map
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
-  // default last 30 days
+  // --- LOGIC RESTORED ---
   useEffect(() => {
     const now = new Date();
     const toStr = now.toISOString().slice(0, 10);
@@ -61,16 +58,9 @@ export default function ScanDashboard() {
     setToDate(toStr);
   }, []);
 
-  // ================= LOAD DATA =================
-  async function autoBlock(
-    scanRows: ScanRow[],
-    currentBlocked: BlockedIp[]
-  ): Promise<void> {
+  async function autoBlock(scanRows: ScanRow[], currentBlocked: BlockedIp[]): Promise<void> {
     try {
-      const existingBlocked = new Set(
-        currentBlocked.filter((b) => b.is_blocked).map((b) => b.ip_address)
-      );
-
+      const existingBlocked = new Set(currentBlocked.filter((b) => b.is_blocked).map((b) => b.ip_address));
       const ipAgg: Record<string, { total: number; fake: number }> = {};
 
       for (const s of scanRows) {
@@ -80,20 +70,10 @@ export default function ScanDashboard() {
         if (s.status === "fake") ipAgg[ip].fake++;
       }
 
-      const rowsToInsert: {
-        ip_address: string;
-        is_blocked: boolean;
-        reason: string;
-      }[] = [];
-
+      const rowsToInsert: { ip_address: string; is_blocked: boolean; reason: string }[] = [];
       for (const [ip, agg] of Object.entries(ipAgg)) {
-        if (ip === "unknown") continue;
-        if (existingBlocked.has(ip)) continue;
-
-        if (
-          agg.total >= AUTO_BLOCK_SCAN_THRESHOLD ||
-          agg.fake >= AUTO_BLOCK_FAKE_THRESHOLD
-        ) {
+        if (ip === "unknown" || existingBlocked.has(ip)) continue;
+        if (agg.total >= AUTO_BLOCK_SCAN_THRESHOLD || agg.fake >= AUTO_BLOCK_FAKE_THRESHOLD) {
           rowsToInsert.push({
             ip_address: ip,
             is_blocked: true,
@@ -103,11 +83,8 @@ export default function ScanDashboard() {
       }
 
       if (!rowsToInsert.length) return;
-
       await supabase.from("blocked_ips").insert(rowsToInsert);
-      const { data: refreshed } = await supabase
-        .from("blocked_ips")
-        .select("*");
+      const { data: refreshed } = await supabase.from("blocked_ips").select("*");
       setBlockedIps(refreshed || []);
     } catch (e) {
       console.error("Auto-block failed", e);
@@ -123,464 +100,206 @@ export default function ScanDashboard() {
         .order("created_at", { ascending: false })
         .limit(1000);
 
-      const { data: ipData, error: ipErr } = await supabase
-        .from("blocked_ips")
-        .select("*");
-
+      const { data: ipData, error: ipErr } = await supabase.from("blocked_ips").select("*");
       if (scanErr) throw scanErr;
       if (ipErr) throw ipErr;
 
-      const safeScans = scanData || [];
-      const safeBlocked = ipData || [];
-
-      setScans(safeScans);
-      setBlockedIps(safeBlocked);
+      setScans(scanData || []);
+      setBlockedIps(ipData || []);
       setError("");
-
-      // run auto-block based on ALL scans (not filtered)
-      await autoBlock(safeScans, safeBlocked);
+      await autoBlock(scanData || [], ipData || []);
     } catch (e) {
-      console.error(e);
       setError("Failed to load scan data.");
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => {
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
-  // ============= FILTERED SCANS (by date range) =============
   const filteredScans = useMemo(() => {
     if (!fromDate || !toDate) return scans;
-
     const from = new Date(fromDate);
     const to = new Date(toDate);
     to.setHours(23, 59, 59, 999);
-
     return scans.filter((s) => {
       const d = new Date(s.created_at);
       return d >= from && d <= to;
     });
   }, [scans, fromDate, toDate]);
 
-  // ============= METRICS & AGGREGATIONS =============
   const stats = useMemo(() => {
-    const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
-
-    // top counters still on ALL scans (same behaviour as before)
-    let totalToday = 0;
-    let verified = 0;
-    let fake = 0;
-    let expired = 0;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    let totalToday = 0, verified = 0, fake = 0, expired = 0;
 
     for (const s of scans) {
-      const dateOnly = s.created_at?.slice(0, 10);
-      if (dateOnly === todayStr) totalToday++;
-
+      if (s.created_at?.slice(0, 10) === todayStr) totalToday++;
       if (s.status === "verified") verified++;
       else if (s.status === "fake") fake++;
       else if (s.status === "expired") expired++;
     }
 
-    // batch + IP stats on FILTERED scans (respect date range)
     const scansPerBatch: Record<string, number> = {};
-    const ipStats: Record<
-      string,
-      {
-        total: number;
-        fake: number;
-        lastSeen: string;
-        country: string | null;
-        state: string | null;
-        city: string | null;
-        isp: string | null;
-      }
-    > = {};
+    const ipStats: Record<string, any> = {};
 
     for (const s of filteredScans) {
-      if (s.batch_code) {
-        scansPerBatch[s.batch_code] =
-          (scansPerBatch[s.batch_code] || 0) + 1;
-      }
-
+      if (s.batch_code) scansPerBatch[s.batch_code] = (scansPerBatch[s.batch_code] || 0) + 1;
       const ipKey = s.ip_address || "unknown";
       if (!ipStats[ipKey]) {
-        ipStats[ipKey] = {
-          total: 0,
-          fake: 0,
-          lastSeen: s.created_at,
-          country: s.country,
-          state: s.state,
-          city: s.city,
-          isp: s.isp,
-        };
+        ipStats[ipKey] = { total: 0, fake: 0, lastSeen: s.created_at, country: s.country, state: s.state, city: s.city, isp: s.isp };
       }
       ipStats[ipKey].total++;
       if (s.status === "fake") ipStats[ipKey].fake++;
-      if (s.created_at > ipStats[ipKey].lastSeen) {
-        ipStats[ipKey].lastSeen = s.created_at;
-      }
     }
 
-    const batchList = Object.entries(scansPerBatch)
-      .map(([batch, count]) => ({ batch, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
-
-    const ipList = Object.entries(ipStats).map(([ip, d]) => ({
-      ip,
-      ...d,
-    }));
-
-    const totalForBars = verified + fake + expired || 1;
-
     return {
-      totalToday,
-      verified,
-      fake,
-      expired,
-      batchList,
-      ipList,
-      totalForBars,
+      totalToday, verified, fake, expired,
+      batchList: Object.entries(scansPerBatch).map(([batch, count]) => ({ batch, count })).sort((a, b) => b.count - a.count).slice(0, 10),
+      ipList: Object.entries(ipStats).map(([ip, d]) => ({ ip, ...d })),
+      totalForBars: verified + fake + expired || 1
     };
   }, [scans, filteredScans]);
 
-  // recent scans should follow date range
-  const recentScans = useMemo(
-    () => filteredScans.slice(0, 30),
-    [filteredScans]
-  );
-
-  // =============== BLOCK / UNBLOCK IP ===============
-async function toggleIpBlock(ip: string, isCurrentlyBlocked: boolean) {
-  if (!ip) return;
-
-  try {
-    if (isCurrentlyBlocked) {
-      // UNBLOCK: always update existing rows to false
-      const { error } = await supabase
-        .from("blocked_ips")
-        .update({ is_blocked: false })
-        .eq("ip_address", ip);
-
-      if (error) {
-        console.error("Unblock failed:", error);
-        alert("Failed to unblock this IP. Check console.");
-        return;
-      }
-    } else {
-      // BLOCK: either insert new or update existing to true
-      const existing = blockedIps.find((b) => b.ip_address === ip);
-
-      if (existing) {
-        // If row already exists, just flip flag to true
-        const { error } = await supabase
-          .from("blocked_ips")
-          .update({ is_blocked: true, reason: "Manually blocked from dashboard" })
-          .eq("ip_address", ip);
-
-        if (error) {
-          console.error("Re-block failed:", error);
-          alert("Failed to block this IP. Check console.");
-          return;
-        }
+  async function toggleIpBlock(ip: string, isCurrentlyBlocked: boolean) {
+    if (!ip) return;
+    try {
+      if (isCurrentlyBlocked) {
+        await supabase.from("blocked_ips").update({ is_blocked: false }).eq("ip_address", ip);
       } else {
-        // First time ever → insert
-        const { error } = await supabase.from("blocked_ips").insert({
-          ip_address: ip,
-          is_blocked: true,
-          reason: "Manually blocked from dashboard",
-        });
-
-        if (error) {
-          console.error("Insert block failed:", error);
-          alert("Failed to block this IP. Check console.");
-          return;
+        const existing = blockedIps.find((b) => b.ip_address === ip);
+        if (existing) {
+          await supabase.from("blocked_ips").update({ is_blocked: true, reason: "Manually blocked" }).eq("ip_address", ip);
+        } else {
+          await supabase.from("blocked_ips").insert({ ip_address: ip, is_blocked: true, reason: "Manually blocked" });
         }
       }
-    }
-
-    // Refresh local state after success
-    const { data: ipData, error: reloadErr } = await supabase
-      .from("blocked_ips")
-      .select("*");
-
-    if (reloadErr) {
-      console.error("Reload blocked_ips failed:", reloadErr);
-      return;
-    }
-
-    setBlockedIps(ipData || []);
-  } catch (e) {
-    console.error("Failed to toggle block", e);
-    alert("Failed to update block status. Check console.");
+      const { data } = await supabase.from("blocked_ips").select("*");
+      setBlockedIps(data || []);
+    } catch (e) { alert("Failed to update block status."); }
   }
-}
 
-  const isIpBlocked = (ip: string) =>
-    blockedIps.some((b) => b.ip_address === ip && b.is_blocked);
+  const isIpBlocked = (ip: string) => blockedIps.some((b) => b.ip_address === ip && b.is_blocked);
 
-  // ===================== UI =====================
+  // --- FRESH THEME STYLING ---
+  const freshGreen = "#16a34a";
+  const softBg = "#f8fafc";
+  const navLinkStyle = { marginRight: 20, color: "#64748b", textDecoration: "none", fontSize: "0.9rem", fontWeight: 500 };
+
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        padding: "40px 20px",
-        background: "#050816",
-        color: "white",
+    <main style={{ minHeight: "100vh", padding: "40px 20px", background: softBg, color: "#1e293b" }}>
+      
+      {/* HEADER */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, maxWidth: "1200px", margin: "0 auto 24px auto" }}>
+        <h1 style={{ fontSize: "1.8rem", fontWeight: 800, color: "#0f172a" }}>Earthy Source <span style={{ color: freshGreen }}>Scans</span></h1>
+        <button
+          onClick={async () => {
+            await fetch("/api/admin/logout", { method: "POST" });
+            window.location.href = "/admin/login";
+          }}
+          style={{ padding: "8px 18px", borderRadius: "10px", border: "1px solid #e2e8f0", background: "white", color: "#64748b", cursor: "pointer", fontWeight: 600 }}
+        >
+          Logout
+        </button>
+      </div>
+
+{/* NAVIGATION BAR - FIXED FOR NO SCROLLBAR */}
+<nav style={{ 
+  maxWidth: "1200px", 
+  margin: "0 auto 32px auto", 
+  background: "white", 
+  padding: "12px 16px", 
+  borderRadius: "16px", 
+  display: "flex", 
+  flexWrap: "nowrap", 
+  justifyContent: "space-between", 
+  alignItems: "center",
+  gap: "2px", // Minimal gap to save space
+  boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+  overflow: "hidden" // This explicitly removes the scrollbar
+}}>
+  {[
+    { label: "Overview", href: "/admin/scan-dashboard", active: true },
+    { label: "Analytics", href: "/admin/scan-dashboard/analytics" },
+    { label: "Orders", href: "/admin/orders" },
+    { label: "Inventory", href: "/admin/inventory" },
+    { label: "HR", href: "/admin/hr/dashboard" },
+    { label: "VAN", href: "/admin/vans" },
+    { label: "SKU & Production", href: "/admin/production-parameters" },
+    { label: "Batches", href: "/admin/batches" }, // Shortened as requested
+    { label: "Expenses", href: "/admin/expenses" },
+    { label: "Distributors", href: "/admin/distributors" },
+    { label: "Main Dashboard", href: "/admin/dashboard" },
+  ].map((link) => (
+    <a 
+      key={link.href}
+      href={link.href} 
+      style={{ 
+        textDecoration: "none",
+        fontSize: "12.5px", // Slightly smaller for safety
+        padding: "6px 8px", // Narrower padding
+        whiteSpace: "nowrap", 
+        color: link.active ? "#15803d" : "#64748b", 
+        fontWeight: link.active ? 700 : 500,
+        transition: "0.2s"
       }}
     >
-	
-	<button
-  onClick={async () => {
-    await fetch("/api/admin/logout", { method: "POST" });
-    window.location.href = "/admin/login";
-  }}
-  style={{
-    padding: "6px 12px",
-    borderRadius: 999,
-    border: "1px solid #64748b",
-    background: "transparent",
-    color: "white",
-    cursor: "pointer",
-    marginLeft: 1200,
-    fontSize: "0.85rem",
-  }}
->
-  Logout
-</button>
-
-      <h1 style={{ fontSize: "2.2rem", fontWeight: 800 }}>
-        OxyHydra Scan Dashboard
-      </h1>
-	  
-	   <nav style={{ marginTop: 16 }}>
-  <a href="/admin/scan-dashboard" style={{ marginRight: 16 }}>Overview</a>
-  <a href="/admin/scan-dashboard/analytics">Analytics</a>
+      {link.label}
+    </a>
+  ))}
 </nav>
+      <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+        
+        {/* DATE FILTER SECTION */}
+        <section style={{ background: "white", borderRadius: "20px", padding: "24px", display: "flex", gap: 20, flexWrap: "wrap", alignItems: "center", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", marginBottom: 24 }}>
+          <div>
+            <label style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>From</label><br />
+            <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} style={{ marginTop: 4, padding: "8px 12px", borderRadius: "8px", border: "1px solid #e2e8f0" }} />
+          </div>
+          <div>
+            <label style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>To</label><br />
+            <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} style={{ marginTop: 4, padding: "8px 12px", borderRadius: "8px", border: "1px solid #e2e8f0" }} />
+          </div>
+          <button onClick={loadData} style={{ marginTop: 18, padding: "10px 24px", borderRadius: "10px", border: "none", background: freshGreen, color: "white", fontWeight: 700, cursor: "pointer" }}>
+            Refresh Data
+          </button>
+          {loading && <span style={{ color: "#94a3b8", fontSize: "0.9rem" }}>Loading...</span>}
+        </section>
 
-      {/* Date filter for IP activity / recent scans / batches / map */}
-      <section
-        style={{
-          marginTop: 16,
-          background: "rgba(15,23,42,0.9)",
-          borderRadius: 16,
-          padding: 16,
-          display: "flex",
-          gap: 16,
-          flexWrap: "wrap",
-          alignItems: "center",
-        }}
-      >
-        <div>
-          <label style={{ fontSize: "0.9rem" }}>From</label>
-          <br />
-          <input
-            type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            style={{
-              padding: "6px 10px",
-              borderRadius: 8,
-              border: "1px solid #4b5563",
-              background: "#020617",
-              color: "white",
-            }}
-          />
-        </div>
-        <div>
-          <label style={{ fontSize: "0.9rem" }}>To</label>
-          <br />
-          <input
-            type="date"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-            style={{
-              padding: "6px 10px",
-              borderRadius: 8,
-              border: "1px solid #4b5563",
-              background: "#020617",
-              color: "white",
-            }}
-          />
-        </div>
-        <button
-          onClick={loadData}
-          style={{
-            marginTop: 18,
-            padding: "8px 16px",
-            borderRadius: 999,
-            border: "none",
-            background: "white",
-            color: "black",
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
-        >
-          Reload Data
-        </button>
-        {loading && <span>Loading…</span>}
-        {error && <span style={{ color: "#f97316" }}>{error}</span>}
-      </section>
+        {/* METRICS */}
+        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 20, marginBottom: 24 }}>
+          <MetricCard label="Scans Today" value={stats.totalToday} color="#0f172a" />
+          <MetricCard label="Verified" value={stats.verified} color={freshGreen} />
+          <MetricCard label="Fake Attempts" value={stats.fake} color="#ef4444" />
+          <MetricCard label="Expired Scans" value={stats.expired} color="#f59e0b" />
+        </section>
 
-      {/* SUMMARY CARDS (all-time / today) */}
-      <section
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-          gap: 16,
-          marginTop: 20,
-        }}
-      >
-        <MetricCard label="Scans Today" value={stats.totalToday} />
-        <MetricCard label="Verified" value={stats.verified} />
-        <MetricCard label="Fake Attempts" value={stats.fake} />
-        <MetricCard label="Expired Scans" value={stats.expired} />
-      </section>
-
-      {/* STATUS BREAKDOWN BARS */}
-      <section
-        style={{
-          marginTop: 24,
-          background: "rgba(15,23,42,0.9)",
-          borderRadius: 16,
-          padding: 16,
-        }}
-      >
-        <h2 style={{ marginBottom: 12 }}>Status Breakdown</h2>
-
-        <StatusBar
-          label="Verified"
-          value={stats.verified}
-          total={stats.totalForBars}
-          color="#22c55e"
-        />
-        <StatusBar
-          label="Fake"
-          value={stats.fake}
-          total={stats.totalForBars}
-          color="#ef4444"
-        />
-        <StatusBar
-          label="Expired"
-          value={stats.expired}
-          total={stats.totalForBars}
-          color="#f97316"
-        />
-      </section>
-
-      {/* TOP BATCHES – respects date range */}
-      <section
-        style={{
-          marginTop: 24,
-          background: "rgba(15,23,42,0.9)",
-          borderRadius: 16,
-          padding: 16,
-        }}
-      >
-        <h2 style={{ marginBottom: 12 }}>Top Scanned Batches</h2>
-        {stats.batchList.length === 0 ? (
-          <p style={{ opacity: 0.7 }}>No scans in this range.</p>
-        ) : (
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              fontSize: "0.9rem",
-            }}
-          >
-            <thead>
-              <tr>
-                <th style={{ textAlign: "left", padding: "8px" }}>Batch</th>
-                <th style={{ textAlign: "left", padding: "8px" }}>
-                  Scan Count
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {stats.batchList.map((b) => (
-                <tr key={b.batch}>
-                  <td style={{ padding: "8px" }}>{b.batch}</td>
-                  <td style={{ padding: "8px" }}>{b.count}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
-
-      {/* IP ACTIVITY + BLOCK / UNBLOCK (date-filtered) */}
-      <section
-        style={{
-          marginTop: 24,
-          background: "rgba(15,23,42,0.9)",
-          borderRadius: 16,
-          padding: 16,
-        }}
-      >
-        <h2 style={{ marginBottom: 12 }}>IP Activity & Control</h2>
-        {stats.ipList.length === 0 ? (
-          <p style={{ opacity: 0.7 }}>No IP data in this range.</p>
-        ) : (
+        {/* IP ACTIVITY TABLE */}
+        <section style={{ background: "white", borderRadius: "20px", padding: "24px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", marginBottom: 24 }}>
+          <h2 style={{ marginBottom: 20, fontSize: "1.2rem", fontWeight: 700 }}>IP Activity & Control</h2>
           <div style={{ overflowX: "auto" }}>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                fontSize: "0.85rem",
-              }}
-            >
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr>
-                  <th style={{ textAlign: "left", padding: "8px" }}>IP</th>
-                  <th style={{ textAlign: "left", padding: "8px" }}>Total</th>
-                  <th style={{ textAlign: "left", padding: "8px" }}>Fake</th>
-                  <th style={{ textAlign: "left", padding: "8px" }}>
-                    Location
-                  </th>
-                  <th style={{ textAlign: "left", padding: "8px" }}>ISP</th>
-                  <th style={{ textAlign: "left", padding: "8px" }}>
-                    Last Seen
-                  </th>
-                  <th style={{ textAlign: "left", padding: "8px" }}>Block</th>
+                <tr style={{ textAlign: "left", color: "#94a3b8", fontSize: "0.85rem", borderBottom: "1px solid #f1f5f9" }}>
+                  <th style={{ padding: "12px" }}>IP ADDRESS</th>
+                  <th style={{ padding: "12px" }}>TOTAL</th>
+                  <th style={{ padding: "12px" }}>FAKE</th>
+                  <th style={{ padding: "12px" }}>LOCATION</th>
+                  <th style={{ padding: "12px" }}>ACTION</th>
                 </tr>
               </thead>
               <tbody>
-                {stats.ipList.map((ipRow) => {
+                {stats.ipList.slice(0, 10).map(ipRow => {
                   const blocked = isIpBlocked(ipRow.ip);
                   return (
-                    <tr key={ipRow.ip}>
-                      <td style={{ padding: "8px" }}>{ipRow.ip}</td>
-                      <td style={{ padding: "8px" }}>{ipRow.total}</td>
-                      <td style={{ padding: "8px", color: "#f97316" }}>
-                        {ipRow.fake}
-                      </td>
-                      <td style={{ padding: "8px" }}>
-                        {ipRow.city || "-"},{" "}
-                        {ipRow.state || "-"},{" "}
-                        {ipRow.country || "-"}
-                      </td>
-                      <td style={{ padding: "8px" }}>{ipRow.isp || "-"}</td>
-                      <td style={{ padding: "8px" }}>
-                        {new Date(ipRow.lastSeen).toLocaleString()}
-                      </td>
-                      <td style={{ padding: "8px" }}>
-                        <button
+                    <tr key={ipRow.ip} style={{ borderBottom: "1px solid #f8fafc" }}>
+                      <td style={{ padding: "14px 12px", fontWeight: 500 }}>{ipRow.ip}</td>
+                      <td style={{ padding: "12px" }}>{ipRow.total}</td>
+                      <td style={{ padding: "12px", color: "#ef4444" }}>{ipRow.fake}</td>
+                      <td style={{ padding: "12px", fontSize: "0.85rem", color: "#64748b" }}>{ipRow.city}, {ipRow.state}</td>
+                      <td style={{ padding: "12px" }}>
+                        <button 
                           onClick={() => toggleIpBlock(ipRow.ip, blocked)}
-                          style={{
-                            padding: "6px 10px",
-                            borderRadius: 999,
-                            border: "none",
-                            cursor: "pointer",
-                            fontSize: "0.8rem",
-                            background: blocked ? "#ef4444" : "#22c55e",
-                            color: "white",
-                          }}
-                        >
+                          style={{ padding: "6px 14px", borderRadius: "8px", border: "none", cursor: "pointer", background: blocked ? "#fee2e2" : "#dcfce7", color: blocked ? "#b91c1c" : "#15803d", fontWeight: 600, fontSize: "0.8rem" }}>
                           {blocked ? "Unblock" : "Block"}
                         </button>
                       </td>
@@ -590,190 +309,43 @@ async function toggleIpBlock(ip: string, isCurrentlyBlocked: boolean) {
               </tbody>
             </table>
           </div>
-        )}
-      </section>
+        </section>
 
-      {/* RECENT SCANS TABLE (date-filtered) */}
-      <section
-        style={{
-          marginTop: 24,
-          background: "rgba(15,23,42,0.9)",
-          borderRadius: 16,
-          padding: 16,
-        }}
-      >
-        <h2 style={{ marginBottom: 12 }}>
-          Recent Scans (Last {recentScans.length})
-        </h2>
-        {recentScans.length === 0 ? (
-          <p style={{ opacity: 0.7 }}>No scans in this range.</p>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                fontSize: "0.8rem",
-              }}
-            >
-              <thead>
-                <tr>
-                  <th style={{ textAlign: "left", padding: "8px" }}>Time</th>
-                  <th style={{ textAlign: "left", padding: "8px" }}>Batch</th>
-                  <th style={{ textAlign: "left", padding: "8px" }}>Status</th>
-                  <th style={{ textAlign: "left", padding: "8px" }}>Device</th>
-                  <th style={{ textAlign: "left", padding: "8px" }}>
-                    Browser
-                  </th>
-                  <th style={{ textAlign: "left", padding: "8px" }}>
-                    Pincode
-                  </th>
-                  <th style={{ textAlign: "left", padding: "8px" }}>
-                    First / Repeat
-                  </th>
-                  <th style={{ textAlign: "left", padding: "8px" }}>
-                    Fingerprint
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentScans.map((s) => (
-                  <tr key={s.id}>
-                    <td style={{ padding: "8px" }}>
-                      {new Date(s.created_at).toLocaleString()}
-                    </td>
-                    <td style={{ padding: "8px" }}>{s.batch_code}</td>
-                    <td
-                      style={{
-                        padding: "8px",
-                        color:
-                          s.status === "verified"
-                            ? "#22c55e"
-                            : s.status === "fake"
-                            ? "#ef4444"
-                            : s.status === "expired"
-                            ? "#f97316"
-                            : "white",
-                      }}
-                    >
-                      {s.status}
-                    </td>
-                    <td style={{ padding: "8px" }}>
-                      {s.device_type || "-"}
-                    </td>
-                    <td style={{ padding: "8px" }}>{s.browser || "-"}</td>
-                    <td style={{ padding: "8px" }}>{s.pincode || "-"}</td>
-                    <td style={{ padding: "8px" }}>
-                      {s.first_scan ? "First" : "Repeat"}
-                    </td>
-                    <td style={{ padding: "8px" }}>
-                      {s.fingerprint
-                        ? `${s.fingerprint.slice(0, 10)}…`
-                        : "-"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {/* MAP SECTION - PRESERVED */}
+        <section style={{ background: "white", borderRadius: "20px", padding: "24px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+          <h2 style={{ marginBottom: 20, fontSize: "1.2rem", fontWeight: 700 }}>Geographic Distribution</h2>
+          <div style={{ borderRadius: "16px", overflow: "hidden", border: "1px solid #e2e8f0" }}>
+            <ScanMap
+              points={filteredScans
+                .filter((s) => !!s.latitude && !!s.longitude)
+                .map((s) => ({
+                  id: s.id,
+                  batch_code: s.batch_code,
+                  status: s.status,
+                  latitude: s.latitude as number,
+                  longitude: s.longitude as number,
+                  city: s.city,
+                  state: s.state,
+                  country: s.country,
+                  isp: s.isp,
+                  created_at: s.created_at,
+                })) as MapPoint[]
+              }
+            />
           </div>
-        )}
-      </section>
+        </section>
 
-      {/* MAP AT BOTTOM – date-filtered */}
-      <section
-        style={{
-          marginTop: 40,
-          background: "rgba(15,23,42,0.9)",
-          borderRadius: 16,
-          padding: 16,
-        }}
-      >
-        <h2 style={{ marginBottom: 12 }}>Scan Locations Map</h2>
-
-        <ScanMap
-          points={
-            filteredScans
-              .filter((s) => !!s.latitude && !!s.longitude)
-              .map((s) => ({
-                id: s.id,
-                batch_code: s.batch_code,
-                status: s.status,
-                latitude: s.latitude as number,
-                longitude: s.longitude as number,
-                city: s.city,
-                state: s.state,
-                country: s.country,
-                isp: s.isp,
-                created_at: s.created_at,
-              })) as MapPoint[]
-          }
-        />
-      </section>
+      </div>
     </main>
   );
 }
 
-// ================== SMALL COMPONENTS ==================
-
-function MetricCard({ label, value }: { label: string; value: number }) {
+// SUB-COMPONENTS
+function MetricCard({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div
-      style={{
-        background: "rgba(15,23,42,0.9)",
-        borderRadius: 16,
-        padding: 16,
-      }}
-    >
-      <div style={{ opacity: 0.7 }}>{label}</div>
-      <div style={{ fontSize: "1.6rem", fontWeight: 700 }}>{value}</div>
-    </div>
-  );
-}
-
-function StatusBar({
-  label,
-  value,
-  total,
-  color,
-}: {
-  label: string;
-  value: number;
-  total: number;
-  color: string;
-}) {
-  const pct = total > 0 ? Math.round((value / total) * 100) : 0;
-
-  return (
-    <div style={{ marginBottom: 8 }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          fontSize: "0.85rem",
-          marginBottom: 4,
-        }}
-      >
-        <span>{label}</span>
-        <span>
-          {value} ({pct}%)
-        </span>
-      </div>
-      <div
-        style={{
-          height: 10,
-          borderRadius: 999,
-          background: "rgba(148,163,184,0.3)",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            width: `${pct}%`,
-            height: "100%",
-            background: color,
-          }}
-        />
-      </div>
+    <div style={{ background: "white", borderRadius: "20px", padding: "24px", border: "1px solid #f1f5f9", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
+      <div style={{ color: "#64748b", fontSize: "0.85rem", fontWeight: 600, textTransform: "uppercase", marginBottom: 8 }}>{label}</div>
+      <div style={{ fontSize: "2rem", fontWeight: 800, color: color }}>{value}</div>
     </div>
   );
 }
