@@ -11,6 +11,7 @@ export default function OrderViewPage() {
   const [vans, setVans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false); 
   
   const [editPaid, setEditPaid] = useState(0);
   const [editMethod, setEditMethod] = useState("cash");
@@ -42,9 +43,17 @@ export default function OrderViewPage() {
     refreshData().then(() => setLoading(false));
   }, [refreshData]);
 
-  const sendWhatsApp = (msgType: "invoice" | "details") => {
-    const phoneNumber = order?.phone || order?.distributor_phone;
+  // FIXED: Unified WhatsApp function with the correct finalUrl logic
+  const triggerWhatsApp = (msgType: "invoice" | "details", invoiceUrl: string | null = null) => {
+    const phoneNumber = order?.shipping_phone || order?.phone || order?.distributor_phone;
     if (!phoneNumber) return alert("Phone number not found.");
+
+    // Determine the URL to use
+    let finalUrl = invoiceUrl;
+    if (!finalUrl && order?.invoice_generated && order?.invoice_url) {
+      const bucket = order.is_gst ? 'tax-invoices' : 'non-tax-invoices';
+      finalUrl = `https://xyyirkwiredufamtnqdu.supabase.co/storage/v1/object/public/${bucket}/${order.invoice_url}`;
+    }
 
     const financialSummary = `*Order Summary: ${order?.uorn}*\nTotal Bill: ₹${order?.total_payable_amount}\nTotal Paid: ₹${order?.amount_paid || 0}\nPending Balance: ₹${order?.pending_amount || 0}\n--------------------------`;
 
@@ -57,13 +66,50 @@ export default function OrderViewPage() {
       productList = "\n_No product details found_";
     }
 
+    // CHECKING finalUrl instead of invoiceUrl
+    const invoiceLink = finalUrl ? `\n\n📄 *Download Invoice:* \n${finalUrl}` : "";
+
     const finalMsg = msgType === "invoice" 
-      ? `Hello ${order?.customer_name || 'Customer'}, your invoice for order ${order?.uorn} is ready.\n${financialSummary}\n\nThank you for choosing Earthy Source!`
+      ? `Hello ${order?.customer_name || 'Customer'}, your invoice for order *${order?.uorn}* is ready.\n${financialSummary}${invoiceLink}\n\nThank you for choosing Earthy Source!`
       : `Hello ${order?.customer_name || 'Customer'}, here are your order details:\n${financialSummary}${productList}\n\nThank you for choosing Earthy Source!`;
 
     const cleanPhone = String(phoneNumber).replace(/\D/g, '');
     const finalPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+    
     window.open(`https://wa.me/${finalPhone}?text=${encodeURIComponent(finalMsg)}`, '_blank');
+  };
+
+  const handleGenerateInvoice = async () => {
+    if (!id || !order) return;
+    
+    if (order.invoice_generated) {
+      const bucket = order.is_gst ? 'tax-invoices' : 'non-tax-invoices';
+      const url = `https://xyyirkwiredufamtnqdu.supabase.co/storage/v1/object/public/${bucket}/${order.invoice_url}`;
+      window.open(url, '_blank');
+      return;
+    }
+
+    setGenerating(true);
+    try {
+      const res = await fetch("/api/admin/orders/generate-invoice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: id }),
+      });
+      
+      const result = await res.json();
+      
+      if (result.success) {
+        triggerWhatsApp("invoice", result.url);
+        await refreshData(); 
+      } else {
+        alert("Error: " + result.error);
+      }
+    } catch (err) {
+      alert("Connection failed.");
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const handleUpdate = async () => {
@@ -94,23 +140,30 @@ export default function OrderViewPage() {
             <h2 style={{ color: '#fff', margin: 0 }}>Order: {order?.uorn}</h2>
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={() => window.open(`/api/admin/orders/${id}/invoice`, '_blank')} style={styles.invoiceBtn}>📄 Generate Invoice</button>
+            <button 
+              onClick={handleGenerateInvoice} 
+              disabled={generating} 
+              style={{
+                ...styles.invoiceBtn, 
+                opacity: generating ? 0.7 : 1,
+                background: order?.invoice_generated ? '#2F4F4F' : '#007bff'
+              }}
+            >
+              {generating ? "⏳ Processing..." : order?.invoice_generated ? "👁️ View Invoice" : "📄 Generate Invoice"}
+            </button>
             <button onClick={refreshData} style={styles.refreshBtn}>🔄 Refresh</button>
           </div>
         </div>
 
         <div style={styles.mainGrid}>
-          {/* LEFT COLUMN */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            
-            {/* Financial Summary Card */}
             <div style={styles.card}>
               <h4 style={styles.sectionTitle}>Financial Summary</h4>
               <div style={styles.summaryGrid}>
                 <div style={styles.summaryItem}><label>Total Bill</label><p>₹{order?.total_payable_amount}</p></div>
                 <div style={{ ...styles.summaryItem, color: '#28a745' }}><label>Total Paid</label><p>₹{order?.amount_paid || 0}</p></div>
                 <div style={{ ...styles.summaryItem, color: '#dc3545' }}><label>Pending</label><p>₹{order?.pending_amount || 0}</p></div>
-				<div style={{ ...styles.summaryItem, color: '#dc3545' }}><label>Delivery Fees</label><p>₹{order?.delivery_fee || 0}</p></div>
+                <div style={{ ...styles.summaryItem, color: '#dc3545' }}><label>Delivery Fees</label><p>₹{order?.delivery_fee || 0}</p></div>
               </div>
 
               <div style={{ marginTop: '25px' }}>
@@ -138,7 +191,6 @@ export default function OrderViewPage() {
               </div>
             </div>
 
-            {/* Products Ordered Card */}
             <div style={styles.card}>
               <h4 style={styles.sectionTitle}>Products Ordered</h4>
               {order?.items && order.items.length > 0 ? (
@@ -165,17 +217,15 @@ export default function OrderViewPage() {
               )}
             </div>
 
-            {/* Communication Card */}
             <div style={styles.card}>
               <h4 style={styles.sectionTitle}>Communication</h4>
               <div style={{ display: 'flex', gap: '10px' }}>
-                <button style={styles.waBtn} onClick={() => sendWhatsApp("invoice")}>💬 Send Invoice WA</button>
-                <button style={styles.waBtnUpdate} onClick={() => sendWhatsApp("details")}>📩 Send Order Details</button>
+                <button style={styles.waBtn} onClick={() => triggerWhatsApp("invoice")}>💬 Send Invoice WA</button>
+                <button style={styles.waBtnUpdate} onClick={() => triggerWhatsApp("details")}>📩 Send Order Details</button>
               </div>
             </div>
           </div>
 
-          {/* RIGHT COLUMN */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={styles.card}>
               <h4 style={styles.sectionTitle}>Update Order</h4>

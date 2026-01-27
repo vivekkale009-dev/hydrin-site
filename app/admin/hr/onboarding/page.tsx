@@ -8,7 +8,7 @@ export default function EmployeeOnboarding() {
     role: "Production",
     dailyRate: "",
     phone: "",
-    aadhaar: "",
+    aadhaar_number: "", // Changed from 'adhaar' to 'aadhaar_number'
     bankName: "",
     accountNo: "",
     ifsc: "",
@@ -22,6 +22,7 @@ export default function EmployeeOnboarding() {
       const res = await fetch("/api/admin/hr/employees", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        // Now sending the full formData including aadhaar_number
         body: JSON.stringify(formData)
       });
       if (res.ok) {
@@ -58,10 +59,14 @@ export default function EmployeeOnboarding() {
               </div>
               <div style={styles.field}>
                 <label style={styles.label}>Designation / Role</label>
-                <select style={styles.input} onChange={e => setFormData({...formData, role: e.target.value})}>
+                <select style={styles.input} value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
+                  <option value="Management">Management</option>
                   <option value="Production">Production Staff</option>
                   <option value="Driver">Driver / Delivery</option>
                   <option value="Sales">Sales Executive</option>
+                  <option value="Marketing">Marketing Executive</option>
+                  <option value="HR">HR Staff</option>
+                  <option value="Accounting">Accounting Staff</option>
                   <option value="Admin">Office Admin</option>
                 </select>
               </div>
@@ -80,7 +85,18 @@ export default function EmployeeOnboarding() {
 
             <div style={styles.field}>
                 <label style={styles.label}>Aadhaar Number (UIDAI)</label>
-                <input style={styles.input} placeholder="XXXX-XXXX-XXXX" onChange={e => setFormData({...formData, aadhaar: e.target.value})} />
+                <input 
+                  style={styles.input} 
+                  placeholder="XXXX-XXXX-XXXX" 
+                  value={formData.aadhaar_number}
+                  onChange={e => {
+                    // Numeric only logic for consistency
+                    const val = e.target.value.replace(/\D/g, "");
+                    if (val.length <= 12) {
+                      setFormData({...formData, aadhaar_number: val});
+                    }
+                  }} 
+                />
             </div>
 
             <h3 style={{...styles.sectionTitle, marginTop: '20px'}}>Bank Account Details (For Salary)</h3>
@@ -99,27 +115,29 @@ export default function EmployeeOnboarding() {
 
           {/* PREVIEW CARD */}
           <div style={styles.previewCard}>
-             <div style={styles.avatarCircle}>{formData.name ? formData.name.charAt(0).toUpperCase() : "?"}</div>
-             <h2 style={styles.prevName}>{formData.name || "Employee Name"}</h2>
-             <p style={styles.prevRole}>{formData.role}</p>
-             <hr style={styles.hr} />
-             <div style={styles.prevStat}>
+              <div style={styles.avatarCircle}>{formData.name ? formData.name.charAt(0).toUpperCase() : "?"}</div>
+              <h2 style={styles.prevName}>{formData.name || "Employee Name"}</h2>
+              <p style={styles.prevRole}>{formData.role}</p>
+              <hr style={styles.hr} />
+              <div style={styles.prevStat}>
                 <span>Daily Rate:</span>
                 <strong>₹{formData.dailyRate || "0"}</strong>
-             </div>
-             <div style={styles.prevStat}>
+              </div>
+              <div style={styles.prevStat}>
                 <span>Phone:</span>
                 <strong>{formData.phone || "Not Set"}</strong>
-             </div>
-             <div style={styles.infoBox}>
+              </div>
+              <div style={styles.infoBox}>
                 <p>💡 Monthly projection (26 days): <br/><strong>₹{(Number(formData.dailyRate) * 26).toLocaleString()}</strong></p>
-             </div>
+              </div>
           </div>
         </div>
       </div>
     </div>
   );
 }
+
+// ... styles remain exactly the same as you provided
 
 const styles: any = {
   page: { minHeight: "100vh", backgroundImage: "url('/hero-deep.jpg')", backgroundSize: "cover", position: "relative", padding: "40px 20px" },
