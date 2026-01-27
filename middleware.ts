@@ -57,7 +57,7 @@ export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// Updated Matcher to monitor all pages (required for site-wide toggles)
+// Updated Matcher to allow search engines to read sitemap and robots files
 export const config = {
   matcher: [
     /*
@@ -66,8 +66,9 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - Images like EarthyLogo.JPG
+     * - sitemap.xml and robots.txt (SEO files)
+     * - Images like EarthyLogo.JPG or PNGs
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.JPG|.*\\.png).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.JPG|.*\\.png).*)',
   ],
 };
