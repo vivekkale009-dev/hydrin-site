@@ -35,14 +35,16 @@ export default function HomePage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch("/api/contact", {
+      const res = await fetch("/api/contact-handler", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
       const result = await res.json();
       if (result.success) {
-        alert("Success!");
+        alert(formData.category === "Complaint" 
+          ? "Your complaint has been registered. Support ticket generated." 
+          : "Success! Your inquiry has been saved.");
         setShowContact(false);
         setFormData({ name: "", phone: "", email: "", category: "General Inquiry", message: "" });
       }
@@ -55,7 +57,7 @@ export default function HomePage() {
 
   const handleWhatsApp = async () => {
     const waNumber = "7666303769";
-    const text = `*New Lead*%0A*Name:* ${formData.name}%0A*Message:* ${formData.message}`;
+    const text = `*New Lead*%0A*Name:* ${formData.name}%0A*Category:* ${formData.category}%0A*Email:* ${formData.email}%0A*Message:* ${formData.message}`;
     window.open(`https://wa.me/${waNumber}?text=${text}`, "_blank");
   };
 
@@ -67,7 +69,7 @@ export default function HomePage() {
         <div className="nav-links">
           <a href="/purity-check">Purity Check</a>
           <a href="/hydrasphere">HydraSphere</a>
-		  <a href="admin/login" className="admin-link">Staff Access</a>
+          <a href="admin/login" className="admin-link">Staff Access</a>
           <button onClick={() => setShowContact(true)} className="contact-trigger">Contact Us</button>
         </div>
       </nav>
@@ -85,12 +87,10 @@ export default function HomePage() {
         <div className="hero-visual"></div>
       </section>
 
-      {/* 3. BRAND SECTION (CLEANED UP) */}
+      {/* 3. BRAND SECTION */}
       <section id="brands" className="brand-section">
         <h2 className="section-heading">Our Family of Brands</h2>
         <div className="brand-grid">
-          
-          {/* AQION */}
           <div className={`brand-card ${activeBrand === 'aqion' ? 'expanded' : ''}`} onClick={() => setActiveBrand(activeBrand === 'aqion' ? null : 'aqion')}>
              <div className="water-drop-icon"><svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" /></svg></div>
              <span className="brand-label">Premium Water</span>
@@ -104,7 +104,6 @@ export default function HomePage() {
              <button className="view-more-pill">{activeBrand === 'aqion' ? 'Hide' : 'Details'}</button>
           </div>
 
-          {/* SANJIVANI */}
           <div className={`brand-card ${activeBrand === 'sanjivani' ? 'expanded' : ''}`} onClick={() => setActiveBrand(activeBrand === 'sanjivani' ? null : 'sanjivani')}>
              <div className="water-drop-icon secondary"><svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" /></svg></div>
              <span className="brand-label">Standard Water</span>
@@ -117,22 +116,33 @@ export default function HomePage() {
              )}
              <button className="view-more-pill">{activeBrand === 'sanjivani' ? 'Hide' : 'Details'}</button>
           </div>
-
         </div>
       </section>
 
-      {/* 4. MODAL */}
+      {/* 4. MODAL (UI UPDATED) */}
       {showContact && (
         <div className="modal-overlay">
           <div className="modal-content animate-slide-up">
             <button className="close-modal" onClick={() => setShowContact(false)}>×</button>
             <h2>Contact Us</h2>
             <form onSubmit={handleSubmit} className="contact-form">
-              <input type="text" name="name" placeholder="Name" required onChange={handleChange} />
-              <input type="text" name="phone" placeholder="Phone" required onChange={handleChange} />
-              <textarea name="message" placeholder="Message" onChange={handleChange}></textarea>
+              <input type="text" name="name" placeholder="Name" required value={formData.name} onChange={handleChange} />
+              <input type="text" name="phone" placeholder="Phone" required value={formData.phone} onChange={handleChange} />
+              <input type="email" name="email" placeholder="Email" required value={formData.email} onChange={handleChange} />
+              
+              <select name="category" value={formData.category} onChange={handleChange} className="form-select">
+                <option value="General Inquiry">General Inquiry</option>
+                <option value="Complaint">Complaint</option>
+                <option value="Dealership">Dealership</option>
+                <option value="Feedback">Feedback</option>
+              </select>
+
+              <textarea name="message" placeholder="Message" value={formData.message} onChange={handleChange}></textarea>
+              
               <div className="modal-actions">
-                <button type="submit" className="btn-submit">Submit</button>
+                <button type="submit" className="btn-submit" disabled={loading}>
+                  {loading ? "Processing..." : "Submit"}
+                </button>
                 <button type="button" onClick={handleWhatsApp} className="btn-whatsapp">WhatsApp</button>
               </div>
             </form>

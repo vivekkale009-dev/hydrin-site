@@ -32,15 +32,21 @@ export async function POST(req: Request) {
     } = body;
 
     // 1. Financial Calculations
+
     let itemsSubtotal = 0;
     items.forEach((i: any) => {
       itemsSubtotal += Number(i.qty_boxes) * Number(i.price_per_box);
     });
 
     const deliveryFee = Number(distanceKm || 0) * Number(ratePerKm || 0);
-    const taxableAmount = itemsSubtotal + deliveryFee;
+    
+    // Tax is calculated ONLY on product subtotal
+    const taxableAmount = itemsSubtotal;
     const taxValue = gstEnabled ? (taxableAmount * Number(taxRate || 0)) / 100 : 0;
-    const finalGrandTotal = taxableAmount + taxValue;
+    
+    // Grand Total = (Products + Tax) + Delivery (untaxed)
+    const finalGrandTotal = taxableAmount + taxValue + deliveryFee;
+    
     const amountPaid = Number(paidAmount || 0);
 
     const uorn = await generateSequence("ESU");

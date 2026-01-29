@@ -42,9 +42,11 @@ export default function AdminOrderCreatePage() {
   const totalBoxes = items.reduce((sum, i) => sum + Number(i.qty_boxes || 0), 0);
   const itemsSubtotal = items.reduce((sum, i) => sum + (Number(i.qty_boxes || 0) * Number(i.price_per_box || 0)), 0);
   const deliveryFee = deliveryType === "delivery" ? (Number(distanceKm || 0) * Number(ratePerKm || 0)) : 0;
-  const taxableAmount = itemsSubtotal + deliveryFee;
+const taxableAmount = itemsSubtotal; // Tax is only on products
   const taxValue = gstEnabled ? (taxableAmount * (Number(selectedHsn?.tax_rate || 0))) / 100 : 0;
-  const grandTotal = taxableAmount + taxValue;
+  
+  // Grand Total = (Products + Tax) + Delivery Fee
+  const grandTotal = taxableAmount + taxValue + deliveryFee;
   const balanceDue = grandTotal - Number(paidAmount || 0);
 
   function distributorBg(d: any) {

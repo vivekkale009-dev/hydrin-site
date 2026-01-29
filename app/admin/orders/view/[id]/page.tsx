@@ -17,7 +17,10 @@ export default function OrderViewPage() {
   const [editMethod, setEditMethod] = useState("cash");
   const [editRef, setEditRef] = useState(""); 
   const [editVan, setEditVan] = useState("");
-
+// Add this calculation block before the return statement
+  const productSubtotal = order?.gross_revenue || 0;
+  const taxAmount = (order?.total_payable_amount || 0) - (order?.delivery_fee || 0) - productSubtotal;
+  
   const refreshData = useCallback(async () => {
     if (!id) return;
     try {
@@ -163,7 +166,20 @@ export default function OrderViewPage() {
                 <div style={styles.summaryItem}><label>Total Bill</label><p>₹{order?.total_payable_amount}</p></div>
                 <div style={{ ...styles.summaryItem, color: '#28a745' }}><label>Total Paid</label><p>₹{order?.amount_paid || 0}</p></div>
                 <div style={{ ...styles.summaryItem, color: '#dc3545' }}><label>Pending</label><p>₹{order?.pending_amount || 0}</p></div>
-                <div style={{ ...styles.summaryItem, color: '#dc3545' }}><label>Delivery Fees</label><p>₹{order?.delivery_fee || 0}</p></div>
+               
+				{/* Row 2 - New Highlighted Areas */}
+  <div style={styles.summaryItem}>
+    <label>Product Subtotal</label>
+    <p>₹{productSubtotal.toFixed(2)}</p>
+  </div>
+  <div style={styles.summaryItem}>
+    <label>Tax Amount</label>
+    <p>₹{Math.max(0, taxAmount).toFixed(2)}</p>
+  </div>
+  <div style={{ ...styles.summaryItem, color: '#dc3545' }}>
+    <label>Delivery Fees</label>
+    <p>₹{order?.delivery_fee || 0}</p>
+  </div>
               </div>
 
               <div style={{ marginTop: '25px' }}>

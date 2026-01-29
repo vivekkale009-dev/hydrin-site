@@ -45,7 +45,7 @@ export function customerTemplate(name: string, ticketId: string) {
 
         <tr>
           <td style="background:#f1f3f6;text-align:center;padding:20px 10px;color:#777;font-size:12px;">
-            © 2025 Earthy Source • All Rights Reserved
+            © 2026 Earthy Source • All Rights Reserved
           </td>
         </tr>
 

@@ -19,8 +19,10 @@ export async function POST(req: Request) {
 
     if (orderErr || !order) throw new Error("Order not found");
 
+    const isGST = order.is_gst === true || order.is_gst === 'true';
+    const bucket = isGST ? 'tax-invoices' : 'non-tax-invoices';
+
     if (order.invoice_generated) {
-      const bucket = order.is_gst ? 'tax-invoices' : 'non-tax-invoices';
       const { data: existing } = supabase.storage.from(bucket).getPublicUrl(order.invoice_url);
       return NextResponse.json({ success: true, url: existing.publicUrl });
     }
@@ -32,7 +34,6 @@ export async function POST(req: Request) {
       .ilike("name", order.shipping_state || "") 
       .single();
 
-    const isGST = order.is_gst === true || order.is_gst === 'true';
     const isMaharashtra = (order.shipping_state || "").toLowerCase() === "maharashtra";
     const stateCode = stateData?.state_code || "N/A";
     const slateGreen: [number, number, number] = [47, 79, 79];
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
       is_gst_invoice: isGST 
     });
 
-    // --- NEW: Helper to load images from public folder on server ---
+    // Helper to load images
     const getBase64Image = (fileName: string) => {
       try {
         const filePath = path.join(process.cwd(), "public", fileName);
@@ -60,7 +61,6 @@ export async function POST(req: Request) {
     // 4. PDF Generation
     const doc = new jsPDF();
     
-    // Brand Logo & Header
     if (logoBase64) {
         doc.addImage(logoBase64, "JPEG", 10, 5, 35, 35);
     }
@@ -73,18 +73,19 @@ export async function POST(req: Request) {
     doc.setFont("helvetica", "bold");
     doc.text("EARTHY SOURCE FOODS AND BEVERAGES", 55, 18);
     
-    // Separated the Invoice title to prevent mixing
+    // REDUCED GSTIN FONT SIZE
+    doc.setFontSize(10); 
+    doc.text("GSTIN: 27BGJPK0016J1ZK", 55, 24);
+    
     doc.setFontSize(12);
     doc.text(isGST ? "TAX INVOICE" : "BILL OF SUPPLY", 55, 34);
 
-    // Invoice Details
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(10);
     doc.text(`Invoice No: ${invoiceNo}`, 140, 50);
     doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, 140, 56);
     doc.text(`State Code: ${stateCode}`, 140, 62);
 
-    // Address Sections
     autoTable(doc, {
       startY: 70,
       head: [['Billed To', 'Shipped To']],
@@ -97,8 +98,7 @@ export async function POST(req: Request) {
       styles: { fontSize: 9 }
     });
 
-    // Items Table
-    const tableHeaders = [[ 'Product', 'HSN', 'Qty', 'Rate', 'GST %', 'Total']];
+    const tableHeaders = [[ 'Product', 'HSN', 'Qty (Boxes)', 'Rate / Box', 'GST %', 'Total']];
     const tableBody = order.order_items.map((item: any) => {
       const qty = item.qty_boxes || 0;
       const rate = item.price_per_box || 0;
@@ -125,12 +125,10 @@ export async function POST(req: Request) {
       styles: { fontSize: 8 }
     });
 
-    // Calculations
     const finalY = (doc as any).lastAutoTable.finalY + 10;
-    doc.setFontSize(10);
     
-    const deliveryFee = Math.abs(order.delivery_fee || 0);
-    const grandTotal = Math.abs(order.total_payable_amount || 0);
+    // FINANCIAL CALCULATIONS: Use subtotal (gross_revenue) from DB
+    const subtotal = Math.abs(order.gross_revenue || 0);
     
     let totalTaxAmount = 0;
     order.order_items.forEach((item: any) => {
@@ -138,9 +136,12 @@ export async function POST(req: Request) {
         totalTaxAmount += (taxable * (order.tax_rate || 0) / 100);
     });
     
-    const subtotal = grandTotal - deliveryFee - totalTaxAmount;
+    // Grand Total is strictly Total Amount (Products) + Calculated Tax
+    const grandTotal = subtotal + totalTaxAmount;
 
-    doc.text(`Subtotal: Rs.${Math.abs(subtotal).toFixed(2)}`, 140, finalY);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Total Amount: Rs.${subtotal.toFixed(2)}`, 140, finalY);
     
     if (isGST) {
         if (isMaharashtra) {
@@ -151,7 +152,6 @@ export async function POST(req: Request) {
         }
     }
 
-    doc.text(`Delivery Fee: Rs.${deliveryFee.toFixed(2)}`, 140, finalY + 18);
     doc.setFont("helvetica", "bold");
     doc.text(`Grand Total: Rs.${grandTotal.toFixed(2)}`, 140, finalY + 26);
 
@@ -167,7 +167,6 @@ export async function POST(req: Request) {
     doc.text("Terms & Conditions:", 15, finalY + 40);
     terms.forEach((line, i) => doc.text(line, 15, finalY + 45 + (i * 4)));
 
-    // Signature Area
     if (signBase64) {
         doc.addImage(signBase64, "JPEG", 150, finalY + 45, 30, 15);
     }
@@ -178,18 +177,38 @@ export async function POST(req: Request) {
     doc.setFont("helvetica", "bold");
     doc.text("Earthy Source Foods & Beverages", 140, finalY + 75);
 
-    // Confidentiality Message at bottom
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "italic");
-    doc.setTextColor(100);
-    doc.text("Confidentiality Note: This document contains private information intended only for the recipient. Unauthorized use or distribution is prohibited.", 15, 285);
+    // --- COLORED FOOTER SECTION ---
+    const footerY = 280;
+    doc.setFillColor(slateGreen[0], slateGreen[1], slateGreen[2]);
+    doc.rect(0, footerY, 210, 17, 'F'); // Full width footer
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    
+    // Footer Content
+    const companyAddress = "Gut No 253, Puntamba Road, Nimgaon Khairi, Shrirampur, Ahilyanagar 413709";
+    const contactInfo = "Phone: 7758877307 | Web: www.earthysource.in | Email: accounts@earthysource.in";
+    
+    // Center alignment in footer
+    const addressWidth = doc.getTextWidth(companyAddress);
+    const contactWidth = doc.getTextWidth(contactInfo);
+    doc.text(companyAddress, (210 - addressWidth) / 2, footerY + 6);
+    doc.text(contactInfo, (210 - contactWidth) / 2, footerY + 11);
 
     // 5. Save & Update
-    const pdfBlob = doc.output('blob');
-    const bucket = isGST ? 'tax-invoices' : 'non-tax-invoices';
+    const pdfData = doc.output('arraybuffer'); 
     const fileName = `${order.uorn}_${invoiceNo.replace(/\//g, '-')}.pdf`;
 
-    await supabase.storage.from(bucket).upload(fileName, pdfBlob, { contentType: 'application/pdf', upsert: true });
+    const { error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(fileName, pdfData, { 
+        contentType: 'application/pdf', 
+        upsert: true 
+      });
+
+    if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+
     await supabase.from("orders").update({
       invoice_no: invoiceNo,
       invoice_generated: true,

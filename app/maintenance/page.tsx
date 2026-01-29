@@ -31,7 +31,8 @@ export default function MaintenancePage() {
           
           <header className="animate-slide-up">
             <div className="text-brand-wrapper">
-              <span className="brand-main">EARTHY SOURCE</span>
+              <span className="brand-main">EARTHY SOURCE</span>		
+			  
               <span className="brand-sub">FOODS & BEVERAGES</span>
             </div>
           </header>
@@ -46,7 +47,7 @@ export default function MaintenancePage() {
               className="btn-whatsapp" 
               style={{ cursor: 'pointer', border: 'none' }}
             >
-              Concierge Support
+              Contact Support
             </button>
           </section>
 
