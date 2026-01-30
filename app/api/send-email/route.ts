@@ -6,37 +6,29 @@ export async function POST(req: Request) {
     const body = await req.json();
 
     const transporter = nodemailer.createTransport({
-      service: "gmail",
+      host: process.env.MAIL_HOST,
+      port: 465,
+      secure: true,
       auth: {
-        user: process.env.MAIL_USER!,
-        pass: process.env.MAIL_PASS!,
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
       },
     });
 
-    // Generate Ticket ID
-    function generateTicketId() {
+    const ticketId = (() => {
       const now = new Date();
-      const yy = String(now.getFullYear()).slice(-2);
-      const mm = String(now.getMonth() + 1).padStart(2, "0");
-      const dd = String(now.getDate()).padStart(2, "0");
+      const dateStr = `${String(now.getFullYear()).slice(-2)}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+      const hash = (Date.now().toString(36) + Math.random().toString(36).slice(2)).slice(-4).toUpperCase();
+      return `ES${dateStr}${hash}`;
+    })();
 
-      const shortHash = (
-        Date.now().toString(36) +
-        Math.random().toString(36).slice(2)
-      )
-        .slice(-4)
-        .toUpperCase();
-
-      return `OH${yy}${mm}${dd}${shortHash}`;
-    }
-
-    const ticketId = generateTicketId();
-
-    // Send admin email
+    // 1. ADMIN NOTIFICATION (Your Internal Copy)
     await transporter.sendMail({
-      from: process.env.MAIL_USER!,
-      to: process.env.MAIL_TO!,
-      subject: `New Complaint | ${ticketId}`,
+      // Using support@ address to satisfy Zoho 553 relay policy
+      from: `"${body.name} (Website Lead)" <${process.env.MAIL_USER}>`, 
+      to: process.env.MAIL_TO,
+      replyTo: body.email, // If you click 'Reply' in your inbox, it goes to the customer
+      subject: `New Lead | ${ticketId} | ${body.name}`,
       html: adminTemplate({
         name: body.name,
         phone: body.phone,
@@ -46,18 +38,19 @@ export async function POST(req: Request) {
       }),
     });
 
-    // Send customer email
+    // 2. CUSTOMER CONFIRMATION (The Branded Auto-Response)
+    // This is sent directly to the customer, so your Zoho filter doesn't need to trigger
     await transporter.sendMail({
-      from: process.env.MAIL_USER!,
+      from: `"Earthy Source" <${process.env.MAIL_USER}>`,
       to: body.email,
-      subject: `Complaint Received | ${ticketId}`,
+      subject: `We've received your request | ${ticketId}`,
       html: customerTemplate(body.name, ticketId),
     });
 
     return Response.json({ success: true, ticketId });
 
   } catch (err: any) {
-    console.error("SEND EMAIL ERROR:", err);
+    console.error("ZOHO SMTP ERROR:", err);
     return Response.json({ success: false, error: err.message }, { status: 500 });
   }
 }
