@@ -228,6 +228,7 @@ export default function ScanDashboard() {
     { label: "Batches", href: "/admin/batches" }, // Shortened as requested
     { label: "Expenses", href: "/admin/expenses" },
     { label: "Distributors", href: "/admin/distributors" },
+	{ label: "CRM", href: "/admin/crm" },
     { label: "Main Dashboard", href: "/admin/dashboard" },
   ].map((link) => (
     <a 
