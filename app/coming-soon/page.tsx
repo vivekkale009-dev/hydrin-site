@@ -9,9 +9,6 @@ export default function ComingSoonPage() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    if ('scrollRestoration' in history) {
-      history.scrollRestoration = 'manual';
-    }
   }, []);
 
   const handleRegistration = (e: React.FormEvent) => {
@@ -25,17 +22,22 @@ export default function ComingSoonPage() {
   return (
     <div className="fresh-layout">
       <div className="cs-split-container">
+        {/* LEFT PANE */}
         <div className="cs-left-pane">
+          {/* RESTORED RIPPLE EFFECT */}
           <div className="ripple-wrap">
             <div className="ripple" style={{ top: '50%', left: '50%' }}></div>
           </div>
 
           <header className="animate-slide-up">
-            <div className="text-brand-wrapper">
+            <div className="brand-stack">
               <span className="brand-main">EARTHY SOURCE</span>
-              <span className="brand-sub">FOODS & BEVERAGES</span>
+              <span className="brand-sub-stacked">FOODS & BEVERAGES</span>
             </div>
-            <span className="sub-label" style={{ marginTop: '15px' }}>Intelligence in every drop</span>
+            <div className="coming-soon-badge">COMING SOON</div>
+            <span className="sub-label" style={{ marginTop: '10px', display: 'block' }}>
+              Intelligence in every drop
+            </span>
           </header>
 
           <section className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
@@ -45,7 +47,6 @@ export default function ComingSoonPage() {
               is being written.
             </h1>
             
-            {/* IMPROVED REGISTER GROUP */}
             <div className="purity-input-group" onClick={() => setIsModalOpen(true)}>
               <div className="purity-input-display">
                 <span>Join the Purity Ledger</span>
@@ -61,9 +62,8 @@ export default function ComingSoonPage() {
                   <span className="status-dot"></span>
                   Batch 001: Active Filtration
                 </span>
-                <span className="sub-label" style={{ margin: 0, color: 'var(--gold-metallic)' }}>65%</span>
+                <span className="percentage-display">65%</span>
               </div>
-              {/* RESTORED HIGHLIGHTED BAR */}
               <div className="progress-track">
                 <div className="progress-fill-animated" style={{ width: '65%' }}></div>
               </div>
@@ -71,12 +71,20 @@ export default function ComingSoonPage() {
           </footer>
         </div>
 
+        {/* RIGHT PANE - RESTORED WITH ANIMATE-IMAGE-FADE */}
         <div className="cs-right-pane animate-image-fade">
-          <Image src="/new-bg.png" alt="Earthy Source" fill style={{ objectFit: 'cover' }} className="cs-hero-image" priority />
+          <Image 
+            src="/new-bg.png" 
+            alt="Earthy Source" 
+            fill 
+            style={{ objectFit: 'cover' }} 
+            className="cs-hero-image" 
+            priority 
+          />
         </div>
       </div>
 
-      {/* MODAL SECTION (Same as Maintenance) */}
+      {/* MODAL */}
       {isModalOpen && (
         <div className="modal-overlay">
           <div className="modal-content animate-slide-up">

@@ -9,14 +9,10 @@ export default function MaintenancePage() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    if ('scrollRestoration' in history) {
-      history.scrollRestoration = 'manual';
-    }
   }, []);
 
   const handleWhatsAppRedirect = (e: React.FormEvent) => {
     e.preventDefault();
-    // Here you could also send the data to your database/API
     const message = `Hello Earthy Source, I am reaching out from the Maintenance Page. Email: ${formData.email}, Phone: ${formData.phone}`;
     const whatsappUrl = `https://wa.me/7758877307?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, "_blank");
@@ -27,21 +23,25 @@ export default function MaintenancePage() {
     <div className="fresh-layout">
       <div className="cs-split-container">
         <div className="cs-left-pane">
-          {/* ... Rest of your existing content ... */}
-          
+          {/* Ripple Effect Restored */}
+          <div className="ripple-wrap">
+            <div className="ripple" style={{ top: '50%', left: '50%' }}></div>
+          </div>
+
           <header className="animate-slide-up">
-            <div className="text-brand-wrapper">
-              <span className="brand-main">EARTHY SOURCE</span>		
-			  
-              <span className="brand-sub">FOODS & BEVERAGES</span>
+            <div className="brand-stack">
+              <span className="brand-main">EARTHY SOURCE</span>
+              <span className="brand-sub-stacked">FOODS & BEVERAGES</span>
             </div>
           </header>
 
           <section className="maintenance-center animate-slide-up">
-            <h1 className="editorial-title">System <br /><span className="italic-serif">Equilibrium</span></h1>
+            <h1 className="editorial-title">
+              System <br />
+              <span className="hydration-highlight">Equilibrium</span>
+            </h1>
             <p className="hero-sub">Our digital source is currently undergoing purification.</p>
             
-            {/* BUTTON TRIGGERS MODAL */}
             <button 
               onClick={() => setIsModalOpen(true)} 
               className="btn-whatsapp" 
@@ -61,7 +61,7 @@ export default function MaintenancePage() {
         </div>
       </div>
 
-      {/* --- CONCIERGE MODAL --- */}
+      {/* MODAL SECTION */}
       {isModalOpen && (
         <div className="modal-overlay">
           <div className="modal-content animate-slide-up">
@@ -71,23 +71,9 @@ export default function MaintenancePage() {
               <p>Enter your details to connect with our team via WhatsApp.</p>
             </div>
             <form onSubmit={handleWhatsAppRedirect} className="contact-form">
-              <input 
-                type="email" 
-                placeholder="Email Address" 
-                required 
-                value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
-              />
-              <input 
-                type="tel" 
-                placeholder="Phone Number" 
-                required 
-                value={formData.phone}
-                onChange={(e) => setFormData({...formData, phone: e.target.value})}
-              />
-              <button type="submit" className="btn-submit">
-                Start WhatsApp Chat →
-              </button>
+              <input type="email" placeholder="Email Address" required value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} />
+              <input type="tel" placeholder="Phone Number" required value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} />
+              <button type="submit" className="btn-submit">Start WhatsApp Chat →</button>
             </form>
           </div>
         </div>
