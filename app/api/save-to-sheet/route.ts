@@ -1,11 +1,16 @@
 import { google } from "googleapis";
+import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    // Load service account key from env
-    const service = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON!);
+    // 1. Check Service Account Env
+    if (!process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+      return NextResponse.json({ success: false, error: "Env variable missing" }, { status: 500 });
+    }
+
+    const service = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
 
     const auth = new google.auth.GoogleAuth({
       credentials: service,
@@ -19,6 +24,7 @@ export async function POST(req: Request) {
 
     const now = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
 
+    // 2. Append Data
     await sheets.spreadsheets.values.append({
       spreadsheetId,
       range: `${sheetName}!A:F`,
@@ -27,19 +33,19 @@ export async function POST(req: Request) {
         values: [
           [
             now,
-            body.name,
-            body.phone,
-            body.email,
-            body.category,
-            body.message || "",
+            body.name || "-",
+            body.phone || "-",
+            body.email || "-",
+            body.category || "General",
+            body.message || "-",
           ],
         ],
       },
     });
 
-    return Response.json({ success: true });
-  } catch (err) {
-    console.error("Sheet error:", err);
-    return Response.json({ success: false, error: String(err) }, { status: 500 });
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    console.error("Sheet error detail:", err);
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }

@@ -2,19 +2,12 @@
 import { useState } from "react";
 import Image from "next/image";
 import "./homepage.css";
+// IMPORT YOUR COMPONENT HERE
+import ContactModal from "./components/ContactModal"; 
 
 export default function HomePage() {
   const [showContact, setShowContact] = useState(false);
   const [activeBrand, setActiveBrand] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const [formData, setFormData] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    category: "General Inquiry",
-    message: ""
-  });
 
   const brands = {
     aqion: {
@@ -27,40 +20,6 @@ export default function HomePage() {
     }
   };
 
-  const handleChange = (e: any) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const res = await fetch("/api/contact-handler", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-      const result = await res.json();
-      if (result.success) {
-        alert(formData.category === "Complaint" 
-          ? "Your complaint has been registered. Support ticket generated." 
-          : "Success! Your inquiry has been saved.");
-        setShowContact(false);
-        setFormData({ name: "", phone: "", email: "", category: "General Inquiry", message: "" });
-      }
-    } catch (err) {
-      alert("Submission failed.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleWhatsApp = async () => {
-    const waNumber = "7666303769";
-    const text = `*New Lead*%0A*Name:* ${formData.name}%0A*Category:* ${formData.category}%0A*Email:* ${formData.email}%0A*Message:* ${formData.message}`;
-    window.open(`https://wa.me/${waNumber}?text=${text}`, "_blank");
-  };
-
   return (
     <main className="fresh-layout">
       {/* 1. TOP NAV */}
@@ -70,6 +29,7 @@ export default function HomePage() {
           <a href="/purity-check">Purity Check</a>
           <a href="/hydrasphere">HydraSphere</a>
           <a href="admin/login" className="admin-link">Staff Access</a>
+          {/* TRIGGER THE MODAL */}
           <button onClick={() => setShowContact(true)} className="contact-trigger">Contact Us</button>
         </div>
       </nav>
@@ -119,36 +79,11 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 4. MODAL (UI UPDATED) */}
-      {showContact && (
-        <div className="modal-overlay">
-          <div className="modal-content animate-slide-up">
-            <button className="close-modal" onClick={() => setShowContact(false)}>×</button>
-            <h2>Contact Us</h2>
-            <form onSubmit={handleSubmit} className="contact-form">
-              <input type="text" name="name" placeholder="Name" required value={formData.name} onChange={handleChange} />
-              <input type="text" name="phone" placeholder="Phone" required value={formData.phone} onChange={handleChange} />
-              <input type="email" name="email" placeholder="Email" required value={formData.email} onChange={handleChange} />
-              
-              <select name="category" value={formData.category} onChange={handleChange} className="form-select">
-                <option value="General Inquiry">General Inquiry</option>
-                <option value="Complaint">Complaint</option>
-                <option value="Dealership">Dealership</option>
-                <option value="Feedback">Feedback</option>
-              </select>
-
-              <textarea name="message" placeholder="Message" value={formData.message} onChange={handleChange}></textarea>
-              
-              <div className="modal-actions">
-                <button type="submit" className="btn-submit" disabled={loading}>
-                  {loading ? "Processing..." : "Submit"}
-                </button>
-                <button type="button" onClick={handleWhatsApp} className="btn-whatsapp">WhatsApp</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* 4. PREMIUM MODAL COMPONENT (CLEANER) */}
+      <ContactModal 
+        open={showContact} 
+        onClose={() => setShowContact(false)} 
+      />
     </main>
   );
 }

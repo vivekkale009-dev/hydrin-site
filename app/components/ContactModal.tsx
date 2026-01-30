@@ -128,7 +128,7 @@ if (!validateFields()) return;
 
     try {
       // Save to Sheet
-      const res = await fetch("/api/save-sheet", {
+      const res = await fetch("/api/save-to-sheet", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
