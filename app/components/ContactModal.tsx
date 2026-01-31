@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 // Premium water-drop toast CSS
 const toastStyles = `
@@ -22,7 +22,18 @@ const toastStyles = `
     animation: dropIn 0.45s ease-out forwards;
   }
 
-  /* Water drop */
+  /* --- MOBILE FIXES ADDED HERE --- */
+  @media (max-width: 600px) {
+    .responsive-button-row {
+      flex-direction: column !important;
+      gap: 10px !important;
+    }
+    .modal-container {
+      padding: 20px !important;
+      width: 95% !important;
+    }
+  }
+
   .oxy-drop {
     width: 14px;
     height: 14px;
@@ -57,18 +68,13 @@ const oxyToast = (msg: string) => {
   const div = document.createElement("div");
   div.className = "oxy-toast";
   div.innerHTML = `<div class="oxy-drop"></div> ${msg}`;
-
   document.body.appendChild(div);
-
   setTimeout(() => {
     div.style.opacity = "0";
     div.style.transform = "translateY(-10px)";
   }, 3000);
-
   setTimeout(() => div.remove(), 3500);
 };
-
-import { useState } from "react";
 
 export default function ContactModal({ open, onClose }: any) {
   if (!open) return null;
@@ -83,65 +89,50 @@ export default function ContactModal({ open, onClose }: any) {
 
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({
-  email: "",
-  phone: "",
-});
+    email: "",
+    phone: "",
+  });
 
   const [loading, setLoading] = useState(false);
-  
+
   const validateFields = () => {
-  let valid = true;
-  const errors: any = { email: "", phone: "" };
-
-  // Email validation
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(form.email)) {
-    errors.email = "Enter a valid email format";
-    valid = false;
-  }
-
-  // Phone validation
-  const phoneRegex = /^[0-9]{10}$/;
-  if (!phoneRegex.test(form.phone)) {
-    errors.phone = "Phone must be 10 digits";
-    valid = false;
-  }
-
-  setFieldErrors(errors);
-  return valid;
-};
-
+    let valid = true;
+    const errors: any = { email: "", phone: "" };
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email)) {
+      errors.email = "Enter a valid email format";
+      valid = false;
+    }
+    const phoneRegex = /^[0-9]{10}$/;
+    if (!phoneRegex.test(form.phone)) {
+      errors.phone = "Phone must be 10 digits";
+      valid = false;
+    }
+    setFieldErrors(errors);
+    return valid;
+  };
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     setError("");
-
     if (!form.name || !form.phone || !form.email || !form.category) {
-  setError("Please fill all required fields.");
-  return;
-}
-
-if (!validateFields()) return;
-
-
+      setError("Please fill all required fields.");
+      return;
+    }
+    if (!validateFields()) return;
     setLoading(true);
-
     try {
-      // Save to Sheet
       const res = await fetch("/api/save-to-sheet", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-
       const data = await res.json();
       if (!data.success) {
         setError("Sheet saving failed");
         setLoading(false);
         return;
       }
-
-      // Send Mail if complaint
       if (form.category === "Complaint") {
         await fetch("/api/send-email", {
           method: "POST",
@@ -149,11 +140,9 @@ if (!validateFields()) return;
           body: JSON.stringify(form),
         });
       }
-
-		oxyToast("Submitted successfully!");
-		setLoading(false);
-		onClose();
-
+      oxyToast("Submitted successfully!");
+      setLoading(false);
+      onClose();
     } catch (err) {
       console.error(err);
       setError("Network error. Please try again.");
@@ -172,16 +161,20 @@ if (!validateFields()) return;
         alignItems: "center",
         justifyContent: "center",
         zIndex: 9999,
+        padding: "15px", // Safety for mobile
       }}
     >
       <div
+        className="modal-container"
         style={{
-          width: "95%",
+          width: "100%",
           maxWidth: "600px",
           background: "white",
           borderRadius: "14px",
           padding: "30px",
           boxShadow: "0 4px 30px rgba(0,0,0,0.2)",
+          maxHeight: "90vh", // ADDED: prevents cutoff on small screens
+          overflowY: "auto", // ADDED: allows scrolling
         }}
       >
         <h2 style={{ marginBottom: "20px", fontSize: "1.6rem" }}>Contact Us</h2>
@@ -205,11 +198,11 @@ if (!validateFields()) return;
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
             style={input}
           />
-{fieldErrors.phone && (
-  <p style={{ color: "red", fontSize: "0.85rem", marginTop: "-10px" }}>
-    {fieldErrors.phone}
-  </p>
-)}
+          {fieldErrors.phone && (
+            <p style={{ color: "red", fontSize: "0.85rem", marginTop: "-10px" }}>
+              {fieldErrors.phone}
+            </p>
+          )}
 
           <input
             placeholder="Email *"
@@ -217,11 +210,11 @@ if (!validateFields()) return;
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             style={input}
           />
-{fieldErrors.email && (
-  <p style={{ color: "red", fontSize: "0.85rem", marginTop: "-10px" }}>
-    {fieldErrors.email}
-  </p>
-)}
+          {fieldErrors.email && (
+            <p style={{ color: "red", fontSize: "0.85rem", marginTop: "-10px" }}>
+              {fieldErrors.email}
+            </p>
+          )}
 
           <select
             value={form.category}
@@ -241,8 +234,9 @@ if (!validateFields()) return;
             style={{ ...input, height: "100px" }}
           />
 
-          {/* BUTTON ROW */}
+          {/* ADDED CLASSNAME FOR RESPONSIVE BEHAVIOR */}
           <div
+            className="responsive-button-row" 
             style={{
               display: "flex",
               gap: "10px",
@@ -267,34 +261,24 @@ if (!validateFields()) return;
               {loading ? "Submitting..." : "Submit"}
             </button>
 
-            {/* WHATSAPP BUTTON */}
-           <a
-  href={`https://wa.me/917666303769?text=${encodeURIComponent(
-    `Hi OxyHydra,
-
-Name: ${form.name}
-Category: ${form.category}
-Phone: ${form.phone}
-Email: ${form.email}
-
-Message:
-${form.message || "No message provided"}`
-  )}`}
-  target="_blank"
-  style={{
-    flex: 1,
-    padding: "14px 0",
-    background: "#25D366",
-    color: "white",
-    textAlign: "center",
-    borderRadius: "8px",
-    fontWeight: 600,
-    textDecoration: "none",
-  }}
->
-  WhatsApp
-</a>
-
+            <a
+              href={`https://wa.me/917666303769?text=${encodeURIComponent(
+                `Hi OxyHydra,\n\nName: ${form.name}\nCategory: ${form.category}\nPhone: ${form.phone}\nEmail: ${form.email}\n\nMessage:\n${form.message || "No message provided"}`
+              )}`}
+              target="_blank"
+              style={{
+                flex: 1,
+                padding: "14px 0",
+                background: "#25D366",
+                color: "white",
+                textAlign: "center",
+                borderRadius: "8px",
+                fontWeight: 600,
+                textDecoration: "none",
+              }}
+            >
+              WhatsApp
+            </a>
           </div>
 
           <button
@@ -306,6 +290,7 @@ ${form.message || "No message provided"}`
               color: "#000",
               borderRadius: "10px",
               cursor: "pointer",
+              border: "none",
             }}
           >
             Close

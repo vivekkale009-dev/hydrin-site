@@ -1,13 +1,34 @@
-// app/layout.tsx
 import "./globals.css";
-import "./homepage.css"; // Added to ensure the floating button style is loaded
+import "./homepage.css"; 
 import type { Metadata } from "next";
 import ChatWidget from "./components/ChatWidget";
-import AdminAuthWrapper from "./components/AdminAuthWrapper"; // Keep logic in a separate component to prevent breaking SSR
+import AdminAuthWrapper from "./components/AdminAuthWrapper"; 
 
+// --- SINGLE METADATA BLOCK ---
 export const metadata: Metadata = {
   title: "Earthy Source | Pure Vitality",
-  description: "Sai Sanjivani / Aqion – smart packaged drinking water with live purity check. Grounded in nature, verified by tech.",
+  description: "Intelligence in every drop. Grounded in nature, verified by tech.",
+  metadataBase: new URL('https://earthysource.in'), 
+  icons: {
+    icon: "/favicon.ico", 
+    apple: "/apple-touch-icon.png",
+  },
+  openGraph: {
+    title: "Earthy Source | Pure Vitality",
+    description: "Intelligence in every drop. Grounded in nature, verified by tech.",
+    url: 'https://earthysource.in',
+    siteName: 'Earthy Source',
+    images: [
+      {
+        url: '/opengraph-image.png', 
+        width: 1200,
+        height: 630,
+        alt: 'Earthy Source - Pure Hydration',
+      },
+    ],
+    locale: 'en_IN',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({
@@ -18,7 +39,6 @@ export default function RootLayout({
   return (
     <html lang="en" style={{ scrollBehavior: 'smooth' }}>
       <head>
-        {/* Importing a clean, premium font pair */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Plus+Jakarta+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
@@ -26,22 +46,17 @@ export default function RootLayout({
       <body style={{ 
         margin: 0, 
         fontFamily: "'Plus Jakarta Sans', sans-serif", 
-        background: "#fcfdfd", // A very slight "water" tinted white
-        color: "#1a2e2a", // Deep forest charcoal
+        background: "#fcfdfd", 
+        color: "#1a2e2a", 
         WebkitFontSmoothing: "antialiased"
       }}>
-        {/* Main Content */}
         <div style={{ position: "relative", minHeight: "100vh" }}>
           {children}
         </div>
 
-        {/* Floating chat widget */}
         <ChatWidget />
-
-        {/* Admin Dashboard Button (Only shows if logged in) */}
         <AdminAuthWrapper />
         
-        {/* Subtle Background Accent for Earthy feel */}
         <div style={{
           position: "fixed",
           top: "-10%",

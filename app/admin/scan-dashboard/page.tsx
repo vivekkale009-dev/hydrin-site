@@ -202,21 +202,32 @@ export default function ScanDashboard() {
         </button>
       </div>
 
-{/* NAVIGATION BAR - FIXED FOR NO SCROLLBAR */}
-<nav style={{ 
-  maxWidth: "1200px", 
-  margin: "0 auto 32px auto", 
-  background: "white", 
-  padding: "12px 16px", 
-  borderRadius: "16px", 
-  display: "flex", 
-  flexWrap: "nowrap", 
-  justifyContent: "space-between", 
-  alignItems: "center",
-  gap: "2px", // Minimal gap to save space
-  boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-  overflow: "hidden" // This explicitly removes the scrollbar
-}}>
+{/* NAVIGATION BAR - FIXED FOR MOBILE SWIPING */}
+<nav 
+  className="admin-nav-scroll"
+  style={{ 
+    maxWidth: "1200px", 
+    margin: "0 auto 32px auto", 
+    background: "white", 
+    padding: "12px 16px", 
+    borderRadius: "16px", 
+    display: "flex", 
+    flexWrap: "nowrap", 
+    justifyContent: "flex-start", // Change from space-between to allow scrolling
+    alignItems: "center",
+    gap: "15px", // Give tabs some breathing room
+    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+    overflowX: "auto", // CHANGED: This allows you to swipe left/right
+    msOverflowStyle: "none", // IE and Edge
+    scrollbarWidth: "none", // Firefox
+    WebkitOverflowScrolling: "touch" // Smooth swiping on iPhone
+  }}
+>
+  {/* Add a CSS hide for the scrollbar inside the component if you want */}
+  <style>{`
+    .admin-nav-scroll::-webkit-scrollbar { display: none; }
+  `}</style>
+
   {[
     { label: "Overview", href: "/admin/scan-dashboard", active: true },
     { label: "Analytics", href: "/admin/scan-dashboard/analytics" },
@@ -225,10 +236,10 @@ export default function ScanDashboard() {
     { label: "HR", href: "/admin/hr/dashboard" },
     { label: "VAN", href: "/admin/vans" },
     { label: "SKU & Production", href: "/admin/production-parameters" },
-    { label: "Batches", href: "/admin/batches" }, // Shortened as requested
+    { label: "Batches", href: "/admin/batches" },
     { label: "Expenses", href: "/admin/expenses" },
     { label: "Distributors", href: "/admin/distributors" },
-	{ label: "CRM", href: "/admin/crm" },
+    { label: "CRM", href: "/admin/crm" },
     { label: "Main Dashboard", href: "/admin/dashboard" },
   ].map((link) => (
     <a 
@@ -236,12 +247,14 @@ export default function ScanDashboard() {
       href={link.href} 
       style={{ 
         textDecoration: "none",
-        fontSize: "12.5px", // Slightly smaller for safety
-        padding: "6px 8px", // Narrower padding
-        whiteSpace: "nowrap", 
+        fontSize: "13px", 
+        padding: "8px 12px", 
+        whiteSpace: "nowrap", // Prevents text from breaking
         color: link.active ? "#15803d" : "#64748b", 
         fontWeight: link.active ? 700 : 500,
-        transition: "0.2s"
+        flexShrink: 0, // IMPORTANT: Prevents the tab from getting squashed
+        transition: "0.2s",
+        borderBottom: link.active ? "2px solid #15803d" : "none"
       }}
     >
       {link.label}
@@ -267,12 +280,18 @@ export default function ScanDashboard() {
         </section>
 
         {/* METRICS */}
-        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 20, marginBottom: 24 }}>
-          <MetricCard label="Scans Today" value={stats.totalToday} color="#0f172a" />
-          <MetricCard label="Verified" value={stats.verified} color={freshGreen} />
-          <MetricCard label="Fake Attempts" value={stats.fake} color="#ef4444" />
-          <MetricCard label="Expired Scans" value={stats.expired} color="#f59e0b" />
-        </section>
+      {/* METRICS - RESPONSIVE GRID */}
+<section style={{ 
+  display: "grid", 
+  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", 
+  gap: 20, 
+  marginBottom: 24 
+}}>
+  <MetricCard label="Scans Today" value={stats.totalToday} color="#0f172a" />
+  <MetricCard label="Verified" value={stats.verified} color={freshGreen} />
+  <MetricCard label="Fake Attempts" value={stats.fake} color="#ef4444" />
+  <MetricCard label="Expired Scans" value={stats.expired} color="#f59e0b" />
+</section>
 
         {/* IP ACTIVITY TABLE */}
         <section style={{ background: "white", borderRadius: "20px", padding: "24px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", marginBottom: 24 }}>

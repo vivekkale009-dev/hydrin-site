@@ -880,3 +880,65 @@
   margin-top: 15px;
   max-width: 400px;
 }
+/* --- CONSOLIDATED MOBILE SYSTEM --- */
+@media (max-width: 768px) {
+  /* 1. Fix the Hero Section Stacking */
+  .hero-split, .cs-split-container {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    min-height: 100vh;
+  }
+
+  .cs-left-pane, .hero-content {
+    width: 100% !important;
+    padding: 40px 20px !important;
+    order: 1; /* Text comes first */
+  }
+
+  .cs-right-pane, .hero-visual {
+    width: 100% !important;
+    height: 400px !important; /* Forces the image to appear */
+    order: 2; /* Image comes second */
+    border-radius: 40px 40px 0 0 !important; /* Rounded top on mobile */
+  }
+
+  /* 2. Fix the "Cutting Off" of Admin Bars (HR, SKU, etc.) */
+  /* This targets the horizontal navigation in your Admin area */
+  .admin-tabs, .nav-tabs, .nav-links, .tabs-list {
+    display: flex !important;
+    overflow-x: auto !important; /* This enables horizontal swiping */
+    white-space: nowrap !important; /* Stops tabs from stacking */
+    padding: 15px !important;
+    gap: 20px !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 3. Typography & Buttons */
+  .main-title, .brand-main {
+    font-size: 2.2rem !important;
+    text-align: center;
+  }
+
+  .hero-actions, .modal-actions {
+    grid-template-columns: 1fr !important; /* Stacks buttons vertically */
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .btn-primary, .btn-secondary, .btn-gold, .btn-submit, .btn-whatsapp {
+    width: 100% !important;
+    text-align: center;
+  }
+
+  /* 4. Navigation Logo */
+  .top-nav {
+    flex-direction: column !important;
+    padding: 10px !important;
+  }
+  
+  .top-nav img {
+    height: 100px !important; /* Smaller logo for mobile */
+  }
+}

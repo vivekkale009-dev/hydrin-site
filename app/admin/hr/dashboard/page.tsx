@@ -76,8 +76,10 @@ export default function EliteHRDashboard() {
           // --- ADDED LEAVE ROW ---
           ['Leaves / Absent (Unpaid)', `${selectedEmp.leaves || 0}`, `Rs. 0`], 
           // -----------------------
-          ['Gross Earnings', '', `Rs. ${selectedEmp.grossEarnings.toLocaleString()}`],
-          ['Deduction: Salary Advances', 'Settled', `- Rs. ${selectedEmp.advances.toLocaleString()}`],
+['Gross Earnings', '', `Rs. ${selectedEmp.grossEarnings.toLocaleString()}`],
+['Deduction: Salary Advances', 'Settled', `- Rs. ${selectedEmp.advances.toLocaleString()}`],
+// ADD THIS LINE BELOW
+['Deduction: Already Paid', 'Current Month', `- Rs. ${selectedEmp.paidAlready.toLocaleString()}`],
         ],
         foot: [['NET DISBURSEMENT', '', `Rs. ${selectedEmp.netPayable.toLocaleString()}`]],
         theme: 'grid',
@@ -143,7 +145,11 @@ export default function EliteHRDashboard() {
     emp.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const totalNetPayout = summary?.report?.reduce((acc: number, curr: any) => acc + (curr.netPayable || 0), 0) || 0;
+// This shows how much is LEFT to pay across all staff
+const totalNetPayout = summary?.report?.reduce((acc: number, curr: any) => acc + (curr.netPayable || 0), 0) || 0;
+
+// ADD THIS if you want to see how much you have already distributed this month
+const totalPaidOut = summary?.report?.reduce((acc: number, curr: any) => acc + (curr.paidAlready || 0), 0) || 0;
   const totalAdvances = summary?.report?.reduce((acc: number, curr: any) => acc + (curr.advances || 0), 0) || 0;
   const activeStaff = summary?.report?.length || 0;
 
@@ -220,7 +226,14 @@ export default function EliteHRDashboard() {
   {emp.fullDays}F | {emp.halfDays}H {emp.leaves > 0 && <span style={{color: '#e11d48'}}>| {emp.leaves}L</span>}
 </td>
                   <td style={{ ...styles.td, color: '#e11d48' }}>₹{emp.advances}</td>
-                  <td style={{ ...styles.td, fontWeight: '800' }}>₹{emp.netPayable?.toLocaleString()}</td>
+                  <td style={{ ...styles.td }}>
+  <div style={{ display: 'flex', flexDirection: 'column' }}>
+    <span style={{ fontWeight: '800' }}>₹{emp.netPayable?.toLocaleString()}</span>
+    {emp.netPayable === 0 && emp.paidAlready > 0 && (
+      <span style={{ fontSize: '10px', color: '#22c55e', fontWeight: 'bold' }}>✓ FULLY PAID</span>
+    )}
+  </div>
+</td>
                   <td style={{ ...styles.td, textAlign: 'right' }}>
                     <div style={{display:'flex', gap:'8px', justifyContent:'flex-end'}}>
                         <button onClick={() => sendWhatsApp(emp, 'DUES')} style={{background:'#22c55e', border:'none', borderRadius:'8px', padding:'8px', cursor:'pointer', display:'flex', alignItems:'center'}}>
@@ -290,8 +303,16 @@ export default function EliteHRDashboard() {
                         <h4 style={{marginBottom:'10px'}}>Monthly Settlement</h4>
                         <div style={styles.ledgerBox}>
                             <div style={styles.ledgerItem}><span>Gross Earnings</span><span style={styles.amtText}>₹{selectedEmp.grossEarnings?.toLocaleString()}</span></div>
-                            <div style={styles.ledgerItem}><span>Advances Settled</span><span style={{...styles.amtText, color: '#e11d48'}}>-₹{selectedEmp.advances?.toLocaleString()}</span></div>
-                            <div style={{...styles.ledgerItem, borderTop:'1px solid #cbd5e1', marginTop:'5px', paddingTop:'10px'}}>
+                            <div style={styles.ledgerItem}>
+  <span>Paid Already</span>
+  <span style={{...styles.amtText, color: '#e11d48'}}>-₹{selectedEmp.paidAlready?.toLocaleString()}</span>
+</div>
+							<div style={styles.ledgerItem}><span>Advances Settled</span><span style={{...styles.amtText, color: '#e11d48'}}>-₹{selectedEmp.advances?.toLocaleString()}</span></div>
+                            <div style={styles.ledgerItem}>
+  <span>Paid Already</span>
+  <span style={{...styles.amtText, color: '#e11d48'}}>-₹{selectedEmp.paidAlready?.toLocaleString()}</span>
+</div>
+							<div style={{...styles.ledgerItem, borderTop:'1px solid #cbd5e1', marginTop:'5px', paddingTop:'10px'}}>
                                 <span style={{fontWeight:'700'}}>Balance Due</span>
                                 <span style={{...styles.amtText, color: '#2563eb', fontSize:'18px'}}>₹{selectedEmp.netPayable?.toLocaleString()}</span>
                             </div>
