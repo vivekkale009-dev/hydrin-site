@@ -942,3 +942,133 @@
     height: 100px !important; /* Smaller logo for mobile */
   }
 }
+
+/* MOBILE RESPONSIVENESS */
+@media (max-width: 768px) {
+  .cs-split-container {
+    display: flex;
+    flex-direction: column; /* Stacks panes vertically */
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .cs-left-pane {
+    width: 100%;
+    padding: 60px 24px 40px 24px; /* More top padding for the brand name */
+    order: 1; /* Moves text to the TOP position */
+    min-height: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .cs-right-pane {
+    width: 100%;
+    height: 350px; /* Specific height for the image on mobile */
+    position: relative;
+    order: 2; /* Moves image to the BOTTOM position */
+  }
+
+  .cs-hero-image {
+    position: relative !important; /* Ensures it respects the pane height */
+    height: 100% !important;
+  }
+
+  .editorial-title {
+    font-size: 2rem;
+    line-height: 1.2;
+    margin: 24px 0;
+  }
+
+  /* Ensures the brand stack stays visible and clean */
+  .brand-stack {
+    margin-bottom: 10px;
+  }
+
+  /* Make modal touch-friendly */
+  .modal-content {
+    width: 92%;
+    padding: 30px 20px;
+  }
+}
+
+/* CONSOLIDATED MOBILE RESPONSIVENESS (Coming Soon & Maintenance) */
+@media (max-width: 768px) {
+  /* 1. Stack the panes vertically */
+  .cs-split-container {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* 2. Text Pane: Moves to the TOP */
+  .cs-left-pane {
+    width: 100%;
+    padding: 60px 24px 50px 24px;
+    order: 1; /* Force name and text to top */
+    min-height: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* Keeps header top and footer bottom */
+  }
+
+  /* 3. Image Pane: Moves to the BOTTOM */
+  .cs-right-pane {
+    width: 100%;
+    height: 300px; /* Reduced height so user sees text first */
+    order: 2; /* Force image to bottom */
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* 4. Text Adjustments */
+  .editorial-title {
+    font-size: 2.2rem; /* Scaled for mobile screens */
+    line-height: 1.1;
+    margin: 30px 0 15px 0;
+  }
+
+  .hero-sub {
+    font-size: 1rem;
+    line-height: 1.5;
+    margin-bottom: 30px;
+    color: #4b5563; /* Ensure it's readable */
+  }
+
+  /* 5. Button/Action Adjustments */
+  .btn-whatsapp, .purity-input-group {
+    width: 100%;
+    max-width: 320px;
+    padding: 16px;
+    font-size: 0.95rem;
+    display: block;
+    text-align: center;
+  }
+
+  /* 6. Modal / Popup Fixes */
+  .modal-overlay {
+    padding: 20px;
+    align-items: center; /* Centers modal on small screens */
+  }
+
+  .modal-content {
+    width: 100%;
+    max-width: 400px;
+    padding: 30px 20px;
+    border-radius: 20px;
+  }
+
+  /* 7. Footer Position */
+  footer {
+    margin-top: 40px;
+  }
+}
+
+/* Adjustments for extra small screens (iPhone SE, etc.) */
+@media (max-width: 380px) {
+  .editorial-title {
+    font-size: 1.8rem;
+  }
+}
