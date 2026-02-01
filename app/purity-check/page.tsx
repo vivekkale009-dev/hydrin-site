@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import BackgroundWrapper from "../components/BackgroundWrapper";
 import Script from "next/script"; // for reCAPTCHA
 import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 import { getDeviceType, getBrowser } from "@/utils/device";
 import { getFingerprint } from "@/utils/fingerprint";
@@ -269,90 +270,90 @@ export default function PurityCheck() {
   // =======================================================================
   // PDF GENERATION  (your original UI)
   // =======================================================================
-  const downloadCertificate = () => {
-    if (!data) return;
+// 2. Replace your existing downloadCertificate function with this:
+const downloadCertificate = () => {
+  if (!data) return;
 
-    const doc = new jsPDF("p", "pt", "a4");
+  const doc = new jsPDF("p", "pt", "a4");
 
-    const primary = "#0A6CFF";
-    const text = "#333333";
+  // --- HEADER SECTION ---
+  // Blue banner at the top
+  doc.setFillColor(10, 108, 255);
+  doc.rect(0, 0, 595, 60, "F");
+  
+  doc.setFontSize(20);
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.text("PURITY VERIFICATION CERTIFICATE", 40, 40);
 
-    doc.setDrawColor(10, 108, 255);
-    doc.setLineWidth(4);
-    doc.rect(20, 20, 555, 800);
+  // Brand Logo & Address
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(18);
+  doc.text("EARTHY SOURCE", 40, 90);
+  
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100);
+  doc.text([
+    "Foods and Beverages",
+    STATIC_PLANT,
+    `FSSAI: ${STATIC_FSSAI}`,
+    `License: ${STATIC_LICENSE}`
+  ], 40, 105);
 
-    doc.setTextColor(235, 235, 235);
-    doc.setFontSize(60);
-    doc.text("EarthySource", 100, 420, { angle: 30 });
+  // --- BATCH INFO TABLE (The Invoice Look) ---
+  autoTable(doc, {
+    startY: 170,
+    margin: { left: 40, right: 40 },
+    theme: "striped",
+    headStyles: { fillColor: [10, 108, 255], textColor: 255, fontStyle: "bold" },
+    bodyStyles: { textColor: 50, fontSize: 10 },
+    columnStyles: { 0: { fontStyle: "bold", cellWidth: 150 } },
+    head: [["Attribute", "Batch Details"]],
+    body: [
+      ["Batch Number", data.batch_code],
+      ["Manufacturing Date", data.production_date],
+      ["Expiry Date", data.expiry_date],
+      ["Net Quantity", data.net_quantity], // Pulling from Supabase table
+      ["Product Status", "PASSED / QUALITY CHECKED"],
+      ["Standard Compliance", "BIS IS 14543"],
+      ["Treatment Process", "RO + UV + Ozonation + Micron Filtration"],
+    ],
+  });
 
-    try {
-      doc.addImage("/OxyHydraLogo.png", "PNG", 215, 60, 150, 150);
-    } catch (e) {
-      console.warn("Logo failed to load in PDF", e);
-    }
+  // --- FOOTER & SEAL ---
+  const finalY = (doc as any).lastAutoTable.finalY + 40;
 
-    doc.setTextColor(primary);
-    doc.setFontSize(28);
-    doc.setFont("helvetica", "bold");
-    doc.text("Purity Verification Certificate", 100, 250);
+  doc.setFontSize(11);
+  doc.setTextColor(0);
+  doc.setFont("helvetica", "bold");
+  doc.text("Quality Assurance Declaration", 40, finalY);
 
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(14);
-    doc.setTextColor(text);
-    doc.text(
-      "This certifies that the following Earthy’s bottle batch has been verified",
-      100,
-      280
-    );
-    doc.text(
-      "and tested according to BIS IS 14543 packaged drinking water standards.",
-      100,
-      298
-    );
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(80);
+  doc.text(
+    "This certificate confirms that the mentioned batch has passed all physical, chemical, and microbiological tests in accordance with national safety standards for packaged drinking water.",
+    40,
+    finalY + 20,
+    { maxWidth: 500 }
+  );
 
-    doc.setDrawColor(200, 200, 200);
-    doc.line(100, 310, 500, 310);
+  try {
+    // Quality Seal Image
+    doc.addImage("/OxyHydraQualityCheck.png", "PNG", 400, finalY, 120, 120);
+  } catch (e) {
+    console.warn("Seal image not found");
+  }
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.text("Water Safety Information", 100, 340);
+  // Bottom Line
+  doc.setDrawColor(200);
+  doc.line(40, 780, 555, 780);
+  doc.setFontSize(8);
+  doc.text("This is a digitally generated document. Verification available at earthysource.in", 40, 800);
 
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(13);
-
-    doc.text(`Product Type: Packaged Drinking Water`, 100, 370);
-    doc.text(`Batch Number: ${data.batch_code}`, 100, 390);
-    doc.text(`Manufactured On: ${data.production_date}`, 100, 410);
-    doc.text(`Expiry / Use By: ${data.expiry_date}`, 100, 430);
-    doc.text(`Net Quantity: ${data.net_quantity}`, 100, 450);
-
-    doc.text(`Plant Address: ${STATIC_PLANT}`, 100, 470);
-    doc.text(`License Number: ${STATIC_LICENSE}`, 100, 490);
-    doc.text(`FSSAI Number: ${STATIC_FSSAI}`, 100, 510);
-
-    doc.text(
-      `Treatment Process: RO + UV + Ozonation + Micron Filtration`,
-      100,
-      535
-    );
-
-    try {
-      const sealImg = "/OxyHydraQualityCheck.png";
-      doc.addImage(sealImg, "PNG", 110, 580, 160, 160);
-    } catch (e) {
-      console.warn("Seal image failed to load in PDF:", e);
-    }
-
-    doc.setDrawColor(100, 100, 100);
-    doc.line(110, 750, 330, 750);
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.setTextColor(text);
-    doc.text("Quality Assurance Team", 110, 770);
-
-    doc.save(`EarthySource-Certificate-${data.batch_code}.pdf`);
-  };
+  doc.save(`EarthySource-Purity-Batch-${data.batch_code}.pdf`);
+};
 
   // =======================================================================
   // STYLES (unchanged)
@@ -443,12 +444,59 @@ export default function PurityCheck() {
           backgroundAttachment: "fixed",
         }}
       >
-        <main style={page}>
-          <div style={inner}>
-            <h1 style={title}>Earthy Source Purity Check</h1>
-            <p style={subtitle}>
-              Verify your bottle using the batch number printed on the label.
-            </p>
+<main style={{ ...page, padding: "0" }}> {/* Remove top padding from main so strip hits the top */}
+  
+  {/* --- FULL WIDTH GHOST WHITE STRIP --- */}
+  <div style={{
+    width: "100%",
+    background: "rgba(248, 248, 255, 0.95)", // GhostWhite with slight transparency
+    backdropFilter: "blur(10px)",
+    padding: "15px 0",
+    borderBottom: "1px solid #ddd",
+    boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+    position: "sticky",
+    top: 0,
+    zIndex: 100,
+    display: "flex",
+    justifyContent: "center" // Centers the content inside the strip
+  }}>
+    <div style={{
+      width: "100%",
+      maxWidth: "900px",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: "0 20px"
+    }}>
+      <a href="/" style={{ display: "flex", alignItems: "center", gap: "15px", textDecoration: "none" }}>
+        <img src="/EarthyLogo.JPG" alt="Earthy Source" style={{ height: "100px", width: "auto" }} />
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <span style={{ color: "Green", fontWeight: 800, fontSize: "1.8rem", lineHeight: 1 }}>Earthy Source</span>
+          <span style={{ color: "#444", fontSize: "0.7rem", fontWeight: 600, letterSpacing: "1px" }}>FOODS AND BEVERAGES</span>
+        </div>
+      </a>
+      
+      <a href="/" style={{
+        color: "#0A6CFF",
+        textDecoration: "none",
+        fontSize: "0.9rem",
+        fontWeight: 700,
+        border: "2px solid #0A6CFF",
+        padding: "8px 20px",
+        borderRadius: "50px",
+        transition: "0.3s"
+      }}>
+        Home Page
+      </a>
+    </div>
+  </div>
+
+  <div style={{ ...inner, padding: "60px 20px" }}> {/* Add padding back to the content area */}
+    <h1 style={title}>Earthy Source Purity Check</h1>
+    <p style={subtitle}>Verify your bottle using the batch number printed on the label.</p>
+
+  {/* ... rest of your code ... */}
+          
 
             {/* Input */}
             <div style={inputRow}>
@@ -639,6 +687,32 @@ export default function PurityCheck() {
               </>
             )}
           </div>
+		  {/* --- INTERESTING FOOTER LINK --- */}
+  <div style={{
+    marginTop: "50px",
+    textAlign: "center",
+    padding: "40px",
+    background: "linear-gradient(135deg, rgba(10,108,255,0.2) 0%, rgba(0,0,0,0.4) 100%)",
+    borderRadius: "20px",
+    border: "1px solid rgba(10,108,255,0.3)"
+  }}>
+    <h3 style={{ fontSize: "1.4rem", marginBottom: "10px" }}>Pure Water is just the beginning.</h3>
+    <p style={{ color: "#ccc", marginBottom: "20px" }}>Discover our mission to bring sustainable, earth-friendly hydration to everyone.</p>
+    <a href="/">
+      <button style={{
+        padding: "12px 30px",
+        borderRadius: "30px",
+        background: "#0A6CFF",
+        color: "white",
+        border: "none",
+        fontWeight: 600,
+        cursor: "pointer",
+        boxShadow: "0 4px 15px rgba(10,108,255,0.4)"
+      }}>
+        Explore Earthy Source
+      </button>
+    </a>
+  </div>
         </main>
       </BackgroundWrapper>
     </>
