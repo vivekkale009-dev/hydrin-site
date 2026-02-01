@@ -276,20 +276,27 @@ const downloadCertificate = () => {
 
   const doc = new jsPDF("p", "pt", "a4");
 
-  // --- HEADER SECTION ---
-  // Blue banner at the top
+  // --- 1. HEADER LOGO & TEXT ---
+  try {
+    // Adding your EarthyLogo.JPG at the top left
+    doc.addImage("/EarthyLogo.JPG", "JPEG", 40, 15, 40, 40); 
+  } catch (e) {
+    console.warn("Header logo not found at /EarthyLogo.JPG");
+  }
+
+  // Blue banner background (adjusted to not hide the logo)
   doc.setFillColor(10, 108, 255);
-  doc.rect(0, 0, 595, 60, "F");
+  doc.rect(90, 10, 465, 50, "F"); 
   
-  doc.setFontSize(20);
+  doc.setFontSize(18);
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
-  doc.text("PURITY VERIFICATION CERTIFICATE", 40, 40);
+  doc.text("PURITY VERIFICATION CERTIFICATE", 110, 42);
 
-  // Brand Logo & Address
+  // Brand Name below header
   doc.setTextColor(0, 0, 0);
-  doc.setFontSize(18);
-  doc.text("EARTHY SOURCE", 40, 90);
+  doc.setFontSize(16);
+  doc.text("EARTHY SOURCE", 40, 85);
   
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
@@ -299,11 +306,11 @@ const downloadCertificate = () => {
     STATIC_PLANT,
     `FSSAI: ${STATIC_FSSAI}`,
     `License: ${STATIC_LICENSE}`
-  ], 40, 105);
+  ], 40, 100);
 
-  // --- BATCH INFO TABLE (The Invoice Look) ---
+  // --- 2. BATCH INFO TABLE ---
   autoTable(doc, {
-    startY: 170,
+    startY: 160,
     margin: { left: 40, right: 40 },
     theme: "striped",
     headStyles: { fillColor: [10, 108, 255], textColor: 255, fontStyle: "bold" },
@@ -314,36 +321,38 @@ const downloadCertificate = () => {
       ["Batch Number", data.batch_code],
       ["Manufacturing Date", data.production_date],
       ["Expiry Date", data.expiry_date],
-      ["Net Quantity", data.net_quantity], // Pulling from Supabase table
+      ["Net Quantity", data.net_quantity],
       ["Product Status", "PASSED / QUALITY CHECKED"],
       ["Standard Compliance", "BIS IS 14543"],
       ["Treatment Process", "RO + UV + Ozonation + Micron Filtration"],
     ],
   });
 
-  // --- FOOTER & SEAL ---
-  const finalY = (doc as any).lastAutoTable.finalY + 40;
+  // --- 3. FOOTER & QUALITY SEAL ---
+  const tableBottom = (doc as any).lastAutoTable.finalY;
+  const footerY = tableBottom + 40;
 
   doc.setFontSize(11);
   doc.setTextColor(0);
   doc.setFont("helvetica", "bold");
-  doc.text("Quality Assurance Declaration", 40, finalY);
+  doc.text("Quality Assurance Declaration", 40, footerY);
 
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(80);
+  // Fixed quotes in your text string
   doc.text(
-    "This certificate confirms that the mentioned batch has passed all physical, chemical, and microbiological tests in accordance with national safety standards for packaged drinking water.",
+    "This certificate confirms that the mentioned batch has passed all physical, chemical, and microbiological tests in accordance with national safety standards for packaged drinking water. For any issue related to product please contact us at support@earthysource.in",
     40,
-    finalY + 20,
-    { maxWidth: 500 }
+    footerY + 20,
+    { maxWidth: 380 } // Reduced width to give the seal space on the right
   );
 
   try {
-    // Quality Seal Image
-    doc.addImage("/OxyHydraQualityCheck.png", "PNG", 400, finalY, 120, 120);
+    // Quality Seal Image - Adjusted position to the right of the declaration text
+    doc.addImage("/OxyHydraQualityCheck.png", "PNG", 430, footerY - 10, 100, 100);
   } catch (e) {
-    console.warn("Seal image not found");
+    console.warn("Seal image not found at /OxyHydraQualityCheck.png");
   }
 
   // Bottom Line
