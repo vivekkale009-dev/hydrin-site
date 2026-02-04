@@ -42,7 +42,7 @@ export default function CareersPage() {
       html: `
         <div style="text-align: left; padding: 10px; font-family: 'Inter', sans-serif;">
           <div style="margin-bottom: 15px;">
-            <span style="background: #f0fdf4; color: ${colors.accent}; padding: 4px 12px; borderRadius: 50px; font-size: 0.8rem; font-weight: 700;">${job[3]}</span>
+            <span style="background: #f0fdf4; color: ${colors.accent}; padding: 4px 12px; font-size: 0.8rem; font-weight: 700;">${job[3]}</span>
             <span style="margin-left: 10px; color: #6b7280; font-size: 0.85rem;">📍 ${job[2]}</span>
           </div>
           <div style="margin-bottom: 20px;">
