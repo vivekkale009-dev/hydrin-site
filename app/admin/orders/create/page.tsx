@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Swal from 'sweetalert2';
 
 export default function AdminOrderCreatePage() {
   const [consumerPhone, setConsumerPhone] = useState("");
@@ -76,23 +77,43 @@ const taxableAmount = itemsSubtotal; // Tax is only on products
     setItems([...items, { product_id: p.id, name: p.name, qty_boxes: 1, price_per_box: "" }]);
   }
 
- async function submitOrder() {
+async function submitOrder() {
   if (isSubmitting) return;
 
-  // 1. STOCK CHECK (Flexible Approach / Soft Warning)
+  // 1. STOCK CHECK
   const shortages = items.filter(orderItem => {
-    const originalProd = products.find(p => p.id === orderItem.product_id);
-    // Assuming products-basic API includes available_boxes
-    return Number(orderItem.qty_boxes) > (originalProd?.available_boxes || 0);
+    const masterProd = products.find(p => String(p.id) === String(orderItem.product_id));
+    const requested = Number(orderItem.qty_boxes || 0);
+    const available = Number(masterProd?.available_boxes || 0);
+    return requested > available;
   });
 
+  // 2. SHOW SWEETALERT IF SHORTAGE
   if (shortages.length > 0) {
-    const shortageList = shortages.map(s => `- ${s.name}`).join('\n');
-    const proceed = window.confirm(
-      `⚠️ INSUFFICIENT STOCK!\n\nThe following items are not in stock:\n${shortageList}\n\nCreating this order will result in NEGATIVE inventory. Do you want to proceed?`
-    );
-    if (!proceed) return;
+    const shortageListHtml = shortages.map(s => {
+      const p = products.find(prod => String(prod.id) === String(s.product_id));
+      const stockCount = p?.available_boxes ?? 0;
+      return `<li style="text-align: left;"><b>${s.name}</b>: Need ${s.qty_boxes} (Stock: ${stockCount})</li>`;
+    }).join('');
+
+    const result = await Swal.fire({
+      title: '⚠️ Insufficient Stock!',
+      html: `
+        <p>The following items exceed current inventory:</p>
+        <ul style="list-style-type: none; padding: 0;">${shortageListHtml}</ul>
+        <p><b>Do you want to proceed with negative inventory?</b></p>
+      `,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, proceed anyway',
+      cancelButtonText: 'No, let me fix it'
+    });
+
+    if (!result.isConfirmed) return; 
   }
+  // ... rest of your mandatory validation and fetch logic
 
   // 2. MANDATORY VALIDATION
   if ((orderType === "end_consumer" || orderType === "bulk_consumer") && !consumerPhone) {

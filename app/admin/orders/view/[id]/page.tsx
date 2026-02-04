@@ -6,21 +6,25 @@ export default function OrderViewPage() {
   const params = useParams();
   const id = params?.id;
 
+  // 1. State Declarations
   const [order, setOrder] = useState<any>(null);
   const [payments, setPayments] = useState<any[]>([]);
   const [vans, setVans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [generating, setGenerating] = useState(false); 
-  
+  const [generating, setGenerating] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+
   const [editPaid, setEditPaid] = useState(0);
   const [editMethod, setEditMethod] = useState("cash");
-  const [editRef, setEditRef] = useState(""); 
+  const [editRef, setEditRef] = useState("");
   const [editVan, setEditVan] = useState("");
-// Add this calculation block before the return statement
+
+  // Derived State
+  const isCancelled = order?.status === 'cancelled';
   const productSubtotal = order?.gross_revenue || 0;
   const taxAmount = (order?.total_payable_amount || 0) - (order?.delivery_fee || 0) - productSubtotal;
-  
+
   const refreshData = useCallback(async () => {
     if (!id) return;
     try {
@@ -46,52 +50,68 @@ export default function OrderViewPage() {
     refreshData().then(() => setLoading(false));
   }, [refreshData]);
 
-  // FIXED: Unified WhatsApp function with the correct finalUrl logic
-  const triggerWhatsApp = (msgType: "invoice" | "details", invoiceUrl: string | null = null) => {
+  // 2. WhatsApp Logic
+  const triggerWhatsApp = (msgType: "invoice" | "cancel" | "refund" | "details", invoiceUrl: string | null = null, reason: string = "") => {
     const phoneNumber = order?.shipping_phone || order?.phone || order?.distributor_phone;
     if (!phoneNumber) return alert("Phone number not found.");
 
-    // Determine the URL to use
-    let finalUrl = invoiceUrl;
-    if (!finalUrl && order?.invoice_generated && order?.invoice_url) {
-      const bucket = order.is_gst ? 'tax-invoices' : 'non-tax-invoices';
-      finalUrl = `https://xyyirkwiredufamtnqdu.supabase.co/storage/v1/object/public/${bucket}/${order.invoice_url}`;
-    }
-
+    let finalMsg = "";
     const financialSummary = `*Order Summary: ${order?.uorn}*\nTotal Bill: ₹${order?.total_payable_amount}\nTotal Paid: ₹${order?.amount_paid || 0}\nPending Balance: ₹${order?.pending_amount || 0}\n--------------------------`;
 
-    let productList = "";
-    if (order?.items && order.items.length > 0) {
-      productList = `\n*Products Ordered:* \n` + order.items
-        .map((item: any) => `📦 ${item.product_name}: ${item.qty_boxes} Nos`)
-        .join('\n');
+    if (msgType === "cancel") {
+      finalMsg = `Hello ${order?.customer_name || 'Customer'},\n\nOrder *${order?.uorn}* has been *CANCELLED*.\nReason: ${reason}\n\nInventory has been updated accordingly.`;
+    } else if (msgType === "refund") {
+      finalMsg = `Hello ${order?.customer_name || 'Customer'},\n\nA refund for Order *${order?.uorn}* has been initiated for ₹${order?.amount_paid}.`;
+    } else if (msgType === "invoice") {
+      let finalUrl = invoiceUrl;
+      if (!finalUrl && order?.invoice_generated && order?.invoice_url) {
+        const bucket = order.is_gst ? 'tax-invoices' : 'non-tax-invoices';
+        finalUrl = `https://xyyirkwiredufamtnqdu.supabase.co/storage/v1/object/public/${bucket}/${order.invoice_url}`;
+      }
+      const invoiceLink = finalUrl ? `\n\n📄 *Download Invoice:* \n${finalUrl}` : "";
+      finalMsg = `Hello ${order?.customer_name || 'Customer'}, your invoice for order *${order?.uorn}* is ready.\n${financialSummary}${invoiceLink}\n\nThank you!`;
     } else {
-      productList = "\n_No product details found_";
+      const productList = order?.items?.map((item: any) => `📦 ${item.product_name}: ${item.qty_boxes} Nos`).join('\n') || "_No details_";
+      finalMsg = `Hello ${order?.customer_name || 'Customer'}, here are your order details:\n${financialSummary}\n\n*Products Ordered:*\n${productList}\n\nThank you!`;
     }
-
-    // CHECKING finalUrl instead of invoiceUrl
-    const invoiceLink = finalUrl ? `\n\n📄 *Download Invoice:* \n${finalUrl}` : "";
-
-    const finalMsg = msgType === "invoice" 
-      ? `Hello ${order?.customer_name || 'Customer'}, your invoice for order *${order?.uorn}* is ready.\n${financialSummary}${invoiceLink}\n\nThank you for choosing Earthy Source!`
-      : `Hello ${order?.customer_name || 'Customer'}, here are your order details:\n${financialSummary}${productList}\n\nThank you for choosing Earthy Source!`;
 
     const cleanPhone = String(phoneNumber).replace(/\D/g, '');
     const finalPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
-    
     window.open(`https://wa.me/${finalPhone}?text=${encodeURIComponent(finalMsg)}`, '_blank');
+  };
+
+  // 3. Action Handlers
+  const handleCancelOrRefund = async (action: "cancel" | "refund") => {
+    let reason = "";
+    if (action === "cancel") {
+      reason = window.prompt("Reason for cancellation:") || "";
+      if (!reason) return alert("Reason is required.");
+    }
+    if (!confirm(`Confirm ${action}?`)) return;
+
+    setCancelling(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${id}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, reason }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        triggerWhatsApp(action, null, reason);
+        await refreshData();
+      }
+    } catch (err) { alert("Process failed."); }
+    finally { setCancelling(false); }
   };
 
   const handleGenerateInvoice = async () => {
     if (!id || !order) return;
-    
     if (order.invoice_generated) {
       const bucket = order.is_gst ? 'tax-invoices' : 'non-tax-invoices';
-      const url = `https://xyyirkwiredufamtnqdu.supabase.co/storage/v1/object/public/${bucket}/${order.invoice_url}`;
-      window.open(url, '_blank');
+      window.open(`https://xyyirkwiredufamtnqdu.supabase.co/storage/v1/object/public/${bucket}/${order.invoice_url}`, '_blank');
       return;
     }
-
     setGenerating(true);
     try {
       const res = await fetch("/api/admin/orders/generate-invoice", {
@@ -99,20 +119,13 @@ export default function OrderViewPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orderId: id }),
       });
-      
       const result = await res.json();
-      
       if (result.success) {
         triggerWhatsApp("invoice", result.url);
-        await refreshData(); 
-      } else {
-        alert("Error: " + result.error);
-      }
-    } catch (err) {
-      alert("Connection failed.");
-    } finally {
-      setGenerating(false);
-    }
+        await refreshData();
+      } else { alert("Error: " + result.error); }
+    } catch (err) { alert("Connection failed."); }
+    finally { setGenerating(false); }
   };
 
   const handleUpdate = async () => {
@@ -143,17 +156,17 @@ export default function OrderViewPage() {
             <h2 style={{ color: '#fff', margin: 0 }}>Order: {order?.uorn}</h2>
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button 
-              onClick={handleGenerateInvoice} 
-              disabled={generating} 
-              style={{
-                ...styles.invoiceBtn, 
-                opacity: generating ? 0.7 : 1,
-                background: order?.invoice_generated ? '#2F4F4F' : '#007bff'
-              }}
-            >
-              {generating ? "⏳ Processing..." : order?.invoice_generated ? "👁️ View Invoice" : "📄 Generate Invoice"}
-            </button>
+            {!isCancelled ? (
+              <button 
+                onClick={handleGenerateInvoice} 
+                disabled={generating} 
+                style={{...styles.invoiceBtn, background: order?.invoice_generated ? '#2F4F4F' : '#007bff'}}
+              >
+                {generating ? "⏳ Processing..." : order?.invoice_generated ? "👁️ View Invoice" : "📄 Generate Invoice"}
+              </button>
+            ) : (
+              <span style={{ background: '#ff4d4d', color: '#fff', padding: '10px 15px', borderRadius: '8px', fontWeight: 'bold' }}>🚫 CANCELLED</span>
+            )}
             <button onClick={refreshData} style={styles.refreshBtn}>🔄 Refresh</button>
           </div>
         </div>
@@ -166,20 +179,9 @@ export default function OrderViewPage() {
                 <div style={styles.summaryItem}><label>Total Bill</label><p>₹{order?.total_payable_amount}</p></div>
                 <div style={{ ...styles.summaryItem, color: '#28a745' }}><label>Total Paid</label><p>₹{order?.amount_paid || 0}</p></div>
                 <div style={{ ...styles.summaryItem, color: '#dc3545' }}><label>Pending</label><p>₹{order?.pending_amount || 0}</p></div>
-               
-				{/* Row 2 - New Highlighted Areas */}
-  <div style={styles.summaryItem}>
-    <label>Product Subtotal</label>
-    <p>₹{productSubtotal.toFixed(2)}</p>
-  </div>
-  <div style={styles.summaryItem}>
-    <label>Tax Amount</label>
-    <p>₹{Math.max(0, taxAmount).toFixed(2)}</p>
-  </div>
-  <div style={{ ...styles.summaryItem, color: '#dc3545' }}>
-    <label>Delivery Fees</label>
-    <p>₹{order?.delivery_fee || 0}</p>
-  </div>
+                <div style={styles.summaryItem}><label>Product Subtotal</label><p>₹{productSubtotal.toFixed(2)}</p></div>
+                <div style={styles.summaryItem}><label>Tax Amount</label><p>₹{Math.max(0, taxAmount).toFixed(2)}</p></div>
+                <div style={{ ...styles.summaryItem, color: '#dc3545' }}><label>Delivery Fees</label><p>₹{order?.delivery_fee || 0}</p></div>
               </div>
 
               <div style={{ marginTop: '25px' }}>
@@ -209,7 +211,7 @@ export default function OrderViewPage() {
 
             <div style={styles.card}>
               <h4 style={styles.sectionTitle}>Products Ordered</h4>
-              {order?.items && order.items.length > 0 ? (
+              {order?.items?.length > 0 ? (
                 <div style={styles.tableWrapper}>
                   <table style={styles.table}>
                     <thead>
@@ -245,23 +247,46 @@ export default function OrderViewPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={styles.card}>
               <h4 style={styles.sectionTitle}>Update Order</h4>
-              <label style={styles.label}>New Payment Received</label>
-              <input type="number" style={styles.input} value={editPaid} onChange={e => setEditPaid(Number(e.target.value))} />
-              <label style={styles.label}>Payment Method</label>
-              <select style={styles.input} value={editMethod} onChange={e => setEditMethod(e.target.value)}>
-                <option value="cash">Cash</option>
-                <option value="upi">UPI</option>
-                <option value="bank">Bank Transfer</option>
-              </select>
-              {(editMethod === 'upi' || editMethod === 'bank') && (
-                <><label style={styles.label}>Transaction Ref (Optional)</label><input type="text" style={styles.input} value={editRef} onChange={e => setEditRef(e.target.value)} placeholder="Ref No / UTR" /></>
+              {!isCancelled ? (
+                <>
+                  <label style={styles.label}>New Payment Received</label>
+                  <input type="number" style={styles.input} value={editPaid} onChange={e => setEditPaid(Number(e.target.value))} />
+                  <label style={styles.label}>Payment Method</label>
+                  <select style={styles.input} value={editMethod} onChange={e => setEditMethod(e.target.value)}>
+                    <option value="cash">Cash</option>
+                    <option value="upi">UPI</option>
+                    <option value="bank">Bank Transfer</option>
+                  </select>
+                  {(editMethod === 'upi' || editMethod === 'bank') && (
+                    <><label style={styles.label}>Transaction Ref</label><input type="text" style={styles.input} value={editRef} onChange={e => setEditRef(e.target.value)} placeholder="Ref No / UTR" /></>
+                  )}
+                  <label style={styles.label}>Assign Van</label>
+                  <select style={styles.input} value={editVan} onChange={e => setEditVan(e.target.value)}>
+                    <option value="">Select Van</option>
+                    {vans.map(v => <option key={v.id} value={v.id}>{v.vehicle_number}</option>)}
+                  </select>
+                  <button onClick={handleUpdate} disabled={saving} style={styles.updateBtn}>{saving ? "Processing..." : "Confirm & Save"}</button>
+                </>
+              ) : (
+                <p style={{ color: '#dc3545', textAlign: 'center' }}>This order is cancelled and cannot be updated.</p>
               )}
-              <label style={styles.label}>Assign Van</label>
-              <select style={styles.input} value={editVan} onChange={e => setEditVan(e.target.value)}>
-                <option value="">Select Van</option>
-                {vans.map(v => <option key={v.id} value={v.id}>{v.vehicle_number}</option>)}
-              </select>
-              <button onClick={handleUpdate} disabled={saving} style={styles.updateBtn}>{saving ? "Processing..." : "Confirm & Save"}</button>
+            </div>
+
+            <div style={{ ...styles.card, border: '1px solid #ffcccc' }}>
+              <h4 style={{ ...styles.sectionTitle, color: '#dc3545' }}>Order Management</h4>
+              {isCancelled ? (
+                <div>
+                  <p style={{ color: '#666', fontSize: '14px' }}><strong>Status:</strong> Cancelled</p>
+                  <p style={{ color: '#666', fontSize: '14px' }}><strong>Reason:</strong> {order.cancel_reason || "Not specified"}</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <button onClick={() => handleCancelOrRefund("cancel")} disabled={cancelling} style={styles.cancelBtn}>🚫 Cancel & Return Stock</button>
+                  {order?.amount_paid > 0 && (
+                    <button onClick={() => handleCancelOrRefund("refund")} disabled={cancelling} style={styles.refundBtn}>💰 Issue Refund Notification</button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -288,6 +313,8 @@ const styles: any = {
   invoiceBtn: { background: '#007bff', color: '#fff', border: 'none', padding: '10px 15px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' },
   refreshBtn: { background: "#fff", border: "none", padding: "10px 15px", borderRadius: "8px", cursor: "pointer", fontWeight: "bold" },
   backBtn: { background: "#444", color: "#fff", border: "none", padding: "10px 15px", borderRadius: "8px", cursor: "pointer" },
+  cancelBtn: { width: '100%', padding: '12px', background: '#fff', color: '#dc3545', border: '1px solid #dc3545', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' },
+  refundBtn: { width: '100%', padding: '12px', background: '#dc3545', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' },
   tableWrapper: { border: '1px solid #eee', borderRadius: '8px' },
   table: { width: '100%', borderCollapse: 'collapse' },
   th: { background: '#f8f9fa', padding: '12px', textAlign: 'left' },

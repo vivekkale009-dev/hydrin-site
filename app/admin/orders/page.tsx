@@ -70,10 +70,7 @@ export default function AdminOrdersPage() {
 
   const handleRowClick = (id: string) => { window.location.href = `/admin/orders/view/${id}`; };
 
-  const downloadInvoice = (e: React.MouseEvent, orderId: string) => {
-    e.stopPropagation();
-    window.open(`/api/admin/orders/invoice/${orderId}`, "_blank");
-  };
+ 
 
   const handleGatePass = (e: React.MouseEvent, order: any) => {
     e.stopPropagation();
@@ -128,6 +125,8 @@ export default function AdminOrdersPage() {
              <option value="pending_verification">Pending Verification</option>
              <option value="fully_paid">Paid</option>
              <option value="partially_paid">Partially Paid</option>
+			 <option value="refunded">Refunded</option>
+			 <option value="cancelled">cancelled</option>
 			 <option value="delivered">Delivered</option>
           </select>
 
@@ -183,14 +182,14 @@ export default function AdminOrdersPage() {
 
                   <td style={styles.td}>
                     <div style={{display: 'flex', gap: '5px'}}>
-                        <button onClick={(e) => downloadInvoice(e, order.id)} style={styles.invoiceBtn} title="Invoice">📄</button>
+                     
                         <button 
                           onClick={(e) => handleGatePass(e, order)} 
-                          disabled={!!order.exit_confirmed_at}
+                          disabled={!!order.exit_confirmed_at || order.status === 'cancelled'}
                           style={{
                             ...styles.gatePassBtn, 
-                            background: order.exit_confirmed_at ? '#ccc' : '#f39c12',
-                            cursor: order.exit_confirmed_at ? 'not-allowed' : 'pointer'
+                            background: (order.exit_confirmed_at || order.status === 'cancelled') ? '#ccc' : '#f39c12',
+                            cursor: (order.exit_confirmed_at || order.status === 'cancelled') ? 'not-allowed' : 'pointer'
                           }} 
                           title="Print GP"
                         >🚧</button>
@@ -199,8 +198,8 @@ export default function AdminOrdersPage() {
                           disabled={!!order.exit_confirmed_at}
                           style={{
                             ...styles.gatePassBtn, 
-                            background: order.exit_confirmed_at ? '#ccc' : '#25D366',
-                            cursor: order.exit_confirmed_at ? 'not-allowed' : 'pointer'
+                            background: (order.exit_confirmed_at || order.status === 'cancelled') ? '#ccc' : '#25D366',
+                            cursor: (order.exit_confirmed_at || order.status === 'cancelled') ? 'not-allowed' : 'pointer'
                           }} 
                           title="WhatsApp QR"
                         >📱</button>
@@ -230,14 +229,26 @@ const styles: any = {
   th: { padding: "12px", fontSize: "13px" },
   tr: { borderBottom: "1px solid #eee", cursor: "pointer", transition: "background 0.2s" },
   td: { padding: "12px", fontSize: "14px" },
-  invoiceBtn: { padding: "8px", background: "#007bff", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" },
+
   gatePassBtn: { padding: "8px", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: 'bold' },
 };
 
 function getStatusBadge(status: string) {
   let bg = "#eee";
   let color = "#333";
-  if (status === "payment_verified") { bg = "#d4edda"; color = "#155724"; }
+  
+  if (status === "payment_verified" || status === "fully_paid") { bg = "#d4edda"; color = "#155724"; }
   if (status === "cancelled") { bg = "#f8d7da"; color = "#721c24"; }
-  return { padding: "4px 8px", borderRadius: "12px", fontSize: "10px", fontWeight: "bold", background: bg, color: color, textTransform: 'uppercase' };
+  if (status === "refunded") { bg = "#fff3cd"; color = "#856404"; } // Yellow for Refund
+  if (status === "partially_paid") { bg = "#cce5ff"; color = "#004085"; }
+  
+  return { 
+    padding: "4px 8px", 
+    borderRadius: "12px", 
+    fontSize: "10px", 
+    fontWeight: "bold" as "bold", 
+    background: bg, 
+    color: color, 
+    textTransform: 'uppercase' as 'uppercase' 
+  };
 }

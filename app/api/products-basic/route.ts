@@ -1,5 +1,8 @@
+// /api/products-basic/route.ts
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+
+export const dynamic = 'force-dynamic'; // Prevent stale "0" stock from caching
 
 export async function GET() {
   try {
@@ -7,24 +10,41 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from("products")
-      .select("id, name, volume_ml, units_per_box")
-      .eq("is_active", true)
-      .order("volume_ml", { ascending: false }); // 1L, then 500, then 200
+      .select(`
+        id, 
+        name, 
+        volume_ml, 
+        units_per_box,
+        inventory_products (
+          available_boxes
+        )
+      `)
+      .eq("is_active", true);
 
-    if (error) {
-      console.error("products-basic error:", error);
-      return NextResponse.json(
-        { error: "Failed to load products" },
-        { status: 500 }
-      );
-    }
+    if (error) throw error;
 
-    return NextResponse.json(data);
+    // DEBUG: Check your console log to see if it's an array [] or object {}
+    console.log("Raw Supabase Data:", JSON.stringify(data[0], null, 2));
+
+    const formattedData = data.map((product: any) => {
+      const inv = product.inventory_products;
+      
+      // FIX: Handle both Array and Object response formats
+      let stock = 0;
+      if (Array.isArray(inv)) {
+        stock = inv[0]?.available_boxes || 0;
+      } else if (inv && typeof inv === 'object') {
+        stock = inv.available_boxes || 0;
+      }
+
+      return {
+        ...product,
+        available_boxes: stock
+      };
+    });
+
+    return NextResponse.json(formattedData);
   } catch (err: any) {
-    console.error("products-basic fatal:", err);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
