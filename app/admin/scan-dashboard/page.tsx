@@ -241,6 +241,7 @@ export default function ScanDashboard() {
     { label: "Distributors", href: "/admin/distributors" },
     { label: "CRM", href: "/admin/crm" },
 	{ label: "Careers", href: "/admin/careers-manager" },
+	{ label: "DB Health", href: "/admin/database-health" },
     { label: "Main Dashboard", href: "/admin/dashboard" },
   ].map((link) => (
     <a 
