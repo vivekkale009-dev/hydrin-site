@@ -59,8 +59,7 @@ export default function CareersPage() {
       confirmButtonText: 'Apply for this position',
       cancelButtonText: 'Close',
       confirmButtonColor: colors.primary,
-      width: '600px',
-      borderRadius: '24px'
+      width: '600px'
     }).then((result) => {
       if (result.isConfirmed) {
         setSelectedJob(job);
@@ -140,13 +139,13 @@ export default function CareersPage() {
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button 
                     onClick={() => handleViewDetails(job)}
-                    style={{ flex: 1, padding: "14px", borderRadius: "14px", border: `2px solid ${colors.primary}`, background: "transparent", color: colors.primary, fontWeight: 700, cursor: "pointer" }}
+                    style={{ flex: 1, padding: "14px", border: `2px solid ${colors.primary}`, background: "transparent", color: colors.primary, fontWeight: 700, cursor: "pointer" }}
                   >
                     View Details
                   </button>
                   <button 
                     onClick={() => { setSelectedJob(job); setIsModalOpen(true); }}
-                    style={{ flex: 1, padding: "14px", borderRadius: "14px", border: "none", background: colors.primary, color: "#fff", fontWeight: 700, cursor: "pointer" }}
+                    style={{ flex: 1, padding: "14px", border: "none", background: colors.primary, color: "#fff", fontWeight: 700, cursor: "pointer" }}
                   >
                     Apply
                   </button>
@@ -155,7 +154,7 @@ export default function CareersPage() {
             ))}
           </div>
         ) : (
-          <div style={{ textAlign: "center", padding: "60px", background: "#fff", borderRadius: "30px", border: "1px dashed #ccc" }}>
+          <div style={{ textAlign: "center", padding: "60px", background: "#fff", border: "1px dashed #ccc" }}>
             <p style={{ color: "#6b7280" }}>We don't have any active openings right now. Check back soon!</p>
           </div>
         )}
@@ -164,7 +163,7 @@ export default function CareersPage() {
       {/* MODAL */}
       {isModalOpen && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(5px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ background: "#fff", padding: "40px", borderRadius: "32px", maxWidth: "500px", width: "90%", position: "relative" }}>
+          <div style={{ background: "#fff", padding: "40px", maxWidth: "500px", width: "90%", position: "relative" }}>
             <button onClick={() => setIsModalOpen(false)} style={{ position: "absolute", top: "25px", right: "25px", border: "none", background: "none", fontSize: "1.5rem", cursor: "pointer" }}>&times;</button>
             
             <h2 style={{ fontSize: "1.8rem", color: colors.secondary, marginBottom: "8px" }}>Join the Source</h2>
@@ -181,7 +180,7 @@ export default function CareersPage() {
               <button 
                 type="submit" 
                 disabled={isSubmitting}
-                style={{ background: colors.secondary, color: "#fff", padding: "18px", borderRadius: "16px", border: "none", fontWeight: 700, cursor: "pointer", marginTop: "10px" }}
+                style={{ background: colors.secondary, color: "#fff", padding: "18px", border: "none", fontWeight: 700, cursor: "pointer", marginTop: "10px" }}
               >
                 {isSubmitting ? "Uploading Profile..." : "Submit Application"}
               </button>
