@@ -185,11 +185,11 @@ export default function AdminOrdersPage() {
                      
                         <button 
                           onClick={(e) => handleGatePass(e, order)} 
-                          disabled={!!order.exit_confirmed_at || order.status === 'cancelled'}
+                          disabled={!!order.exit_confirmed_at || order.status === 'cancelled' || order.status === 'delivered'}
                           style={{
                             ...styles.gatePassBtn, 
-                            background: (order.exit_confirmed_at || order.status === 'cancelled') ? '#ccc' : '#f39c12',
-                            cursor: (order.exit_confirmed_at || order.status === 'cancelled') ? 'not-allowed' : 'pointer'
+                            background: (order.exit_confirmed_at || order.status === 'cancelled' || order.status === 'delivered') ? '#ccc' : '#f39c12',
+                            cursor: (order.exit_confirmed_at || order.status === 'cancelled' || order.status === 'delivered') ? 'not-allowed' : 'pointer'
                           }} 
                           title="Print GP"
                         >🚧</button>
@@ -198,8 +198,8 @@ export default function AdminOrdersPage() {
                           disabled={!!order.exit_confirmed_at}
                           style={{
                             ...styles.gatePassBtn, 
-                            background: (order.exit_confirmed_at || order.status === 'cancelled') ? '#ccc' : '#25D366',
-                            cursor: (order.exit_confirmed_at || order.status === 'cancelled') ? 'not-allowed' : 'pointer'
+                            background: (order.exit_confirmed_at || order.status === 'cancelled' || order.status === 'delivered') ? '#ccc' : '#25D366',
+                            cursor: (order.exit_confirmed_at || order.status === 'cancelled' || order.status === 'delivered') ? 'not-allowed' : 'pointer'
                           }} 
                           title="WhatsApp QR"
                         >📱</button>

@@ -155,20 +155,31 @@ export default function OrderViewPage() {
             <button onClick={() => window.history.back()} style={styles.backBtn}>← Back</button>
             <h2 style={{ color: '#fff', margin: 0 }}>Order: {order?.uorn}</h2>
           </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            {!isCancelled ? (
-              <button 
-                onClick={handleGenerateInvoice} 
-                disabled={generating} 
-                style={{...styles.invoiceBtn, background: order?.invoice_generated ? '#2F4F4F' : '#007bff'}}
-              >
-                {generating ? "⏳ Processing..." : order?.invoice_generated ? "👁️ View Invoice" : "📄 Generate Invoice"}
-              </button>
-            ) : (
-              <span style={{ background: '#ff4d4d', color: '#fff', padding: '10px 15px', borderRadius: '8px', fontWeight: 'bold' }}>🚫 CANCELLED</span>
-            )}
-            <button onClick={refreshData} style={styles.refreshBtn}>🔄 Refresh</button>
-          </div>
+      <div style={{ display: 'flex', gap: '10px' }}>
+  {!isCancelled ? (
+    <>
+      {/* --- NEW EDIT FEES BUTTON START --- */}
+      <button 
+        onClick={() => window.location.href = `/admin/orders/${order.id}/edit-fees`}
+        style={styles.editFeesBtn}
+      >
+        ⚙️ Edit Fees
+      </button>
+      {/* --- NEW EDIT FEES BUTTON END --- */}
+
+      <button 
+        onClick={handleGenerateInvoice} 
+        disabled={generating} 
+        style={{...styles.invoiceBtn, background: order?.invoice_generated ? '#2F4F4F' : '#007bff'}}
+      >
+        {generating ? "⏳ Processing..." : order?.invoice_generated ? "👁️ View Invoice" : "📄 Generate Invoice"}
+      </button>
+    </>
+  ) : (
+    <span style={{ background: '#ff4d4d', color: '#fff', padding: '10px 15px', borderRadius: '8px', fontWeight: 'bold' }}>🚫 CANCELLED</span>
+  )}
+  <button onClick={refreshData} style={styles.refreshBtn}>🔄 Refresh</button>
+</div>
         </div>
 
         <div style={styles.mainGrid}>
@@ -319,5 +330,16 @@ const styles: any = {
   table: { width: '100%', borderCollapse: 'collapse' },
   th: { background: '#f8f9fa', padding: '12px', textAlign: 'left' },
   td: { padding: '12px' },
-  loading: { color: '#fff', textAlign: 'center', paddingTop: '150px' }
+  loading: { color: '#fff', textAlign: 'center', paddingTop: '150px' },
+  editFeesBtn: { 
+    background: '#6c757d', 
+    color: '#fff', 
+    border: 'none', 
+    padding: '10px 15px', 
+    borderRadius: '8px', 
+    cursor: 'pointer', 
+    fontWeight: 'bold',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px' }
 };

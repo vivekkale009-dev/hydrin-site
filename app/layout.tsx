@@ -3,6 +3,7 @@ import "./homepage.css";
 import type { Metadata } from "next";
 import ChatWidget from "./components/ChatWidget";
 import AdminAuthWrapper from "./components/AdminAuthWrapper"; 
+import 'leaflet/dist/leaflet.css';
 
 // --- SINGLE METADATA BLOCK ---
 export const metadata: Metadata = {

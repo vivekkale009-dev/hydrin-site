@@ -39,6 +39,7 @@ export default function HomePage() {
           <a href="/purity-check">Purity Check</a>
           <a href="/hydrasphere">HydraSphere</a>
           <a href="/careers">Careers</a> {/* ADDED CAREERS */}
+          <a href="/about-us">About Us</a> {/* ADDED ABOUT US BESIDE CONTACT */}
           <a href="admin/login" className="admin-link">Staff Access</a>
           {/* TRIGGER THE MODAL */}
           <button onClick={() => setShowContact(true)} className="contact-trigger">Contact Us</button>
@@ -109,6 +110,7 @@ export default function HomePage() {
             <a href="/careers">Careers</a>
             <a href="/purity-check">Quality Report</a>
             <a href="/privacy">Privacy Policy</a>
+            <a href="/about-us">About Us</a>
           </div>
         </div>
         <div className="footer-bottom">

@@ -1145,3 +1145,74 @@
   color: #4b5563;
   font-size: 14px;
 }
+
+/* ABOUT US PAGE STYLES */
+.about-wrapper {
+  background-color: #fcfbf8;
+  color: #1a1a1a;
+  min-height: 100vh;
+  padding: 40px 20px;
+}
+
+.back-home-pill {
+  position: fixed;
+  top: 25px;
+  left: 20px;
+  background: #ffffff;
+  padding: 10px 20px;
+  border-radius: 30px;
+  text-decoration: none;
+  color: #2d5a27;
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+  z-index: 1000;
+  border: 1px solid #eee;
+}
+
+.about-main-content {
+  max-width: 850px;
+  margin: 80px auto 0;
+}
+
+.about-title-area {
+  text-align: center;
+  margin-bottom: 50px;
+}
+
+.about-title-area h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+  color: #1a1a1a;
+  line-height: 1.1;
+  margin-top: 10px;
+}
+
+.about-hero-img {
+  width: 100%;
+  border-radius: 20px;
+  margin-bottom: 50px;
+  display: block;
+}
+
+.about-story-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 40px;
+  margin-bottom: 60px;
+}
+
+.story-card h2 {
+  color: #2d5a27;
+  margin-bottom: 15px;
+  font-size: 1.6rem;
+}
+
+.story-card p {
+  line-height: 1.8;
+  color: #4a4a4a;
+  font-size: 1.05rem;
+}
+
+@media (max-width: 768px) {
+  .about-main-content { margin-top: 60px; }
+  .about-wrapper { padding: 20px 15px; }
+}

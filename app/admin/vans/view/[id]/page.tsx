@@ -26,32 +26,39 @@ export default function VanLedgerPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-const sendWhatsApp = () => {
+  const sendWhatsApp = () => {
     if (!data) return;
     
-    // Formatting the current date for a professional look
     const today = new Date().toLocaleDateString('en-IN', { 
       day: 'numeric', 
       month: 'short', 
       year: 'numeric' 
     });
 
+    // --- NEW BREAKDOWN LOGIC ---
+    // Creating a text list of all trips and their individual fees
+    const tripBreakdown = data.orders?.map((o: any) => 
+      `📍 ${o.uorn}: ₹${Number(o.delivery_fee).toLocaleString('en-IN')}`
+    ).join('%0A') || "No trips recorded";
+
     const message = 
       `🌱 *EARTHY SOURCE - Delivery Partner Statement* 🌱%0A` +
       `--------------------------------------------%0A` +
       `Hello *${data.van.driver_name}*,%0A%0A` +
       `Here is your updated payment summary as of *${today}*:%0A%0A` +
-      `🚚 *Vehicle:* ${data.van.vehicle_number}%0A` +
-      `💰 *Total Earnings:* ₹${data.summary.total_earned}%0A` +
-      `✅ *Total Paid:* ₹${data.summary.total_paid}%0A` +
+      `🚚 *Vehicle:* ${data.van.vehicle_number}%0A%0A` +
+      `📝 *TRIP BREAKDOWN:*%0A` +
+      `${tripBreakdown}%0A%0A` +
       `--------------------------------------------%0A` +
-      `🚩 *BALANCE DUE:* ₹${data.summary.balance}%0A` +
+      `💰 *Total Earnings:* ₹${Number(data.summary.total_earned).toLocaleString('en-IN')}%0A` +
+      `✅ *Total Paid:* ₹${Number(data.summary.total_paid).toLocaleString('en-IN')}%0A` +
+      `--------------------------------------------%0A` +
+      `🚩 *BALANCE DUE:* ₹${Number(data.summary.balance).toLocaleString('en-IN')}%0A` +
       `--------------------------------------------%0A%0A` +
       `*Thank you for supporting Earthy Source!*%0A` +
       `We appreciate your hard work in helping us deliver freshness. 🙏%0A%0A` +
       `_This is an automated statement. For any queries, please contact the admin._`;
 
-    // Opens WhatsApp Web or Mobile App
     window.open(`https://wa.me/91${data.van.driver_phone}?text=${message}`, '_blank');
   };
 
@@ -89,7 +96,7 @@ const sendWhatsApp = () => {
             <span style={{ color: '#ccc', fontSize: '14px' }}>{data.van.vehicle_number}</span>
           </div>
           <button onClick={sendWhatsApp} style={styles.whatsappBtn}>
-            <span style={{ fontSize: '18px' }}>💬</span> Share on WhatsApp
+            <span style={{ fontSize: '18px' }}>💬</span> Share Statement
           </button>
         </div>
 

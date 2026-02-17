@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Earthy Source Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --primary: #2F4F4F; --accent: #007bff; --success: #28a745; --bg: #f4f7f6; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; display: flex; justify-content: center; padding: 10px; }
+        .app-container { width: 100%; max-width: 450px; background: white; border-radius: 15px; padding: 25px; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        header { text-align: center; margin-bottom: 20px; }
+        .logo { width: 150px; margin-bottom: 10px; }
+        .status-bar { padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 20px; font-size: 14px; border: 1px solid #ddd; }
+        .neutral { background: #eee; color: #333; }
+        .success { background: #d4edda; color: #155724; border-color: #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border-color: #f5c6cb; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-size: 12px; font-weight: bold; color: var(--primary); margin-bottom: 5px; text-transform: uppercase; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
+        .geo-btn { background: var(--accent); color: white; border: none; padding: 12px; width: 100%; border-radius: 8px; font-weight: bold; margin-bottom: 15px; cursor: pointer; }
+        .submit-btn { background: var(--primary); color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <img src="/EarthyLogo.JPG" alt="Earthy Source" class="logo">
+            <div style="font-size: 12px; color: #888;">FIELD MARKETING RECONCILIATION</div>
+        </header>
+        <div id="status-bar" class="status-bar neutral">1. Capture GPS Location</div>
+        <form id="visitForm">
+            <div class="input-group">
+                <label>Executive Name</label>
+                <input type="text" id="exec_name" list="exec_list" placeholder="Search your name..." required autocomplete="off">
+                <datalist id="exec_list"></datalist>
+            </div>
+            <div class="input-group">
+                <label>Shop/Client Name</label>
+                <input type="text" id="shop_name" placeholder="Enter Shop Name" required>
+            </div>
+            <div class="input-group">
+                <label>Outcome</label>
+                <select id="outcome" required>
+                    <option value="Interested (Lead)">Interested (Lead)</option>
+                    <option value="Order Placed">Order Placed</option>
+                    <option value="Follow-up Required">Follow-up Required</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Photo Proof</label>
+                <input type="file" id="photo_file" accept="image/*" capture="camera" required>
+            </div>
+            <button type="button" id="geoBtn" class="geo-btn">📍 Get GPS Location</button>
+            <button type="submit" id="submitBtn" class="submit-btn" disabled>Submit Report</button>
+        </form>
+    </div>
+
+    <script>
+        const SB_URL = 'https://xyyirkwiredufamtnqdu.supabase.co';
+        const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5eWlya3dpcmVkdWZhbXRucWR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwMzU4NTMsImV4cCI6MjA3ODYxMTg1M30.224kMghJSknWvvTNeJdhFr_iDvnaU-IXh5MdPmN2XSQ';
+        const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+        let uLat = null, uLng = null;
+
+        async function loadNames() {
+            const { data, error } = await supabaseClient.from('employees').select('full_name').eq('role', 'Marketing').eq('is_active', 'true');
+            if (data) {
+                const list = document.getElementById('exec_list');
+                list.innerHTML = "";
+                data.forEach(emp => {
+                    let opt = document.createElement('option');
+                    opt.value = emp.full_name;
+                    list.appendChild(opt);
+                });
+            }
+        }
+        window.addEventListener('DOMContentLoaded', loadNames);
+
+        const updateStatus = (msg, type) => {
+            const bar = document.getElementById('status-bar');
+            bar.innerText = msg;
+            bar.className = `status-bar ${type}`;
+        };
+
+        document.getElementById('geoBtn').onclick = () => {
+            if (navigator.geolocation) {
+                updateStatus("🛰️ Locating...", "neutral");
+                navigator.geolocation.getCurrentPosition((p) => {
+                    uLat = p.coords.latitude; uLng = p.coords.longitude;
+                    updateStatus("✅ GPS Captured", "success");
+                    document.getElementById('geoBtn').style.background = "#28a745";
+                    document.getElementById('geoBtn').innerText = "GPS Fixed";
+                    document.getElementById('submitBtn').disabled = false;
+                }, () => updateStatus("❌ GPS Error", "error"));
+            }
+        };
+
+        document.getElementById('visitForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const execName = document.getElementById('exec_name').value;
+            const shopName = document.getElementById('shop_name').value;
+            
+            btn.disabled = true;
+            btn.innerText = 'Validating...';
+
+            // DUPLICATE LOGIC: Check if same shop submitted by same person in last 5 mins
+            const fiveMinsAgo = new Date(Date.now() - 5 * 60000).toISOString();
+            const { data: existing } = await supabaseClient
+                .from('marketing_visits')
+                .select('id')
+                .eq('executive_name', execName)
+                .eq('shop_name', shopName)
+                .gt('created_at', fiveMinsAgo);
+
+            if (existing && existing.length > 0) {
+                updateStatus("⚠️ Duplicate! Shop already reported.", "error");
+                btn.disabled = false; btn.innerText = 'Submit Report';
+                return;
+            }
+
+            btn.innerText = 'Uploading Photo...';
+            const file = document.getElementById('photo_file').files[0];
+            const fileName = `v_${Date.now()}.jpg`;
+            
+            const { error: upErr } = await supabaseClient.storage.from('visit-proofs').upload(fileName, file);
+            if (upErr) { updateStatus("❌ Upload Error", "error"); btn.disabled = false; return; }
+            
+            const photoUrl = `${SB_URL}/storage/v1/object/public/visit-proofs/${fileName}`;
+            
+            const { error: dbErr } = await supabaseClient.from('marketing_visits').insert([{
+                executive_name: execName,
+                shop_name: shopName,
+                outcome: document.getElementById('outcome').value,
+                latitude: uLat, longitude: uLng, photo_url: photoUrl
+            }]);
+            
+            if (!dbErr) {
+                updateStatus("🎉 Success!", "success");
+                document.getElementById('visitForm').reset();
+                document.getElementById('geoBtn').style.background = "#007bff";
+                document.getElementById('geoBtn').innerText = "📍 Get GPS Location";
+                btn.innerText = "Submit Report";
+            } else {
+                updateStatus("❌ DB Error", "error");
+                btn.disabled = false;
+            }
+        };
+    </script>
+</body>
+</html>
