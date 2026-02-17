@@ -16,13 +16,20 @@ type Batch = {
   expiry_date: string;
   net_quantity: string;
   report_url?: string;
+  ph_value?: number;
+  tds_value?: number;
 };
 
 export default function BatchManager() {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Batch>>({});
+  const [newBatchForm, setNewBatchForm] = useState<Partial<Batch>>({ 
+    status: 'PASSED', 
+    production_date: new Date().toISOString().split('T')[0] 
+  });
   const [isUploading, setIsUploading] = useState<number | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -36,6 +43,31 @@ export default function BatchManager() {
     const { data } = await supabase.from("batches").select("*").order("id", { ascending: false });
     setBatches(data || []);
     setLoading(false);
+  }
+
+  async function handleCreateBatch() {
+    if(!newBatchForm.batch_code) return alert("Batch code is required");
+    
+    // Formatting numeric values before insert
+    const payload = {
+      ...newBatchForm,
+      batch_code: newBatchForm.batch_code.trim().toUpperCase(),
+      ph_value: newBatchForm.ph_value ? parseFloat(newBatchForm.ph_value.toString()) : null,
+      tds_value: newBatchForm.tds_value ? parseInt(newBatchForm.tds_value.toString()) : null,
+    };
+
+    const { error } = await supabase.from("batches").insert([payload]);
+    
+    if (!error) {
+      setIsCreating(false);
+      setNewBatchForm({ 
+        status: 'PASSED', 
+        production_date: new Date().toISOString().split('T')[0] 
+      });
+      fetchBatches();
+    } else {
+      alert("Error creating batch: " + error.message);
+    }
   }
 
   const stats = useMemo(() => {
@@ -66,15 +98,16 @@ export default function BatchManager() {
     setIsUploading(batch.id);
     try {
       const fileName = `${batch.batch_code}_${Date.now()}.${file.name.split('.').pop()}`;
+      // Upload to the bucket
       const { error: uploadError } = await supabase.storage.from("water-reports").upload(fileName, file);
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage.from("water-reports").getPublicUrl(fileName);
       
+      // Update the DB record with the new URL
       const { error: dbError } = await supabase.from("batches").update({ report_url: publicUrl }).eq("id", batch.id);
       if (dbError) throw dbError;
 
-      // Update local state immediately so UI reflects the change
       setBatches(prev => prev.map(b => b.id === batch.id ? { ...b, report_url: publicUrl } : b));
       
     } catch (err: any) {
@@ -83,7 +116,7 @@ export default function BatchManager() {
   }
 
   return (
-    <div style={{ padding: "40px", background: "#f8fafc", minHeight: "100vh", fontFamily: "inherit" }}>
+    <div style={{ padding: "40px", background: "#f8fafc", minHeight: "100vh" }}>
       <div style={{ maxWidth: "1250px", margin: "0 auto" }}>
         
         <div style={{ marginBottom: "30px", display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
@@ -91,14 +124,44 @@ export default function BatchManager() {
             <h1 style={{ color: "#0f172a", fontSize: "2.2rem", fontWeight: 800 }}>Production Batches</h1>
             <p style={{ color: "#64748b" }}>Control center for batch quality and reporting.</p>
           </div>
-          {/* STATS SUMMARY */}
-          <div style={{ display: 'flex', gap: '15px' }}>
+          
+          <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+            <button onClick={() => setIsCreating(true)} style={addBtnStyle}>+ New Batch</button>
             <div className="stat-pill" style={{ borderLeft: '4px solid #16a34a' }}>{stats.passed} Passed</div>
             <div className="stat-pill" style={{ borderLeft: '4px solid #ef4444' }}>{stats.failed} Failed</div>
             <div className="stat-pill" style={{ borderLeft: '4px solid #f59e0b' }}>{stats.pending} Pending</div>
           </div>
         </div>
 
+        {isCreating && (
+          <div style={createPanelStyle}>
+            <h3 style={{ marginBottom: '15px' }}>Create New Production Batch</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px' }}>
+              <div>
+                <label style={labelStyle}>Batch Code</label>
+                <input style={inputStyle} placeholder="e.g. BATCH-001" onChange={e => setNewBatchForm({...newBatchForm, batch_code: e.target.value})} />
+              </div>
+              <div>
+                <label style={labelStyle}>Prod. Date</label>
+                <input type="date" style={inputStyle} value={newBatchForm.production_date} onChange={e => setNewBatchForm({...newBatchForm, production_date: e.target.value})} />
+              </div>
+              <div>
+                <label style={labelStyle}>pH Value</label>
+                <input type="number" step="0.1" style={inputStyle} placeholder="7.0" onChange={e => setNewBatchForm({...newBatchForm, ph_value: parseFloat(e.target.value)})} />
+              </div>
+              <div>
+                <label style={labelStyle}>TDS Value</label>
+                <input type="number" style={inputStyle} placeholder="80" onChange={e => setNewBatchForm({...newBatchForm, tds_value: parseInt(e.target.value)})} />
+              </div>
+            </div>
+            <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
+              <button onClick={handleCreateBatch} style={saveBtnStyleLocal}>Save Batch</button>
+              <button onClick={() => setIsCreating(false)} style={resetBtnStyle}>Cancel</button>
+            </div>
+          </div>
+        )}
+
+        {/* Filter Section */}
         <section style={{ 
           background: "white", padding: "20px", borderRadius: "16px", marginBottom: "24px",
           display: "flex", gap: "15px", flexWrap: "wrap", alignItems: "flex-end",
@@ -117,10 +180,6 @@ export default function BatchManager() {
               <option value="PENDING">Pending</option>
             </select>
           </div>
-          <div>
-            <label style={labelStyle}>Production Date</label>
-            <input type="date" style={inputStyle} value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} />
-          </div>
           <button onClick={() => { setSearchQuery(""); setStatusFilter("ALL"); setDateFilter(""); }} style={resetBtnStyle}>Reset</button>
         </section>
 
@@ -129,6 +188,7 @@ export default function BatchManager() {
             <thead>
               <tr style={{ background: "#f8fafc", textAlign: "left", borderBottom: "1px solid #e2e8f0" }}>
                 <th style={tHeadStyle}>Batch Code</th>
+                <th style={tHeadStyle}>Details (pH/TDS)</th>
                 <th style={tHeadStyle}>Prod. Date</th>
                 <th style={tHeadStyle}>Status</th>
                 <th style={tHeadStyle}>Purity Report</th>
@@ -143,6 +203,16 @@ export default function BatchManager() {
                       <input style={editInputStyle} value={editForm.batch_code} onChange={e => setEditForm({...editForm, batch_code: e.target.value})} /> 
                       : <strong>{batch.batch_code}</strong>
                     }
+                  </td>
+                  <td style={tCellStyle}>
+                     {editingId === batch.id ? (
+                       <div style={{display:'flex', gap:'5px'}}>
+                          <input type="number" step="0.1" style={editInputStyle} value={editForm.ph_value} placeholder="pH" onChange={e => setEditForm({...editForm, ph_value: parseFloat(e.target.value)})} />
+                          <input type="number" style={editInputStyle} value={editForm.tds_value} placeholder="TDS" onChange={e => setEditForm({...editForm, tds_value: parseInt(e.target.value)})} />
+                       </div>
+                     ) : (
+                       <span style={{fontSize:'0.8rem', color:'#64748b'}}>pH: {batch.ph_value || '-'} | TDS: {batch.tds_value || '-'}</span>
+                     )}
                   </td>
                   <td style={tCellStyle}>
                     {editingId === batch.id ? 
@@ -189,7 +259,6 @@ export default function BatchManager() {
               ))}
             </tbody>
           </table>
-          {filteredBatches.length === 0 && <div style={{ padding: "40px", textAlign: "center", color: "#94a3b8" }}>No batches found matching your filters.</div>}
         </div>
       </div>
 
@@ -207,10 +276,14 @@ export default function BatchManager() {
   );
 }
 
+// Styles
+const addBtnStyle = { background: "#0A6CFF", color: "white", border: "none", padding: "10px 20px", borderRadius: "10px", fontWeight: 700, cursor: "pointer" };
+const createPanelStyle = { background: "white", padding: "20px", borderRadius: "16px", marginBottom: "20px", border: "2px solid #0A6CFF", boxShadow: "0 10px 30px rgba(10,108,255,0.1)" };
+const saveBtnStyleLocal = { background: "#0A6CFF", color: "white", border: "none", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", fontWeight: 600 };
 const labelStyle = { display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#64748b", marginBottom: "6px", textTransform: "uppercase" as const };
 const inputStyle = { width: "100%", padding: "10px", borderRadius: "10px", border: "1px solid #cbd5e1", fontSize: "0.9rem" };
 const editInputStyle = { padding: "6px", borderRadius: "6px", border: "1px solid #0ea5e9", width: "100%", fontSize: "0.9rem" };
-const resetBtnStyle = { background: "none", border: "none", color: "#ef4444", fontWeight: 600, cursor: "pointer", paddingBottom: "10px" };
+const resetBtnStyle = { background: "none", border: "none", color: "#ef4444", fontWeight: 600, cursor: "pointer" };
 const tHeadStyle: React.CSSProperties = { padding: "16px 20px" };
 const tCellStyle: React.CSSProperties = { padding: "16px 20px" };
 const statusBadge = (status: string): React.CSSProperties => ({
