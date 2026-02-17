@@ -125,7 +125,11 @@ export default function AdminDashboard() {
                         <div style={statsRow}>
                             <div style={statCard}>Stops<br/><strong>{filteredVisits.length}</strong></div>
                             <div style={statCard}>Work Duration<br/><strong>{getWorkDuration()}</strong></div>
-                            <div style={statCard} onClick={() => window.location.href='/admin/expenses'} style={{...statCard, cursor:'pointer', border:'1px solid #007bff'}}>
+                            {/* FIXED DUPLICATE ATTRIBUTE ERROR BELOW */}
+                            <div 
+                                onClick={() => window.location.href='/admin/expenses'} 
+                                style={{...statCard, cursor:'pointer', border:'1px solid #007bff'}}
+                            >
                                 💰 Billing<br/><span style={{fontSize:'12px', color:'#007bff'}}>Enter Manual Amount ➔</span>
                             </div>
                         </div>
