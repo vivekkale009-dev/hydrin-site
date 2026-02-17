@@ -33,15 +33,11 @@ export default function PurityCheck() {
   const [fingerprint, setFingerprint] = useState("");
 
   useEffect(() => {
-    // 👇 THIS LINE WAS BREAKING VERCEL – now we cast to string
     getFingerprint()
       .then((fp) => setFingerprint(fp as string))
       .catch(() => setFingerprint(""));
   }, []);
 
-  // =======================================================================
-  // VERIFY BATCH
-  // =======================================================================
   async function handleVerify() {
     setError("");
     setData(null);
@@ -49,7 +45,6 @@ export default function PurityCheck() {
     setIsExpired(false);
     setLoading(true);
 
-    // ---------- reCAPTCHA ----------
     const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
     if (!siteKey) {
       setError("reCAPTCHA sitekey not configured on server.");
@@ -76,54 +71,30 @@ export default function PurityCheck() {
     }
 
     (window as any).grecaptcha.reset();
-    // ---------- end reCAPTCHA ----------
 
-    // ---------- IP + GEO ----------
     let ip = "unknown";
-    let geo: {
-      country: string | null;
-      state: string | null;
-      city: string | null;
-      isp: string | null;
-      latitude: number | null;
-      longitude: number | null;
-      pincode: string | null;
-    } = {
-      country: null,
-      state: null,
-      city: null,
-      isp: null,
-      latitude: null,
-      longitude: null,
-      pincode: null,
-    };
+    let geo: any = { country: null, state: null, city: null, isp: null, latitude: null, longitude: null, pincode: null };
 
     try {
       const g = await fetch("/api/get-ip-geo").then((r) => r.json());
       ip = g.ip || "unknown";
-
       const raw = g.geo || {};
       geo = {
         country: raw.country ?? null,
-        // ipwho.is uses "region", our DB uses "state"
         state: raw.state ?? raw.region ?? null,
         city: raw.city ?? null,
-        // route already normalises isp, but keep fallback to connection.isp
         isp: raw.isp ?? raw.connection?.isp ?? null,
         latitude: raw.latitude ?? null,
         longitude: raw.longitude ?? null,
-        // ipwho.is uses "postal"
         pincode: raw.postal ?? raw.pincode ?? null,
       };
     } catch (e) {
       console.warn("Geo lookup failed", e);
     }
 
-    // ---------- DEVICE / BROWSER ----------
     const deviceType = getDeviceType();
     const browser = getBrowser();
 
-    // ---------- BLOCK CHECK ----------
     try {
       const { data: blocked } = await supabase
         .from("blocked_ips")
@@ -133,18 +104,14 @@ export default function PurityCheck() {
         .maybeSingle();
 
       if (blocked) {
-        setError(
-          "Too many suspicious scans detected from your network. Please contact support."
-        );
+        setError("Too many suspicious scans detected from your network. Please contact support.");
         setLoading(false);
         return;
       }
     } catch (e) {
       console.warn("Blocked IP check failed", e);
-      // do NOT block user if DB check fails – just continue
     }
 
-    // ---------- ORIGINAL LOGIC: validate batch ----------
     if (!batch.trim()) {
       setError("Please enter batch number.");
       setLoading(false);
@@ -160,13 +127,11 @@ export default function PurityCheck() {
       .maybeSingle();
 
     if (fetchError) {
-      console.error(fetchError);
       setError("Database error. Try again.");
       setLoading(false);
       return;
     }
 
-    // ---------- FIRST vs REPEAT (by fingerprint + batch) ----------
     let isFirstScan: boolean | null = null;
     try {
       if (fingerprint) {
@@ -176,479 +141,205 @@ export default function PurityCheck() {
           .eq("batch_code", normalizedBatch)
           .eq("fingerprint", fingerprint)
           .limit(1);
-
-        if (!existingErr) {
-          isFirstScan = !existing || existing.length === 0;
-        }
+        if (!existingErr) isFirstScan = !existing || existing.length === 0;
       }
     } catch (e) {
       console.warn("first_scan check failed", e);
     }
 
-    // ===================================================================
-    // FAKE BOTTLE
-    // ===================================================================
     if (!batchData) {
       setIsFake(true);
-
       await supabase.from("scans").insert({
-        batch_code: normalizedBatch,
-        status: "fake",
-        ip_address: ip,
-        country: geo.country,
-        state: geo.state,
-        city: geo.city,
-        isp: geo.isp,
-        latitude: geo.latitude,
-        longitude: geo.longitude,
-        pincode: geo.pincode,
-        device_type: deviceType,
-        browser,
-        fingerprint: fingerprint || null,
-        first_scan: isFirstScan,
+        batch_code: normalizedBatch, status: "fake", ip_address: ip, country: geo.country,
+        state: geo.state, city: geo.city, isp: geo.isp, latitude: geo.latitude,
+        longitude: geo.longitude, pincode: geo.pincode, device_type: deviceType,
+        browser, fingerprint: fingerprint || null, first_scan: isFirstScan,
       });
-
       setLoading(false);
       return;
     }
 
-    // ===================================================================
-    // EXPIRED BOTTLE
-    // ===================================================================
     const today = new Date();
     const expiry = new Date(batchData.expiry_date);
-
     if (expiry < today) {
       setIsExpired(true);
-
       await supabase.from("scans").insert({
-        batch_code: normalizedBatch,
-        status: "expired",
-        ip_address: ip,
-        country: geo.country,
-        state: geo.state,
-        city: geo.city,
-        isp: geo.isp,
-        latitude: geo.latitude,
-        longitude: geo.longitude,
-        pincode: geo.pincode,
-        device_type: deviceType,
-        browser,
-        fingerprint: fingerprint || null,
-        first_scan: isFirstScan,
+        batch_code: normalizedBatch, status: "expired", ip_address: ip, country: geo.country,
+        state: geo.state, city: geo.city, isp: geo.isp, latitude: geo.latitude,
+        longitude: geo.longitude, pincode: geo.pincode, device_type: deviceType,
+        browser, fingerprint: fingerprint || null, first_scan: isFirstScan,
       });
-
       setLoading(false);
-      return; // do NOT proceed to verified UI
+      return;
     }
 
-    // ===================================================================
-    // VERIFIED BOTTLE
-    // ===================================================================
     setData(batchData);
-
     await supabase.from("scans").insert({
-      batch_code: normalizedBatch,
-      status: "verified",
-      ip_address: ip,
-      country: geo.country,
-      state: geo.state,
-      city: geo.city,
-      isp: geo.isp,
-      latitude: geo.latitude,
-      longitude: geo.longitude,
-      pincode: geo.pincode,
-      device_type: deviceType,
-      browser,
-      fingerprint: fingerprint || null,
-      first_scan: isFirstScan,
+      batch_code: normalizedBatch, status: "verified", ip_address: ip, country: geo.country,
+      state: geo.state, city: geo.city, isp: geo.isp, latitude: geo.latitude,
+      longitude: geo.longitude, pincode: geo.pincode, device_type: deviceType,
+      browser, fingerprint: fingerprint || null, first_scan: isFirstScan,
     });
-
     setLoading(false);
   }
 
-  // =======================================================================
-  // PDF GENERATION  (your original UI)
-  // =======================================================================
-// 2. Replace your existing downloadCertificate function with this:
-const downloadCertificate = () => {
-  if (!data) return;
+  const downloadCertificate = () => {
+    if (!data) return;
+    const doc = new jsPDF("p", "pt", "a4");
 
-  const doc = new jsPDF("p", "pt", "a4");
+    // Range calculations for PDF
+    const phRange = data.ph_value ? `${(data.ph_value - 0.5).toFixed(1)} - ${(data.ph_value + 0.5).toFixed(1)}` : "6.5 - 8.5 (Standard)";
+    const tdsRange = data.tds_value ? `${data.tds_value - 5} - ${data.tds_value + 5} mg/L` : "70 - 120 mg/L";
 
-  // --- 1. HEADER LOGO & TEXT ---
-  try {
-    // Adding your EarthyLogo.JPG at the top left
-    doc.addImage("/EarthyLogo.JPG", "JPEG", 40, 15, 40, 40); 
-  } catch (e) {
-    console.warn("Header logo not found at /EarthyLogo.JPG");
-  }
+    try {
+      doc.addImage("/EarthyLogo.JPG", "JPEG", 40, 15, 40, 40); 
+    } catch (e) {
+      console.warn("Header logo not found");
+    }
 
-  // Blue banner background (adjusted to not hide the logo)
-  doc.setFillColor(10, 108, 255);
-  doc.rect(90, 10, 465, 50, "F"); 
-  
-  doc.setFontSize(18);
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.text("PURITY VERIFICATION CERTIFICATE", 110, 42);
+    doc.setFillColor(10, 108, 255);
+    doc.rect(90, 10, 465, 50, "F");  
+    doc.setFontSize(18);
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.text("PURITY VERIFICATION CERTIFICATE", 110, 42);
 
-  // Brand Name below header
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(16);
-  doc.text("EARTHY SOURCE", 40, 85);
-  
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(100);
-  doc.text([
-    "Foods and Beverages",
-    STATIC_PLANT,
-    `FSSAI: ${STATIC_FSSAI}`,
-    `License: ${STATIC_LICENSE}`
-  ], 40, 100);
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(16);
+    doc.text("EARTHY SOURCE", 40, 85);
+    
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100);
+    doc.text(["Foods and Beverages", STATIC_PLANT, `FSSAI: ${STATIC_FSSAI}`, `License: ${STATIC_LICENSE}`], 40, 100);
 
-  // --- 2. BATCH INFO TABLE ---
-  autoTable(doc, {
-    startY: 160,
-    margin: { left: 40, right: 40 },
-    theme: "striped",
-    headStyles: { fillColor: [10, 108, 255], textColor: 255, fontStyle: "bold" },
-    bodyStyles: { textColor: 50, fontSize: 10 },
-    columnStyles: { 0: { fontStyle: "bold", cellWidth: 150 } },
-    head: [["Attribute", "Batch Details"]],
-    body: [
-      ["Batch Number", data.batch_code],
-      ["Manufacturing Date", data.production_date],
-      ["Expiry Date", data.expiry_date],
-      ["Net Quantity", data.net_quantity],
-      ["Product Status", "PASSED / QUALITY CHECKED"],
-      ["Standard Compliance", "BIS IS 14543"],
-      ["Treatment Process", "RO + UV + Ozonation + Micron Filtration"],
-    ],
-  });
+    autoTable(doc, {
+      startY: 160,
+      margin: { left: 40, right: 40 },
+      theme: "striped",
+      headStyles: { fillColor: [10, 108, 255], textColor: 255, fontStyle: "bold" },
+      bodyStyles: { textColor: 50, fontSize: 10 },
+      columnStyles: { 0: { fontStyle: "bold", cellWidth: 150 } },
+      head: [["Attribute", "Batch Details"]],
+      body: [
+        ["Batch Number", data.batch_code],
+        ["Manufacturing Date", data.production_date],
+        ["Expiry Date", data.expiry_date],
+        ["Net Quantity", data.net_quantity],
+        ["pH Level (Range)", phRange],
+        ["TDS Level (Range)", tdsRange],
+        ["Product Status", "PASSED / QUALITY CHECKED"],
+        ["Standard Compliance", "BIS IS 14543"],
+        ["Treatment Process", "RO + UV + Ozonation + Micron Filtration"],
+      ],
+    });
 
-  // --- 3. FOOTER & QUALITY SEAL ---
-  const tableBottom = (doc as any).lastAutoTable.finalY;
-  const footerY = tableBottom + 40;
+    const tableBottom = (doc as any).lastAutoTable.finalY;
+    const footerY = tableBottom + 40;
+    doc.setFontSize(11);
+    doc.setTextColor(0);
+    doc.setFont("helvetica", "bold");
+    doc.text("Quality Assurance Declaration", 40, footerY);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(80);
+    doc.text("This certificate confirms that the mentioned batch has passed all physical, chemical, and microbiological tests in accordance with national safety standards for packaged drinking water. For any issue related to product please contact us at support@earthysource.in", 40, footerY + 20, { maxWidth: 380 });
 
-  doc.setFontSize(11);
-  doc.setTextColor(0);
-  doc.setFont("helvetica", "bold");
-  doc.text("Quality Assurance Declaration", 40, footerY);
+    try {
+      doc.addImage("/OxyHydraQualityCheck.png", "PNG", 430, footerY - 10, 100, 100);
+    } catch (e) {}
 
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(80);
-  // Fixed quotes in your text string
-  doc.text(
-    "This certificate confirms that the mentioned batch has passed all physical, chemical, and microbiological tests in accordance with national safety standards for packaged drinking water. For any issue related to product please contact us at support@earthysource.in",
-    40,
-    footerY + 20,
-    { maxWidth: 380 } // Reduced width to give the seal space on the right
-  );
-
-  try {
-    // Quality Seal Image - Adjusted position to the right of the declaration text
-    doc.addImage("/OxyHydraQualityCheck.png", "PNG", 430, footerY - 10, 100, 100);
-  } catch (e) {
-    console.warn("Seal image not found at /OxyHydraQualityCheck.png");
-  }
-
-  // Bottom Line
-  doc.setDrawColor(200);
-  doc.line(40, 780, 555, 780);
-  doc.setFontSize(8);
-  doc.text("This is a digitally generated document. Verification available at earthysource.in", 40, 800);
-
-  doc.save(`EarthySource-Purity-Batch-${data.batch_code}.pdf`);
-};
-
-  // =======================================================================
-  // STYLES (unchanged)
-  // =======================================================================
-  const page: CSSProperties = {
-    padding: "60px 20px",
-    minHeight: "100vh",
-    color: "white",
+    doc.setDrawColor(200);
+    doc.line(40, 780, 555, 780);
+    doc.setFontSize(8);
+    doc.text("This is a digitally generated document. Verification available at earthysource.in", 40, 800);
+    doc.save(`EarthySource-Purity-Batch-${data.batch_code}.pdf`);
   };
 
-  const inner: CSSProperties = {
-    maxWidth: "900px",
-    margin: "0 auto",
-  };
+  const page: CSSProperties = { padding: "60px 20px", minHeight: "100vh", color: "white" };
+  const inner: CSSProperties = { maxWidth: "900px", margin: "0 auto" };
+  const title: CSSProperties = { fontSize: "3rem", fontWeight: 800, marginBottom: "20px" };
+  const subtitle: CSSProperties = { fontSize: "1.1rem", marginBottom: "20px", maxWidth: "520px" };
+  const inputRow: CSSProperties = { display: "flex", gap: "12px", flexWrap: "wrap" };
+  const inputStyle: CSSProperties = { padding: "14px 18px", width: "300px", background: "rgba(255,255,255,0.22)", border: "1px solid rgba(255,255,255,0.75)", borderRadius: "10px", color: "white" };
+  const verifyButton: CSSProperties = { padding: "14px 28px", borderRadius: "10px", background: "white", color: "black", cursor: "pointer", border: "none", fontWeight: 700 };
+  const card: CSSProperties = { background: "rgba(0,0,0,0.55)", padding: "30px", borderRadius: "20px", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.18)", marginBottom: "25px" };
+  const smallCard: CSSProperties = { background: "rgba(0,0,0,0.55)", padding: "20px", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.18)" };
+  const sectionTitle: CSSProperties = { fontSize: "1.6rem", fontWeight: 700, marginBottom: "10px" };
 
-  const title: CSSProperties = {
-    fontSize: "3rem",
-    fontWeight: 800,
-    marginBottom: "20px",
-  };
-
-  const subtitle: CSSProperties = {
-    fontSize: "1.1rem",
-    marginBottom: "20px",
-    maxWidth: "520px",
-  };
-
-  const inputRow: CSSProperties = {
-    display: "flex",
-    gap: "12px",
-    flexWrap: "wrap",
-  };
-
-  const inputStyle: CSSProperties = {
-    padding: "14px 18px",
-    width: "300px",
-    background: "rgba(255,255,255,0.22)",
-    border: "1px solid rgba(255,255,255,0.75)",
-    borderRadius: "10px",
-    color: "white",
-  };
-
-  const verifyButton: CSSProperties = {
-    padding: "14px 28px",
-    borderRadius: "10px",
-    background: "white",
-    color: "black",
-    cursor: "pointer",
-    border: "none",
-    fontWeight: 700,
-  };
-
-  const card: CSSProperties = {
-    background: "rgba(0,0,0,0.55)",
-    padding: "30px",
-    borderRadius: "20px",
-    backdropFilter: "blur(20px)",
-    border: "1px solid rgba(255,255,255,0.18)",
-    marginBottom: "25px",
-  };
-
-  const smallCard: CSSProperties = {
-    background: "rgba(0,0,0,0.55)",
-    padding: "20px",
-    borderRadius: "16px",
-    border: "1px solid rgba(255,255,255,0.18)",
-  };
-
-  const sectionTitle: CSSProperties = {
-    fontSize: "1.6rem",
-    fontWeight: 700,
-    marginBottom: "10px",
-  };
-
-  // =======================================================================
-  // RENDER (UI kept exactly as your original)
-  // =======================================================================
   return (
     <>
-      {/* reCAPTCHA script */}
       <Script src="https://www.google.com/recaptcha/api.js" />
+      <BackgroundWrapper backgroundStyle={{ backgroundImage: "url('/new-bg.png')", backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed" }}>
+        <main style={{ ...page, padding: "0" }}>
+          <div style={{ width: "100%", background: "rgba(248, 248, 255, 0.95)", backdropFilter: "blur(10px)", padding: "15px 0", borderBottom: "1px solid #ddd", boxShadow: "0 2px 10px rgba(0,0,0,0.1)", position: "sticky", top: 0, zIndex: 100, display: "flex", justifyContent: "center" }}>
+            <div style={{ width: "100%", maxWidth: "900px", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 20px" }}>
+              <a href="/" style={{ display: "flex", alignItems: "center", gap: "15px", textDecoration: "none" }}>
+                <img src="/EarthyLogo.JPG" alt="Earthy Source" style={{ height: "100px", width: "auto" }} />
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <span style={{ color: "Green", fontWeight: 800, fontSize: "1.8rem", lineHeight: 1 }}>Earthy Source</span>
+                  <span style={{ color: "#444", fontSize: "0.7rem", fontWeight: 600, letterSpacing: "1px" }}>FOODS AND BEVERAGES</span>
+                </div>
+              </a>
+              <a href="/" style={{ color: "#0A6CFF", textDecoration: "none", fontSize: "0.9rem", fontWeight: 700, border: "2px solid #0A6CFF", padding: "8px 20px", borderRadius: "50px" }}>Home Page</a>
+            </div>
+          </div>
 
-      <BackgroundWrapper
-        backgroundStyle={{
-          backgroundImage: "url('/new-bg.png')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundAttachment: "fixed",
-        }}
-      >
-<main style={{ ...page, padding: "0" }}> {/* Remove top padding from main so strip hits the top */}
-  
-  {/* --- FULL WIDTH GHOST WHITE STRIP --- */}
-  <div style={{
-    width: "100%",
-    background: "rgba(248, 248, 255, 0.95)", // GhostWhite with slight transparency
-    backdropFilter: "blur(10px)",
-    padding: "15px 0",
-    borderBottom: "1px solid #ddd",
-    boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
-    position: "sticky",
-    top: 0,
-    zIndex: 100,
-    display: "flex",
-    justifyContent: "center" // Centers the content inside the strip
-  }}>
-    <div style={{
-      width: "100%",
-      maxWidth: "900px",
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: "0 20px"
-    }}>
-      <a href="/" style={{ display: "flex", alignItems: "center", gap: "15px", textDecoration: "none" }}>
-        <img src="/EarthyLogo.JPG" alt="Earthy Source" style={{ height: "100px", width: "auto" }} />
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <span style={{ color: "Green", fontWeight: 800, fontSize: "1.8rem", lineHeight: 1 }}>Earthy Source</span>
-          <span style={{ color: "#444", fontSize: "0.7rem", fontWeight: 600, letterSpacing: "1px" }}>FOODS AND BEVERAGES</span>
-        </div>
-      </a>
-      
-      <a href="/" style={{
-        color: "#0A6CFF",
-        textDecoration: "none",
-        fontSize: "0.9rem",
-        fontWeight: 700,
-        border: "2px solid #0A6CFF",
-        padding: "8px 20px",
-        borderRadius: "50px",
-        transition: "0.3s"
-      }}>
-        Home Page
-      </a>
-    </div>
-  </div>
+          <div style={{ ...inner, padding: "60px 20px" }}>
+            <h1 style={title}>Earthy Source Purity Check</h1>
+            <p style={subtitle}>Verify your bottle using the batch number printed on the label.</p>
 
-  <div style={{ ...inner, padding: "60px 20px" }}> {/* Add padding back to the content area */}
-    <h1 style={title}>Earthy Source Purity Check</h1>
-    <p style={subtitle}>Verify your bottle using the batch number printed on the label.</p>
-
-  {/* ... rest of your code ... */}
-          
-
-            {/* Input */}
             <div style={inputRow}>
-              <input
-                style={inputStyle}
-                placeholder="Enter batch number"
-                value={batch}
-                onChange={(e) => setBatch(e.target.value)}
-              />
-              <button style={verifyButton} onClick={handleVerify}>
-                {loading ? "Checking..." : "Verify"}
-              </button>
+              <input style={inputStyle} placeholder="Enter batch number" value={batch} onChange={(e) => setBatch(e.target.value)} />
+              <button style={verifyButton} onClick={handleVerify}>{loading ? "Checking..." : "Verify"}</button>
             </div>
 
-            {/* CAPTCHA widget */}
-            <div style={{ marginTop: 20 }}>
-              <div
-                className="g-recaptcha"
-                data-sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}
-              ></div>
-            </div>
-
+            <div style={{ marginTop: 20 }}><div className="g-recaptcha" data-sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}></div></div>
             {error && <p style={{ color: "#ff6b6b", marginTop: 8 }}>{error}</p>}
 
-            {/* Fake Bottle */}
             {isFake && (
               <div style={card}>
-                <h2 style={{ ...sectionTitle, color: "#ff6b6b" }}>
-                  Fake / Invalid Bottle ❌
-                </h2>
-                <p>
-                  This batch number is not present in Earthy’s secure
-                  database. Please check the code again or contact our team.
-                </p>
+                <h2 style={{ ...sectionTitle, color: "#ff6b6b" }}>Fake / Invalid Bottle ❌</h2>
+                <p>This batch number is not present in Earthy’s secure database. Please check the code again or contact our team.</p>
               </div>
             )}
 
-            {/* EXPIRED BOTTLE */}
             {isExpired && (
               <div style={card}>
-                <h2 style={{ ...sectionTitle, color: "#ff6b6b" }}>
-                  Bottle Expired ❌
-                </h2>
-                <p>
-                  This bottle has passed its expiry date and should not be
-                  consumed.
-                </p>
-                <p style={{ marginTop: 10 }}>
-                  Please contact our support team for assistance.
-                </p>
-
-                <a href="mailto:support@earthysource.in">
-                  <button
-                    style={{
-                      marginTop: 16,
-                      padding: "12px 24px",
-                      borderRadius: 10,
-                      border: "1px solid white",
-                      background: "transparent",
-                      color: "white",
-                      cursor: "pointer",
-                      fontWeight: 600,
-                    }}
-                  >
-                    Contact Support
-                  </button>
-                </a>
+                <h2 style={{ ...sectionTitle, color: "#ff6b6b" }}>Bottle Expired ❌</h2>
+                <p>This bottle has passed its expiry date and should not be consumed.</p>
+                <a href="mailto:support@earthysource.in"><button style={{ marginTop: 16, padding: "12px 24px", borderRadius: 10, border: "1px solid white", background: "transparent", color: "white", cursor: "pointer", fontWeight: 600 }}>Contact Support</button></a>
               </div>
             )}
 
-            {/* VERIFIED BOTTLE */}
             {data && !isExpired && (
               <>
                 <div style={card}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                    }}
-                  >
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                     <h2 style={sectionTitle}>Bottle Verified</h2>
-                    <img
-                      src="/VerifiedTick.png"
-                      alt="verified"
-                      style={{ width: "32px", height: "32px" }}
-                    />
+                    <img src="/VerifiedTick.png" alt="verified" style={{ width: "32px", height: "32px" }} />
                   </div>
-
                   <p>Authentic and safe for consumption.</p>
-
-                  <p>
-                    <strong>Batch:</strong> {data.batch_code}
-                  </p>
-                  <p>
-                    <strong>Manufactured:</strong> {data.production_date}
-                  </p>
-                  <p>
-                    <strong>Expires:</strong> {data.expiry_date}
-                  </p>
-                  <p>
-                    <strong>Status:</strong> {data.status}
-                  </p>
-
+                  <p><strong>Batch:</strong> {data.batch_code}</p>
+                  <p><strong>Manufactured:</strong> {data.production_date}</p>
+                  <p><strong>Expires:</strong> {data.expiry_date}</p>
+                  <p><strong>Status:</strong> {data.status}</p>
                   <p>✔ Batch verified from Earthy Source database</p>
-
-                  <button
-                    onClick={downloadCertificate}
-                    style={{
-                      marginTop: 20,
-                      padding: "12px 24px",
-                      background: "white",
-                      color: "black",
-                      fontWeight: 700,
-                      borderRadius: 10,
-                      cursor: "pointer",
-                      border: "none",
-                    }}
-                  >
-                    Download Purity Certificate
-                  </button>
+                  <button onClick={downloadCertificate} style={{ marginTop: 20, padding: "12px 24px", background: "white", color: "black", fontWeight: 700, borderRadius: 10, cursor: "pointer", border: "none" }}>Download Purity Certificate</button>
                 </div>
 
-                {/* Safety Cards */}
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns:
-                      "repeat(auto-fit, minmax(230px,1fr))",
-                    gap: 18,
-                  }}
-                >
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px,1fr))", gap: 18 }}>
                   <div style={smallCard}>
                     <div style={{ fontSize: "2rem" }}>🧪</div>
-                    <h3 style={{ fontWeight: 600 }}>
-                      Microbiological Safety
-                    </h3>
+                    <h3 style={{ fontWeight: 600 }}>Microbiological Safety</h3>
                     <p>No harmful bacteria detected.</p>
                   </div>
 
                   <div style={smallCard}>
                     <div style={{ fontSize: "2rem" }}>⚗️</div>
                     <h3 style={{ fontWeight: 600 }}>Chemical Safety</h3>
+                    {/* SURGICAL ADDITION: PH RANGE */}
+                    <p>pH Range: {data.ph_value ? `${(data.ph_value - 0.5).toFixed(1)} - ${(data.ph_value + 0.5).toFixed(1)}` : '6.5 - 8.5'}</p>
                     <p>Meets BIS limits for all chemical parameters.</p>
                   </div>
 
@@ -661,67 +352,25 @@ const downloadCertificate = () => {
                   <div style={smallCard}>
                     <div style={{ fontSize: "2rem" }}>🪨</div>
                     <h3 style={{ fontWeight: 600 }}>Mineral Balance</h3>
+                    {/* SURGICAL ADDITION: TDS RANGE */}
+                    <p>TDS Range: {data.tds_value ? `${data.tds_value - 5} - ${data.tds_value + 5} mg/L` : '70 - 120 mg/L'}</p>
                     <p>Essential minerals preserved.</p>
                   </div>
                 </div>
 
                 <div style={card}>
                   <h2 style={sectionTitle}>Our Purity Promise</h2>
-                  <p>
-                    Every Earthy bottle undergoes strict physical, chemical,
-                    and microbiological testing before dispatch.
-                  </p>
-                  <p>
-                    We follow BIS-approved standards and internal QA protocols
-                    to keep every batch consistent and safe.
-                  </p>
-
-                  <a href="mailto:support@earthysource.in">
-                    <button
-                      style={{
-                        marginTop: 16,
-                        padding: "12px 24px",
-                        borderRadius: 10,
-                        border: "1px solid white",
-                        background: "transparent",
-                        color: "white",
-                        cursor: "pointer",
-                        fontWeight: 600,
-                      }}
-                    >
-                      Contact Quality Team
-                    </button>
-                  </a>
+                  <p>Every Earthy bottle undergoes strict physical, chemical, and microbiological testing before dispatch.</p>
+                  <a href="mailto:support@earthysource.in"><button style={{ marginTop: 16, padding: "12px 24px", borderRadius: 10, border: "1px solid white", background: "transparent", color: "white", cursor: "pointer", fontWeight: 600 }}>Contact Quality Team</button></a>
                 </div>
               </>
             )}
           </div>
-		  {/* --- INTERESTING FOOTER LINK --- */}
-  <div style={{
-    marginTop: "50px",
-    textAlign: "center",
-    padding: "40px",
-    background: "linear-gradient(135deg, rgba(10,108,255,0.2) 0%, rgba(0,0,0,0.4) 100%)",
-    borderRadius: "20px",
-    border: "1px solid rgba(10,108,255,0.3)"
-  }}>
-    <h3 style={{ fontSize: "1.4rem", marginBottom: "10px" }}>Pure Water is just the beginning.</h3>
-    <p style={{ color: "#ccc", marginBottom: "20px" }}>Discover our mission to bring sustainable, earth-friendly hydration to everyone.</p>
-    <a href="/">
-      <button style={{
-        padding: "12px 30px",
-        borderRadius: "30px",
-        background: "#0A6CFF",
-        color: "white",
-        border: "none",
-        fontWeight: 600,
-        cursor: "pointer",
-        boxShadow: "0 4px 15px rgba(10,108,255,0.4)"
-      }}>
-        Explore Earthy Source
-      </button>
-    </a>
-  </div>
+          <div style={{ marginTop: "50px", textAlign: "center", padding: "40px", background: "linear-gradient(135deg, rgba(10,108,255,0.2) 0%, rgba(0,0,0,0.4) 100%)", borderRadius: "20px", border: "1px solid rgba(10,108,255,0.3)" }}>
+            <h3 style={{ fontSize: "1.4rem", marginBottom: "10px" }}>Pure Water is just the beginning.</h3>
+            <p style={{ color: "#ccc", marginBottom: "20px" }}>Discover our mission to bring sustainable, earth-friendly hydration to everyone.</p>
+            <a href="/"><button style={{ padding: "12px 30px", borderRadius: "30px", background: "#0A6CFF", color: "white", border: "none", fontWeight: 600, cursor: "pointer", boxShadow: "0 4px 15px rgba(10,108,255,0.4)" }}>Explore Earthy Source</button></a>
+          </div>
         </main>
       </BackgroundWrapper>
     </>
