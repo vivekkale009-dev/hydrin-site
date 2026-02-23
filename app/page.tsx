@@ -97,8 +97,8 @@ export default function HomePage() {
           <div className="footer-col">
             <h4>Plant Address</h4>
             <p>Earthy Source Foods And Beverages</p>
-            <p>Gut No 253, Puntamba Road, Shrirampur,</p>
-            <p>Ahilyanagar, Maharashtra, India - 413709</p>
+            <p>Gut No 253,Nimgaon Khairi, Puntamba Road,</p>
+            <p>Shrirampur, Ahilyanagar, Maharashtra, India - 413709</p>
           </div>
           <div className="footer-col">
             <h4>Reach Us</h4>
