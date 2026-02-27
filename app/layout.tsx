@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import ChatWidget from "./components/ChatWidget";
 import AdminAuthWrapper from "./components/AdminAuthWrapper"; 
 import 'leaflet/dist/leaflet.css';
+import StatusBanner from '@/components/StatusBanner';
 
 // --- SINGLE METADATA BLOCK ---
 export const metadata: Metadata = {
@@ -51,13 +52,19 @@ export default function RootLayout({
         color: "#1a2e2a", 
         WebkitFontSmoothing: "antialiased"
       }}>
+        {/* 1. Global Status Banner for Network Issues */}
+        <StatusBanner />
+
+        {/* 2. Main Content Wrapper */}
         <div style={{ position: "relative", minHeight: "100vh" }}>
           {children}
         </div>
 
+        {/* 3. Global Widgets */}
         <ChatWidget />
         <AdminAuthWrapper />
         
+        {/* 4. Background Decorative Element */}
         <div style={{
           position: "fixed",
           top: "-10%",
