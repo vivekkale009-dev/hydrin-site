@@ -29,15 +29,26 @@ function GateContent() {
     }
   }, [isAuthorized, urlId]);
 
-  useEffect(() => {
+useEffect(() => {
+    let scanner: Html5QrcodeScanner | null = null;
+
     if (isAuthorized && !urlId) {
-      const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 }, false);
-      scanner.render((decodedText) => {
-        const id = decodedText.includes('id=') ? decodedText.split('id=')[1] : decodedText;
-        handleVisitorProcess(id);
-      }, (err) => {});
-      return () => scanner.clear();
+      scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 }, false);
+      scanner.render(
+        (decodedText) => {
+          const id = decodedText.includes('id=') ? decodedText.split('id=')[1] : decodedText;
+          handleVisitorProcess(id);
+        },
+        (err) => {}
+      );
     }
+
+    return () => {
+      if (scanner) {
+        // We wrap the promise-returning clear() in a non-async function
+        scanner.clear().catch(error => console.error("Failed to clear scanner", error));
+      }
+    };
   }, [isAuthorized, urlId]);
 
   const handleAuth = () => {

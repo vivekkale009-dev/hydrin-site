@@ -43,7 +43,9 @@ export default function IndustrialVisitPortal() {
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!collegeName || adminKey !== EXPECTED_LETTER_KEY) return alert("Check inputs/key");
+    if (!collegeName || !EXPECTED_LETTER_KEY || adminKey !== EXPECTED_LETTER_KEY) {
+  return alert("Check inputs or Invalid Admin PIN.");
+}
 
     setLoading(true);
     try {
