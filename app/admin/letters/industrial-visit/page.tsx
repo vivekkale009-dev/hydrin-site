@@ -48,8 +48,8 @@ export default function IndustrialVisitPortal() {
     setLoading(true);
     try {
       const doc = new jsPDF('p', 'mm', 'a4');
-      const slateGreen = [47, 79, 79]; 
-      const forestGreen = [21, 128, 61]; 
+  const slateGreen: [number, number, number] = [47, 79, 79];
+const forestGreen: [number, number, number] = [21, 128, 61];
 
       // --- 1. WATERMARK ---
       try {
@@ -113,13 +113,13 @@ export default function IndustrialVisitPortal() {
         head: [['Particulars', 'Details']],
         body: rows.map(r => [r.label, r.value]),
         theme: 'grid',
-        headStyles: { fillColor: [249, 249, 249], textColor: slateGreen, fontStyle: 'bold' },
+     headStyles: { fillColor: [249, 249, 249], textColor: slateGreen, fontStyle: 'bold' },
         styles: { fontSize: 8.5, cellPadding: 2.5 },
         columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 } },
         margin: { left: 20, right: 20 }
       });
 
-      const tableY = (doc as any).lastAutoTable.finalY + 6;
+      const tableY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 6 : 120;
 
       // Rules Box
       doc.setFillColor(252, 253, 252);
