@@ -260,7 +260,16 @@ In the meantime, feel free to reply here if you have any urgent questions.
 }
 
 // STYLES
-const notesInputStyle = { width: "100%", padding: "8px", borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "12px", minHeight: "60px", resize: "vertical", fontFamily: "inherit" };
+const notesInputStyle: CSSProperties = { 
+  width: "100%", 
+  padding: "8px", 
+  borderRadius: "8px", 
+  border: "1px solid #e2e8f0", 
+  fontSize: "12px", 
+  minHeight: "60px", 
+  resize: "vertical", 
+  fontFamily: "inherit" 
+};
 const bulkDelBtn = { padding: "12px 20px", background: "#e53e3e", color: "white", borderRadius: "12px", border: "none", cursor: "pointer", fontWeight: "700" };
 const statusDropdown = { padding: "8px 12px", borderRadius: "10px", border: "none", fontSize: "13px", fontWeight: "700", width: "100%", cursor: "pointer" };
 const statsContainer = { display: 'flex', background: 'white', borderRadius: '15px', padding: '20px', marginBottom: '30px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' };
