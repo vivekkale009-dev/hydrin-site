@@ -15,14 +15,16 @@ export async function GET(req: Request) {
     const [empRes, attRes, advRes, payRes] = await Promise.all([
       supabase.from('employees').select('*').eq('is_active', true),
       supabase.from('attendance').select('*').gte('work_date', startDate).lte('work_date', endDate),
-      supabase.from('salary_advances').select('*'), 
+      // SURGICAL FIX: Fetch all advances, but we will filter them intelligently below
+      supabase.from('salary_advances').select('*').order('created_at', { ascending: false }), 
       supabase.from('salary_payments').select('*').order('created_at', { ascending: false })
     ]);
 
     const report = empRes.data?.map((emp: any) => {
       const empAtt = attRes.data?.filter(a => a.employee_id === emp.id) || [];
       
-      // Filter advances belonging to this month
+      // FIX: Ensure we only deduct advances that were given in this specific month
+      // or are marked as unsettled (depending on your business logic)
       const empAdv = advRes.data?.filter(a => 
         a.employee_id === emp.id && 
         a.created_at.startsWith(monthParam)
@@ -30,11 +32,9 @@ export async function GET(req: Request) {
 
       const empPayAll = payRes.data?.filter(p => p.employee_id === emp.id) || [];
 
-      const formattedDisplayMonth = new Date(year, month - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
-      
-      const empPayThisMonth = empPayAll.filter(p => 
-        p.payment_month === monthParam || p.payment_month === formattedDisplayMonth
-      );
+      // SURGICAL CHANGE: Calculate current month payments strictly by monthParam 
+      // This ensures 0-balance payments (recorded upon generation) are counted correctly.
+      const empPayThisMonth = empPayAll.filter(p => p.payment_month === monthParam);
       
       const fullDays = empAtt.filter(a => a.status === 'Full Day').length;
       const halfDays = empAtt.filter(a => a.status === 'Half Day').length;
@@ -42,15 +42,17 @@ export async function GET(req: Request) {
       
       const rate = Number(emp.daily_rate || 0);
       const grossEarnings = (fullDays * rate) + (halfDays * 0.5 * rate);
+      
+      // FIX: Ensure Number conversion is safe for the sum
       const totalAdvances = empAdv.reduce((sum, a) => sum + Number(a.amount || 0), 0);
       const paidThisMonth = empPayThisMonth.reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
 
-      // Math: Earnings (1350) - Advances (700) - Paid (650) = 0 Balance
+      // Math: Earnings - Advances - Paid = Net Due
       const netPayable = grossEarnings - totalAdvances - paidThisMonth;
 
       return {
         id: emp.id,
-        // CRITICAL FIX: Ensure 'name' exists for the frontend filter
+        employee_no: emp.employee_no || "",
         name: emp.full_name || "Unknown Staff", 
         phone: emp.contact_number || "",
         role: emp.role || "Staff",
@@ -63,8 +65,8 @@ export async function GET(req: Request) {
         paidAlready: paidThisMonth, 
         netPayable: Math.max(0, netPayable), 
         attendanceHistory: empAtt,
-        advanceHistory: empAdv, 
-        paymentHistory: empPayAll
+        advanceHistory: empAdv, // This feeds the 'Advances' tab in your drawer
+        paymentHistory: empPayAll // Kept as full history so PDF buttons show up for all months
       };
     }) || [];
 

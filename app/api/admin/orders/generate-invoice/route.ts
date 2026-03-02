@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     };
 
     const logoBase64 = getBase64Image("EarthyLogo.JPG");
-    const signBase64 = getBase64Image("Vivek_Sign.JPG");
+    const signBase64 = getBase64Image("Vivek_Sign.png");
 
     // 4. PDF Generation
     const doc = new jsPDF();
@@ -188,7 +188,7 @@ export async function POST(req: Request) {
     
     // Footer Content
     const companyAddress = "Gut No 253, Puntamba Road, Nimgaon Khairi, Shrirampur, Ahilyanagar 413709";
-    const contactInfo = "Phone: 7758877307 | Web: www.earthysource.in | Email: accounts@earthysource.in";
+    const contactInfo = "Phone: 7758877307 | Web: www.earthysource.in | Email: admin@earthysource.in";
     
     // Center alignment in footer
     const addressWidth = doc.getTextWidth(companyAddress);

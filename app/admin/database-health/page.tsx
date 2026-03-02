@@ -18,6 +18,97 @@ export default function DatabaseHealth() {
   const [lastBackup, setLastBackup] = useState<string>("Never");
   const [stats, setStats] = useState({ used: 0, limit: 524288000, tableCount: 0 });
 
+  // 📥 NEW: DOWNLOAD BLANK TEMPLATE
+const downloadTemplate = async () => {
+    if (selected.length !== 1) return Swal.fire("Selection Required", "Select one table to generate a template.", "info");
+
+    setLoading(true);
+    try {
+      // 1. Fetch the actual column names from the Database Schema (Public RPC)
+      const { data: columnData, error: schemaError } = await supabase
+        .rpc('get_table_columns', { table_name_input: selected[0] });
+
+      let headers = "";
+
+      if (!schemaError && columnData && columnData.length > 0) {
+        // Success: We got the real column names from the schema
+        headers = columnData.map((c: any) => c.column_name).join(",");
+      } else {
+        // 2. Fallback: If RPC fails, try to get headers from existing data
+        const { data: rowData, error: rowError } = await supabase
+          .from(selected[0])
+          .select('*')
+          .limit(1);
+          
+        if (rowData && rowData.length > 0) {
+          headers = Object.keys(rowData[0]).join(",");
+        } else {
+          // 3. Final Fallback if table is empty AND RPC is missing
+          headers = "id,created_at"; 
+          console.warn("RPC 'get_table_columns' not found. Falling back to defaults.");
+        }
+      }
+
+      const blob = new Blob([headers], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `${selected[0]}_template.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      Swal.fire("Template Error", e.message, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const importCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || selected.length !== 1) {
+      Swal.fire("Error", "Please select exactly ONE table to import into.", "warning");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        setLoading(true);
+        const text = event.target?.result as string;
+        const [headerLine, ...rows] = text.split("\n").filter(line => line.trim() !== "");
+        const headers = headerLine.split(",").map(h => h.trim().replace(/^"|"$/g, ''));
+
+        const formattedData = rows.map(row => {
+          const values = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
+          const obj: any = {};
+          headers.forEach((h, i) => {
+            const val = values[i];
+            // Simple type conversion
+            if (val === "true") obj[h] = true;
+            else if (val === "false") obj[h] = false;
+            else if (!isNaN(Number(val)) && val !== "") obj[h] = Number(val);
+            else obj[h] = val === "" ? null : val;
+          });
+          return obj;
+        });
+
+        const { error } = await supabase.from(selected[0]).upsert(formattedData);
+        if (error) throw error;
+
+        Swal.fire("Success", `Imported ${formattedData.length} rows into ${selected[0]}`, "success");
+        fetchDashboardData();
+      } catch (err: any) {
+        Swal.fire("Import Failed", err.message, "error");
+      } finally {
+        setLoading(false);
+        e.target.value = ""; // Reset input
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const fetchDashboardData = async () => {
     try {
       const res = await fetch("/api/admin/sync");
@@ -43,20 +134,18 @@ export default function DatabaseHealth() {
 
   const selectAll = () => setSelected(tables);
 
-  // SEARCH LOGIC
   const filteredTables = tables.filter(t => t.toLowerCase().includes(searchTerm.toLowerCase()));
 
-  // 📥 BULLETPROOF CSV DOWNLOAD LOGIC
   const downloadCSV = async () => {
     if (selected.length === 0) return Swal.fire("Selection Required", "Select a table first", "info");
-    
+
     setLoading(true);
     Swal.fire({ title: 'Preparing Exports...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
     try {
       for (const tableName of selected) {
         const { data, error } = await supabase.from(tableName).select('*');
-        
+
         if (error) {
           console.error(`Error fetching ${tableName}:`, error);
           continue;
@@ -64,13 +153,13 @@ export default function DatabaseHealth() {
 
         if (data && data.length > 0) {
           const headers = Object.keys(data[0]).join(",");
-          const rows = data.map(row => 
+          const rows = data.map(row =>
             Object.values(row).map(val => {
               let str = String(val === null ? "" : val);
               return `"${str.replace(/"/g, '""')}"`;
             }).join(",")
           ).join("\n");
-          
+
           const csvContent = headers + "\n" + rows;
           const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
           const url = URL.createObjectURL(blob);
@@ -80,11 +169,10 @@ export default function DatabaseHealth() {
           link.setAttribute("download", `${tableName}_${new Date().toISOString().split('T')[0]}.csv`);
           document.body.appendChild(link);
           link.click();
-          
+
           document.body.removeChild(link);
           URL.revokeObjectURL(url);
 
-          // Small pause to prevent browser from blocking multiple files
           await new Promise(resolve => setTimeout(resolve, 600));
         }
       }
@@ -95,7 +183,6 @@ export default function DatabaseHealth() {
     setLoading(false);
   };
 
-  // ⚙️ SYSTEM ACTIONS (SYNC, RESTORE, PURGE)
   const triggerAction = async (method: string, title: string) => {
     if (selected.length === 0) return Swal.fire("Selection Required", "Please select at least one table.", "info");
 
@@ -108,8 +195,8 @@ export default function DatabaseHealth() {
     });
 
     if (password !== process.env.NEXT_PUBLIC_ADMIN_PASSWORD) {
-       if(password) Swal.fire("Error", "Incorrect Password", "error");
-       return;
+      if (password) Swal.fire("Error", "Incorrect Password", "error");
+      return;
     }
 
     setLoading(true);
@@ -122,19 +209,19 @@ export default function DatabaseHealth() {
         body: JSON.stringify({ selectedTables: selected })
       });
       const data = await res.json();
-      
+
       if (res.ok) {
         Swal.fire("Operation Successful", data.message, "success");
         if (data.timestamp) {
-            setLastBackup(data.timestamp);
-            localStorage.setItem("last_backup_time", data.timestamp);
+          setLastBackup(data.timestamp);
+          localStorage.setItem("last_backup_time", data.timestamp);
         }
         fetchDashboardData();
       } else throw new Error(data.error);
-    } catch (e: any) { 
-        Swal.fire("Error", e.message, "error"); 
+    } catch (e: any) {
+      Swal.fire("Error", e.message, "error");
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -143,7 +230,7 @@ export default function DatabaseHealth() {
   return (
     <div style={{ backgroundColor: "#f8fafc", minHeight: "100vh", padding: "40px", fontFamily: "sans-serif" }}>
       <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-        
+
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "40px" }}>
           <div>
             <Link href="/admin/scan-dashboard" style={{ color: "#64748b", textDecoration: "none", fontSize: "0.9rem" }}>← Back to Manager</Link>
@@ -166,17 +253,17 @@ export default function DatabaseHealth() {
             </div>
           </div>
           <div style={{ width: "100%", height: "14px", background: "#f1f5f9", borderRadius: "10px", overflow: "hidden" }}>
-            <div style={{ 
-                width: `${usagePercent}%`, 
-                height: "100%", 
-                background: usagePercent > 80 ? "#ef4444" : "#0f172a", 
-                transition: "width 0.6s cubic-bezier(0.4, 0, 0.2, 1)" 
+            <div style={{
+              width: `${usagePercent}%`,
+              height: "100%",
+              background: usagePercent > 80 ? "#ef4444" : "#0f172a",
+              transition: "width 0.6s cubic-bezier(0.4, 0, 0.2, 1)"
             }} />
           </div>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "350px 1fr", gap: "30px", alignItems: "start" }}>
-          
+
           {/* LEFT: TABLE SELECTION (SCROLLABLE) */}
           <div style={{ background: "#fff", padding: "25px", borderRadius: "20px", border: "1px solid #e2e8f0", position: "sticky", top: "20px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
@@ -184,21 +271,21 @@ export default function DatabaseHealth() {
               <button onClick={selectAll} style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontSize: "0.85rem", fontWeight: "600" }}>Select All</button>
             </div>
 
-            <input 
-              type="text" 
-              placeholder="Filter tables..." 
+            <input
+              type="text"
+              placeholder="Filter tables..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #e2e8f0", marginBottom: "15px", boxSizing: "border-box" }}
             />
-            
+
             <div style={{ display: "flex", flexDirection: "column", gap: "2px", maxHeight: "400px", overflowY: "auto", paddingRight: "5px" }}>
               {filteredTables.length > 0 ? filteredTables.map(table => (
                 <label key={table} style={tableRowStyle(selected.includes(table))}>
-                  <input 
-                    type="checkbox" 
-                    checked={selected.includes(table)} 
-                    onChange={() => toggleTable(table)} 
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(table)}
+                    onChange={() => toggleTable(table)}
                   />
                   <span style={{ fontWeight: "500", fontSize: "0.9rem" }}>{table}</span>
                 </label>
@@ -208,34 +295,63 @@ export default function DatabaseHealth() {
 
           {/* RIGHT: ACTIONS */}
           <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-            <ActionCard 
-               title="Cloud Synchronization" 
-               desc="Push selected tables to Google Sheets. Automatically creates missing tabs."
-               btn="Push to Sheets" 
-               color="#0f172a"
-               onClick={() => triggerAction("POST", "Backup")} 
+            <ActionCard
+              title="Cloud Synchronization"
+              desc="Push selected tables to Google Sheets. Automatically creates missing tabs."
+              btn="Push to Sheets"
+              color="#0f172a"
+              onClick={() => triggerAction("POST", "Backup")}
             />
-            <ActionCard 
-               title="Database Restore" 
-               desc="Pull data from Google Sheets to overwrite local Supabase tables."
-               btn="Restore from Sheets" 
-               color="#0f172a"
-               outline
-               onClick={() => triggerAction("PUT", "Restore")} 
+            <ActionCard
+              title="Database Restore"
+              desc="Pull data from Google Sheets to overwrite local Supabase tables."
+              btn="Restore from Sheets"
+              color="#0f172a"
+              outline
+              onClick={() => triggerAction("PUT", "Restore")}
             />
-            <ActionCard 
-               title="Local CSV Export" 
-               desc="Download selected tables directly to your computer as .csv files."
-               btn="Download CSV" 
-               color="#2563eb"
-               onClick={downloadCSV} 
+            
+            <ActionCard
+              title="CSV Template"
+              desc="Download a blank CSV with correct headers for the selected table."
+              btn="Download Template"
+              color="#6366f1"
+              onClick={downloadTemplate}
             />
-            <ActionCard 
-               title="Emergency Purge" 
-               desc="Wipe records from selected tables. This action is irreversible!"
-               btn="Purge Selected" 
-               color="#ef4444"
-               onClick={() => triggerAction("DELETE", "Purge")} 
+
+            <input
+              type="file"
+              id="csvImport"
+              accept=".csv"
+              hidden
+              onChange={importCSV}
+            />
+
+            <ActionCard
+              title="Local CSV Import"
+              desc="Upload a .csv file from your computer to sync into the selected table."
+              btn="Upload CSV"
+              color="#16a34a"
+              onClick={() => {
+                if (selected.length !== 1) return Swal.fire("Select Table", "Select exactly one table first", "info");
+                document.getElementById('csvImport')?.click();
+              }}
+            />
+
+            <ActionCard
+              title="Local CSV Export"
+              desc="Download selected tables directly to your computer as .csv files."
+              btn="Download CSV"
+              color="#2563eb"
+              onClick={downloadCSV}
+            />
+            
+            <ActionCard
+              title="Emergency Purge"
+              desc="Wipe records from selected tables. This action is irreversible!"
+              btn="Purge Selected"
+              color="#ef4444"
+              onClick={() => triggerAction("DELETE", "Purge")}
             />
           </div>
 
@@ -269,10 +385,10 @@ function ActionCard({ title, desc, btn, onClick, color, outline }: any) {
 }
 
 const tableRowStyle = (active: boolean) => ({
-  display: "flex", 
-  alignItems: "center", 
-  gap: "12px", 
-  padding: "10px 12px", 
+  display: "flex",
+  alignItems: "center",
+  gap: "12px",
+  padding: "10px 12px",
   borderRadius: "10px",
   background: active ? "#f1f5f9" : "transparent",
   cursor: "pointer",

@@ -65,7 +65,7 @@ export default function VerifyGatePass({ params }: { params: { id: string } }) {
         .update({
           exit_confirmed_at: new Date().toISOString(),
           exit_notes: notes,
-          status: 'out_for_delivery' 
+          status: 'delivered'
         })
         .eq("id", params.id);
 

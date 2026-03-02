@@ -1,19 +1,27 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function EmployeeOnboarding() {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
+    employee_no: "", // New Field
     name: "",
     role: "Production",
     dailyRate: "",
     phone: "",
-    aadhaar_number: "", // Changed from 'adhaar' to 'aadhaar_number'
+    aadhaar_number: "",
     bankName: "",
     accountNo: "",
     ifsc: "",
     joiningDate: new Date().toISOString().split('T')[0]
   });
+
+  // Generate Unique ID on mount
+  useEffect(() => {
+    const randomDigits = Math.floor(1000 + Math.random() * 9000); // Generates 1000-9999
+    const generatedId = `ES-${randomDigits}`;
+    setFormData(prev => ({ ...prev, employee_no: generatedId }));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,11 +30,10 @@ export default function EmployeeOnboarding() {
       const res = await fetch("/api/admin/hr/employees", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Now sending the full formData including aadhaar_number
         body: JSON.stringify(formData)
       });
       if (res.ok) {
-        alert("Employee Onboarded Successfully! 🎉");
+        alert(`Employee ${formData.employee_no} Onboarded Successfully! 🎉`);
         window.location.reload();
       }
     } catch (error) {
@@ -49,9 +56,14 @@ export default function EmployeeOnboarding() {
         </header>
 
         <div style={styles.contentGrid}>
-          {/* FORM SECTION */}
           <form onSubmit={handleSubmit} style={styles.formCard}>
-            <h3 style={styles.sectionTitle}>Personal & Professional Details</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                <h3 style={styles.sectionTitle}>Personal & Professional Details</h3>
+                <span style={{ fontSize: '12px', background: '#f1f5f9', padding: '4px 10px', borderRadius: '5px', fontWeight: 'bold' }}>
+                    ID: {formData.employee_no}
+                </span>
+            </div>
+
             <div style={styles.inputGroup}>
               <div style={styles.field}>
                 <label style={styles.label}>Full Name</label>
@@ -90,7 +102,6 @@ export default function EmployeeOnboarding() {
                   placeholder="XXXX-XXXX-XXXX" 
                   value={formData.aadhaar_number}
                   onChange={e => {
-                    // Numeric only logic for consistency
                     const val = e.target.value.replace(/\D/g, "");
                     if (val.length <= 12) {
                       setFormData({...formData, aadhaar_number: val});
@@ -113,11 +124,10 @@ export default function EmployeeOnboarding() {
             </button>
           </form>
 
-          {/* PREVIEW CARD */}
           <div style={styles.previewCard}>
               <div style={styles.avatarCircle}>{formData.name ? formData.name.charAt(0).toUpperCase() : "?"}</div>
               <h2 style={styles.prevName}>{formData.name || "Employee Name"}</h2>
-              <p style={styles.prevRole}>{formData.role}</p>
+              <p style={styles.prevRole}>{formData.role} • {formData.employee_no}</p>
               <hr style={styles.hr} />
               <div style={styles.prevStat}>
                 <span>Daily Rate:</span>
@@ -137,8 +147,6 @@ export default function EmployeeOnboarding() {
   );
 }
 
-// ... styles remain exactly the same as you provided
-
 const styles: any = {
   page: { minHeight: "100vh", backgroundImage: "url('/hero-deep.jpg')", backgroundSize: "cover", position: "relative", padding: "40px 20px" },
   overlay: { position: "absolute", inset: 0, background: "rgba(15, 23, 42, 0.92)" },
@@ -149,7 +157,7 @@ const styles: any = {
   backBtn: { color: '#38bdf8', textDecoration: 'none', fontSize: '14px', fontWeight: 'bold' },
   contentGrid: { display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '30px' },
   formCard: { background: '#fff', padding: '30px', borderRadius: '20px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' },
-  sectionTitle: { fontSize: '16px', color: '#1e293b', borderLeft: '4px solid #2563eb', paddingLeft: '10px', marginBottom: '15px' },
+  sectionTitle: { fontSize: '16px', color: '#1e293b', borderLeft: '4px solid #2563eb', paddingLeft: '10px', marginBottom: '0' },
   inputGroup: { display: 'flex', gap: '15px', marginBottom: '15px' },
   field: { flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' },
   label: { fontSize: '12px', fontWeight: 'bold', color: '#64748b' },

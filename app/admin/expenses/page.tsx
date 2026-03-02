@@ -58,11 +58,16 @@ export default function FinalExpenseDashboard() {
   };
 
   // --- LOGIC: FILTERS & CHART ---
+// --- LOGIC: FILTERS & CHART ---
   const filteredRows = useMemo(() => {
     return expenses.filter(x => {
-      const matchCat = fCat === "All" || x.category.includes(fCat);
+      // SURGICAL FIX: Normalize Miscellaneous category for filtering
+      const categoryToMatch = x.category.startsWith("Misc:") ? "Miscellaneous" : x.category;
+      
+      const matchCat = fCat === "All" || categoryToMatch === fCat;
       const matchStart = !fStart || x.expense_date >= fStart;
       const matchEnd = !fEnd || x.expense_date <= fEnd;
+      
       return matchCat && matchStart && matchEnd;
     });
   }, [expenses, fCat, fStart, fEnd]);

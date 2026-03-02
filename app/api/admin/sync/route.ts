@@ -17,17 +17,15 @@ async function getSheetsInstance() {
   return google.sheets({ version: "v4", auth });
 }
 
-// 📊 GET: Dashboard Stats & Table List
 export async function GET() {
   try {
     const { data: stats, error: statsError } = await supabase.rpc('get_database_size');
     const { data: tables, error: tableError } = await supabase.rpc('get_all_table_names');
-
     if (statsError || tableError) throw new Error("Failed to fetch DB metadata");
 
     return NextResponse.json({
       usedBytes: stats.total_bytes || 0,
-      limitBytes: 524288000, // 500MB
+      limitBytes: 524288000, 
       tableCount: stats.table_count || 0,
       availableTables: tables.map((t: any) => typeof t === 'string' ? t : t.table_name)
     });
@@ -36,7 +34,6 @@ export async function GET() {
   }
 }
 
-// 📤 POST: SELECTIVE BACKUP (Supabase -> Sheets)
 export async function POST(req: Request) {
   try {
     const { selectedTables } = await req.json();
@@ -59,12 +56,23 @@ export async function POST(req: Request) {
       if (!rows || rows.length === 0) continue;
 
       const headers = Object.keys(rows[0]);
-      const values = [headers, ...rows.map(row => headers.map(h => row[h]))];
+      const values = [
+        headers,
+        ...rows.map(row => headers.map(h => {
+          const val = row[h];
+          if (val === null || val === undefined) return "";
+          if (typeof val === 'object') {
+            const str = JSON.stringify(val);
+            return str === '{}' || str === '[]' ? "" : str;
+          }
+          return val;
+        }))
+      ];
 
       await sheets.spreadsheets.values.update({
         spreadsheetId,
         range: `${tableName}!A1`,
-        valueInputOption: "USER_ENTERED",
+        valueInputOption: "RAW", // Surgically changed to RAW to fix list_value error
         requestBody: { values },
       });
     }
@@ -79,7 +87,7 @@ export async function POST(req: Request) {
     await sheets.spreadsheets.values.update({
       spreadsheetId,
       range: `Internal_Metadata!A1`,
-      valueInputOption: "USER_ENTERED",
+      valueInputOption: "RAW",
       requestBody: { values: [["last_backup"], [timestamp]] },
     });
 
@@ -89,12 +97,9 @@ export async function POST(req: Request) {
   }
 }
 
-// 📥 PUT: SELECTIVE RESTORE (Sheets -> Supabase)
 export async function PUT(req: Request) {
   try {
     const { selectedTables } = await req.json();
-    if (!selectedTables || selectedTables.length === 0) throw new Error("No tables selected");
-
     const sheets = await getSheetsInstance();
     const spreadsheetId = process.env.SHEET_ID!;
 
@@ -109,39 +114,23 @@ export async function PUT(req: Request) {
         headers.forEach((h, i) => { obj[h] = row[i]; });
         return obj;
       });
-
       const { error } = await supabase.from(tableName).upsert(formatted);
       if (error) throw error;
     }
-
     return NextResponse.json({ success: true, message: `Restored ${selectedTables.length} tables` });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
-// 🗑️ DELETE: SELECTIVE PURGE (Wipe Supabase Tables)
-// 🗑️ DELETE: SELECTIVE PURGE (Wipe Supabase Tables)
 export async function DELETE(req: Request) {
   try {
     const { selectedTables } = await req.json();
-    if (!selectedTables || selectedTables.length === 0) throw new Error("No tables selected");
-
     for (const tableName of selectedTables) {
-      // Logic: Delete where any system column (like ctid) is not null.
-      // This works on tables even if they don't have an 'id' column.
-      const { error } = await supabase
-        .from(tableName)
-        .delete()
-        .neq('ctid', '(0,0)'); // 'ctid' is a hidden system column present in all Postgres tables
-
+      const { error } = await supabase.from(tableName).delete().neq('ctid', '(0,0)');
       if (error) throw error;
     }
-
-    return NextResponse.json({ 
-      success: true, 
-      message: `Purged ${selectedTables.length} tables from Supabase` 
-    });
+    return NextResponse.json({ success: true, message: `Purged ${selectedTables.length} tables` });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

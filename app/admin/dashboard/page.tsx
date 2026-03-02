@@ -5,7 +5,7 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 export default function CompleteCommandCenter() {
   const supabase = createClientComponentClient();
   const [mounted, setMounted] = useState(false);
-  const [data, setData] = useState<any>({ orders: [], costs: [], rules: [], vans: [], products: [] });
+  const [data, setData] = useState<any>({ orders: [], costs: [], rules: [], vans: [], products: [], expenses: [] });
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"BREAKDOWN" | "INFLOW">("BREAKDOWN");
 
@@ -40,8 +40,9 @@ export default function CompleteCommandCenter() {
         const { data: r } = await supabase.from('business_rules').select('*');
         const { data: v } = await supabase.from('vans').select('*');
         const { data: p } = await supabase.from('products').select('*');
+		const { data: ex } = await supabase.from('business_expenses').select('*');
 
-        setData({ orders: o || [], costs: c || [], rules: r || [], vans: v || [], products: p || [] });
+        setData({ orders: o || [], costs: c || [], rules: r || [], vans: v || [], products: p || [], expenses: ex || [] });
       } catch (err) {
         console.error("Critical Engine Error:", err);
       } finally {
@@ -64,6 +65,15 @@ export default function CompleteCommandCenter() {
   const stats = useMemo(() => {
     let rev = 0; let pCost = 0; let ownV = 0; let extV = 0;
     const dailyData: any = {};
+	
+	// 1. FILL EVERY DAY IN RANGE WITH ZEROS FIRST
+    let curr = new Date(filters.startDate);
+    const end = new Date(filters.endDate);
+    while (curr <= end) {
+        const dKey = curr.toISOString().split('T')[0];
+        dailyData[dKey] = { rev: 0, pCost: 0, ownV: 0, extV: 0, salaries: 0, expenses: 0 };
+        curr.setDate(curr.getDate() + 1);
+    }
 
     filteredOrders.forEach((o: any) => {
       const dateKey = o.created_at?.split('T')[0];
@@ -102,8 +112,7 @@ export default function CompleteCommandCenter() {
     });
 
     const salTotal = data.rules.filter((r: any) => r.key.toUpperCase().includes('SALARY')).reduce((a: any, b: any) => a + Number(b.value_number || 0), 0);
-    const expTotal = data.rules.filter((r: any) => r.key.toUpperCase().includes('EXPENSE') || r.key.toUpperCase().includes('BILL')).reduce((a: any, b: any) => a + Number(b.value_number || 0), 0);
-
+    const expTotal = data.expenses.filter((e: any) => e.expense_date >= filters.startDate && e.expense_date <= filters.endDate).reduce((a: any, b: any) => a + Number(b.amount || 0), 0);
     // Spread global rules across active dates for the trend lines
     const dateKeys = Object.keys(dailyData);
     dateKeys.forEach(dk => {

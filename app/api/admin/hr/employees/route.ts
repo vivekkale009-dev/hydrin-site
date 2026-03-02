@@ -10,11 +10,12 @@ export async function POST(req: Request) {
       .from('employees')
       .insert([
         { 
+          employee_no: body.employee_no, // Added this line
           full_name: body.name, 
           role: body.role, 
           daily_rate: parseFloat(body.dailyRate),
           contact_number: body.phone,
-          aadhaar_number: body.aadhaar_number, // Added Aadhar for onboarding
+          aadhaar_number: body.aadhaar_number,
           bank_details: `Bank: ${body.bankName}, Acc: ${body.accountNo}, IFSC: ${body.ifsc}`
         }
       ]);
@@ -26,7 +27,6 @@ export async function POST(req: Request) {
   }
 }
 
-// NEW: Added PUT function to handle editing/saving from the list page
 export async function PUT(req: Request) {
   try {
     const supabase = await createServerSupabaseClient();
@@ -35,6 +35,7 @@ export async function PUT(req: Request) {
     const { data, error } = await supabase
       .from('employees')
       .update({
+        employee_no: body.employee_no, // Allow updating/correcting ID if needed
         full_name: body.full_name,
         role: body.role,
         contact_number: body.contact_number,
@@ -42,7 +43,7 @@ export async function PUT(req: Request) {
         daily_rate: parseFloat(body.daily_rate),
         is_active: body.is_active
       })
-      .eq('id', body.id); // Matches the specific employee by ID
+      .eq('id', body.id);
 
     if (error) throw error;
     return NextResponse.json({ success: true, data });
@@ -51,7 +52,6 @@ export async function PUT(req: Request) {
   }
 }
 
-// NEW: Added DELETE function to remove employee records
 export async function DELETE(req: Request) {
   try {
     const supabase = await createServerSupabaseClient();
@@ -78,7 +78,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from('employees')
       .select('*')
-      .order('full_name', { ascending: true }); // Removed the 'is_active' filter so you can edit inactive ones too
+      .order('full_name', { ascending: true });
 
     if (error) throw error;
     return NextResponse.json({ data });

@@ -263,7 +263,7 @@ export default function ContactModal({ open, onClose }: any) {
 
             <a
               href={`https://wa.me/917666303769?text=${encodeURIComponent(
-                `Hi OxyHydra,\n\nName: ${form.name}\nCategory: ${form.category}\nPhone: ${form.phone}\nEmail: ${form.email}\n\nMessage:\n${form.message || "No message provided"}`
+                `Hi Earthy Source,\n\nName: ${form.name}\nCategory: ${form.category}\nPhone: ${form.phone}\nEmail: ${form.email}\n\nMessage:\n${form.message || "No message provided"}`
               )}`}
               target="_blank"
               style={{

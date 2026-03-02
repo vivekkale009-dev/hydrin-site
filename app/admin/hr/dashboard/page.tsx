@@ -63,28 +63,25 @@ export default function EliteHRDashboard() {
       doc.setTextColor(0, 0, 0);
       doc.setFontSize(10);
       doc.text(`Employee: ${selectedEmp.name}`, 14, 72);
-      doc.text(`ID: EMP-${selectedEmp.id.toString().slice(-4)}`, 14, 78);
+      doc.text(`ID: ${selectedEmp.employee_no || 'N/A'}`, 14, 78);
       doc.text(`Month: ${selectedMonth}`, 14, 84);
       doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, 150, 72);
 
-   autoTable(doc, {
+      autoTable(doc, {
         startY: 95,
         head: [['Earnings Description', 'Units', 'Amount (INR)']],
         body: [
           ['Attendance (Full Day)', `${selectedEmp.fullDays}`, `Rs. ${(selectedEmp.fullDays * selectedEmp.dailyRate).toLocaleString()}`],
           ['Attendance (Half Day)', `${selectedEmp.halfDays}`, `Rs. ${(selectedEmp.halfDays * 0.5 * selectedEmp.dailyRate).toLocaleString()}`],
-          // --- ADDED LEAVE ROW ---
           ['Leaves / Absent (Unpaid)', `${selectedEmp.leaves || 0}`, `Rs. 0`], 
-          // -----------------------
-['Gross Earnings', '', `Rs. ${selectedEmp.grossEarnings.toLocaleString()}`],
-['Deduction: Salary Advances', 'Settled', `- Rs. ${selectedEmp.advances.toLocaleString()}`],
-// ADD THIS LINE BELOW
-['Deduction: Already Paid', 'Current Month', `- Rs. ${selectedEmp.paidAlready.toLocaleString()}`],
+          ['Gross Earnings', '', `Rs. ${selectedEmp.grossEarnings.toLocaleString()}`],
+          ['Deduction: Salary Advances', 'Settled', `- Rs. ${selectedEmp.advances.toLocaleString()}`],
+          ['Deduction: Already Paid', 'Current Month', `- Rs. ${selectedEmp.paidAlready.toLocaleString()}`],
         ],
         foot: [['NET DISBURSEMENT', '', `Rs. ${selectedEmp.netPayable.toLocaleString()}`]],
         theme: 'grid',
-        headStyles: { fillColor: slateGreen as [101, 141, 109] },
-		footStyles: { fillColor: slateGreen as [101, 141, 109] },
+        headStyles: { fillColor: slateGreen as [number, number, number] },
+        footStyles: { fillColor: slateGreen as [number, number, number] },
       });
 
       const pdfBlob = doc.output('blob');
@@ -142,14 +139,11 @@ export default function EliteHRDashboard() {
   };
 
   const filteredReport = summary?.report?.filter((emp: any) =>
-    emp.name.toLowerCase().includes(searchTerm.toLowerCase())
+    emp.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (emp.employee_no && emp.employee_no.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-// This shows how much is LEFT to pay across all staff
-const totalNetPayout = summary?.report?.reduce((acc: number, curr: any) => acc + (curr.netPayable || 0), 0) || 0;
-
-// ADD THIS if you want to see how much you have already distributed this month
-const totalPaidOut = summary?.report?.reduce((acc: number, curr: any) => acc + (curr.paidAlready || 0), 0) || 0;
+  const totalNetPayout = summary?.report?.reduce((acc: number, curr: any) => acc + (curr.netPayable || 0), 0) || 0;
   const totalAdvances = summary?.report?.reduce((acc: number, curr: any) => acc + (curr.advances || 0), 0) || 0;
   const activeStaff = summary?.report?.length || 0;
 
@@ -182,7 +176,7 @@ const totalPaidOut = summary?.report?.reduce((acc: number, curr: any) => acc + (
             <p style={styles.subTitle}>{formatMonthDisplay(selectedMonth)}</p>
           </div>
           <div style={styles.filterBar}>
-            <input type="text" placeholder="🔍 Search staff..." style={styles.searchInput} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <input type="text" placeholder="🔍 Name or ID..." style={styles.searchInput} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             <input type="month" style={styles.monthInput} value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} />
           </div>
         </header>
@@ -206,6 +200,7 @@ const totalPaidOut = summary?.report?.reduce((acc: number, curr: any) => acc + (
           <table style={styles.table}>
             <thead>
               <tr>
+                <th style={styles.th}>ID</th>
                 <th style={styles.th}>Employee</th>
                 <th style={styles.th}>Attendance</th>
                 <th style={styles.th}>Advances</th>
@@ -217,23 +212,28 @@ const totalPaidOut = summary?.report?.reduce((acc: number, curr: any) => acc + (
               {filteredReport?.map((emp: any) => (
                 <tr key={emp.id}>
                   <td style={styles.td}>
+                    <span style={{fontSize: '11px', fontWeight: 'bold', color: '#64748b'}}>{emp.employee_no || 'N/A'}</span>
+                  </td>
+                  <td style={styles.td}>
                     <div style={styles.userBox}>
                       <div style={styles.userIcon}>{emp.name?.charAt(0)}</div>
                       <div><b>{emp.name}</b><br/><small>{emp.role}</small></div>
                     </div>
                   </td>
                   <td style={styles.td}>
-  {emp.fullDays}F | {emp.halfDays}H {emp.leaves > 0 && <span style={{color: '#e11d48'}}>| {emp.leaves}L</span>}
-</td>
+                    {emp.fullDays}F | {emp.halfDays}H {emp.leaves > 0 && <span style={{color: '#e11d48'}}>| {emp.leaves}L</span>}
+                  </td>
                   <td style={{ ...styles.td, color: '#e11d48' }}>₹{emp.advances}</td>
                   <td style={{ ...styles.td }}>
-  <div style={{ display: 'flex', flexDirection: 'column' }}>
-    <span style={{ fontWeight: '800' }}>₹{emp.netPayable?.toLocaleString()}</span>
-    {emp.netPayable === 0 && emp.paidAlready > 0 && (
-      <span style={{ fontSize: '10px', color: '#22c55e', fontWeight: 'bold' }}>✓ FULLY PAID</span>
-    )}
-  </div>
-</td>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontWeight: '800' }}>₹{emp.netPayable?.toLocaleString()}</span>
+                        {emp.netPayable === 0 && (
+                        <span style={{ fontSize: '10px', color: '#22c55e', fontWeight: 'bold' }}>
+                            ✓ FULLY SETTLED
+                        </span>
+                        )}
+                    </div>
+                  </td>
                   <td style={{ ...styles.td, textAlign: 'right' }}>
                     <div style={{display:'flex', gap:'8px', justifyContent:'flex-end'}}>
                         <button onClick={() => sendWhatsApp(emp, 'DUES')} style={{background:'#22c55e', border:'none', borderRadius:'8px', padding:'8px', cursor:'pointer', display:'flex', alignItems:'center'}}>
@@ -254,7 +254,7 @@ const totalPaidOut = summary?.report?.reduce((acc: number, curr: any) => acc + (
               <div style={styles.drawerHeader}>
                 <div>
                     <h2 style={{margin:0}}>{selectedEmp.name}</h2>
-                    <small>{selectedEmp.role}</small>
+                    <small>{selectedEmp.role} • {selectedEmp.employee_no || 'No ID'}</small>
                 </div>
                 <button onClick={() => setSelectedEmp(null)} style={styles.closeBtn}>✕</button>
               </div>
@@ -303,18 +303,11 @@ const totalPaidOut = summary?.report?.reduce((acc: number, curr: any) => acc + (
                         <h4 style={{marginBottom:'10px'}}>Monthly Settlement</h4>
                         <div style={styles.ledgerBox}>
                             <div style={styles.ledgerItem}><span>Gross Earnings</span><span style={styles.amtText}>₹{selectedEmp.grossEarnings?.toLocaleString()}</span></div>
-                            <div style={styles.ledgerItem}>
-  <span>Paid Already</span>
-  <span style={{...styles.amtText, color: '#e11d48'}}>-₹{selectedEmp.paidAlready?.toLocaleString()}</span>
-</div>
-							<div style={styles.ledgerItem}><span>Advances Settled</span><span style={{...styles.amtText, color: '#e11d48'}}>-₹{selectedEmp.advances?.toLocaleString()}</span></div>
-                            <div style={styles.ledgerItem}>
-  <span>Paid Already</span>
-  <span style={{...styles.amtText, color: '#e11d48'}}>-₹{selectedEmp.paidAlready?.toLocaleString()}</span>
-</div>
-							<div style={{...styles.ledgerItem, borderTop:'1px solid #cbd5e1', marginTop:'5px', paddingTop:'10px'}}>
+                            <div style={styles.ledgerItem}><span>Advances Settled</span><span style={{...styles.amtText, color: '#e11d48'}}>-₹{selectedEmp.advances?.toLocaleString()}</span></div>
+                            <div style={styles.ledgerItem}><span>Paid Already</span><span style={{...styles.amtText, color: '#e11d48'}}>-₹{selectedEmp.paidAlready?.toLocaleString()}</span></div>
+                            <div style={{...styles.ledgerItem, borderTop:'1px solid #cbd5e1', marginTop:'5px', paddingTop:'10px'}}>
                                 <span style={{fontWeight:'700'}}>Balance Due</span>
-                                <span style={{...styles.amtText, color: '#2563eb', fontSize:'18px'}}>₹{selectedEmp.netPayable?.toLocaleString()}</span>
+                                <span style={{...styles.amtText, color: '#2563eb', fontSize:'18px'}}>₹{(selectedEmp.grossEarnings - selectedEmp.advances - selectedEmp.paidAlready).toLocaleString()}</span>
                             </div>
                         </div>
                         <button onClick={generateAndUploadSlip} style={{...styles.bulkBtn, width:'100%', background:'#6366f1'}}>
@@ -327,8 +320,8 @@ const totalPaidOut = summary?.report?.reduce((acc: number, curr: any) => acc + (
                         <select style={styles.select} value={payMode} onChange={e => setPayMode(e.target.value)}>
                             <option>UPI</option><option>Cash</option><option>Bank Transfer</option>
                         </select>
-                        <button onClick={handlePayment} style={{...styles.btnPay, opacity: selectedEmp.netPayable > 0 ? 1 : 0.5}} disabled={selectedEmp.netPayable <= 0}>
-                          {selectedEmp.netPayable > 0 ? `Pay Balance: ₹${selectedEmp.netPayable.toLocaleString()}` : 'No Dues'}
+                        <button onClick={handlePayment} style={{...styles.btnPay, opacity: (selectedEmp.grossEarnings - selectedEmp.advances - selectedEmp.paidAlready) > 0 ? 1 : 0.5}} disabled={(selectedEmp.grossEarnings - selectedEmp.advances - selectedEmp.paidAlready) <= 0}>
+                          {(selectedEmp.grossEarnings - selectedEmp.advances - selectedEmp.paidAlready) > 0 ? `Pay Balance: ₹${(selectedEmp.grossEarnings - selectedEmp.advances - selectedEmp.paidAlready).toLocaleString()}` : 'No Dues'}
                         </button>
                     </div>
                   </>
@@ -359,26 +352,41 @@ const totalPaidOut = summary?.report?.reduce((acc: number, curr: any) => acc + (
                   </div>
                 ) : (
                   <div style={styles.trailContainer}>
-                    {Array.from(new Set(
-                      selectedEmp.paymentHistory
-                        ?.filter((p: any) => p.payment_month || p.for_month)
-                        .map((p: any) => p.for_month || "2026-01")
-                    )).map((monthCode: any) => (
+                    {Array.from(new Set([
+                      ...(selectedEmp.paymentHistory?.map((p: any) => p.payment_month) || []),
+                      selectedMonth
+                    ]))
+                    .filter(Boolean)
+                    .sort((a: any, b: any) => b.localeCompare(a))
+                    .map((monthCode: any) => (
                       <div key={monthCode} style={styles.trailItem}>
                         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                          <b>Slip: {formatMonthDisplay(monthCode)}</b> 
-                          <button style={styles.viewSlipBtn} onClick={() => {
-                              const { data: { publicUrl } } = supabase.storage
+                          <div>
+                            <b>Slip: {formatMonthDisplay(monthCode)}</b>
+                          </div>
+                          <button 
+                            style={styles.viewSlipBtn} 
+                            onClick={async () => {
+                                const filePath = `slips/${monthCode}/${selectedEmp.id}.pdf`;
+                                const { data: fileList } = await supabase.storage
                                 .from('salary-slips')
-                                .getPublicUrl(`slips/${monthCode}/${selectedEmp.id}.pdf`);
-                              window.open(publicUrl, "_blank");
-                          }}>👁️ View PDF</button>
+                                .list(`slips/${monthCode}`, { search: `${selectedEmp.id}.pdf` });
+
+                                if (fileList && fileList.length > 0) {
+                                    const { data: { publicUrl } } = supabase.storage
+                                        .from('salary-slips')
+                                        .getPublicUrl(filePath);
+                                    window.open(publicUrl, "_blank");
+                                } else {
+                                    alert("No salary slip found for this period. Please go to the 'Settlement' tab, click 'Generate & Share Salary Slip', and then return here to view it.");
+                                }
+                            }}
+                          >
+                            👁️ View PDF
+                          </button>
                         </div>
                       </div>
                     ))}
-                    {(!selectedEmp.paymentHistory || selectedEmp.paymentHistory.length === 0) && 
-                      <p style={styles.emptyMsg}>No playslips generated.</p>
-                    }
                   </div>
                 )}
               </div>
