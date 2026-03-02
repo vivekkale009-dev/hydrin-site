@@ -249,7 +249,7 @@ In the meantime, feel free to reply here if you have any urgent questions.
                 </tr>
               );
             }) : (
-              <tr><td colSpan={4} style={{ padding: "40px", textAlign: "center", color: "#a0aec0" }}>No leads found for this criteria.</td></tr>
+              <tr><td colSpan={6} style={{ padding: "40px", textAlign: "center", color: "#a0aec0" }}>No leads found for this criteria.</td></tr>
             )}
           </tbody>
         </table>
@@ -264,30 +264,32 @@ const notesInputStyle = { width: "100%", padding: "8px", borderRadius: "8px", bo
 const bulkDelBtn = { padding: "12px 20px", background: "#e53e3e", color: "white", borderRadius: "12px", border: "none", cursor: "pointer", fontWeight: "700" };
 const statusDropdown = { padding: "8px 12px", borderRadius: "10px", border: "none", fontSize: "13px", fontWeight: "700", width: "100%", cursor: "pointer" };
 const statsContainer = { display: 'flex', background: 'white', borderRadius: '15px', padding: '20px', marginBottom: '30px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' };
-const cardStyle: CSSProperties = {
-  background: 'white',
-  borderRadius: '12px',
-  position: 'relative', // Now TypeScript knows this is a valid 'Position' type
+const statCard = { flex: 1, borderRight: '1px solid #e2e8f0', padding: '0 20px', display: 'flex', flexDirection: 'column' as const };
+const cardStyle: CSSProperties = { 
+  background: "white", 
+  borderRadius: "20px", 
+  boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)", 
+  overflow: "hidden", 
+  position: "relative" 
 };
-const statLabel = { fontSize: '11px', color: '#718096', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '5px' };
+const statLabel = { fontSize: '11px', color: '#718096', fontWeight: 'bold', textTransform: 'uppercase' as const, marginBottom: '5px' };
 const statValue = { fontSize: '24px', fontWeight: '800', color: '#2d3748' };
 const containerStyle = { padding: "40px", backgroundColor: "#f8fafc", minHeight: "100vh", fontFamily: "system-ui, sans-serif" };
 const headerStyle = { display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "35px" };
 const toolbarStyle = { display: "flex", gap: "20px", marginBottom: "25px", alignItems: "flex-end" };
-const labelStyle = { display: "block", fontSize: "12px", fontWeight: "700", color: "#718096", marginBottom: "5px", textTransform: "uppercase" };
+const labelStyle = { display: "block", fontSize: "12px", fontWeight: "700", color: "#718096", marginBottom: "5px", textTransform: "uppercase" as const };
 const searchStyle = { width: "100%", padding: "12px 16px", borderRadius: "12px", border: "1px solid #e2e8f0", fontSize: "14px" };
 const selectStyle = { width: "100%", padding: "11px 12px", borderRadius: "12px", border: "1px solid #e2e8f0", background: "white", fontSize: "14px" };
-const cardStyle = { background: "white", borderRadius: "20px", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)", overflow: "hidden", position: "relative" };
-const tableStyle = { width: "100%", borderCollapse: "collapse" };
-const theadStyle = { background: "#f1f5f9", textAlign: "left" };
+const tableStyle = { width: "100%", borderCollapse: "collapse" as const };
+const theadStyle = { background: "#f1f5f9", textAlign: "left" as const };
 const thStyle = { padding: "16px 20px", fontSize: "12px", color: "#64748b", fontWeight: "700" };
 const trStyle = { borderBottom: "1px solid #f1f5f9" };
 const tdStyle = { padding: "20px" };
 const msgStyle = { fontSize: "13px", color: "#64748b", marginTop: "5px", lineHeight: "1.4" };
-const badgeStyle = (color, bg) => ({ padding: "4px 12px", borderRadius: "8px", fontSize: "11px", fontWeight: "800", backgroundColor: bg, color: color });
+const badgeStyle = (color, bg) => ({ padding: "4px 12px", borderRadius: "8px", fontSize: "11px", fontWeight: "800" as const, backgroundColor: bg, color: color });
 const refreshBtn = { padding: "12px 24px", background: "#3182ce", color: "white", borderRadius: "12px", border: "none", cursor: "pointer", fontWeight: "700" };
 const clearBtn = { padding: "12px 24px", background: "transparent", color: "#718096", borderRadius: "12px", border: "1px solid #e2e8f0", cursor: "pointer", fontWeight: "600" };
-const waBtn = { background: "#25D366", color: "white", border: "none", padding: "10px 20px", borderRadius: "10px", cursor: "pointer", fontWeight: "700", width: "100%" };
-const loaderOverlay = { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(255,255,255,0.7)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "700", color: "#3182ce" };
+const waBtn = { background: "#25D366", color: "white", border: "none", padding: "10px 20px", borderRadius: "10px", cursor: "pointer", fontWeight: "700" as const, width: "100%" };
+const loaderOverlay = { position: "absolute" as const, top: 0, left: 0, right: 0, bottom: 0, background: "rgba(255,255,255,0.7)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "700", color: "#3182ce" };
 const sourceBadgeChat = { fontSize: "9px", padding: "2px 6px", borderRadius: "4px", background: "#ebf8ff", color: "#2b6cb0", fontWeight: "bold", border: "1px solid #bee3f8" };
 const sourceBadgeForm = { fontSize: "9px", padding: "2px 6px", borderRadius: "4px", background: "#f7fafc", color: "#4a5568", fontWeight: "bold", border: "1px solid #e2e8f0" };
