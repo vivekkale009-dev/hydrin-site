@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { CSSProperties } from "react";
 
 export default function CRMPage() {
   const [leads, setLeads] = useState([]);
@@ -263,7 +264,11 @@ const notesInputStyle = { width: "100%", padding: "8px", borderRadius: "8px", bo
 const bulkDelBtn = { padding: "12px 20px", background: "#e53e3e", color: "white", borderRadius: "12px", border: "none", cursor: "pointer", fontWeight: "700" };
 const statusDropdown = { padding: "8px 12px", borderRadius: "10px", border: "none", fontSize: "13px", fontWeight: "700", width: "100%", cursor: "pointer" };
 const statsContainer = { display: 'flex', background: 'white', borderRadius: '15px', padding: '20px', marginBottom: '30px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' };
-const statCard = { flex: 1, display: 'flex', flexDirection: 'column' as any, alignItems: 'center', borderRight: '1px solid #edf2f7' };
+const cardStyle: CSSProperties = {
+  background: 'white',
+  borderRadius: '12px',
+  position: 'relative', // Now TypeScript knows this is a valid 'Position' type
+};
 const statLabel = { fontSize: '11px', color: '#718096', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '5px' };
 const statValue = { fontSize: '24px', fontWeight: '800', color: '#2d3748' };
 const containerStyle = { padding: "40px", backgroundColor: "#f8fafc", minHeight: "100vh", fontFamily: "system-ui, sans-serif" };
