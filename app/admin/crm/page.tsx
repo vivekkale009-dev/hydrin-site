@@ -58,7 +58,7 @@ export default function CRMPage() {
     if (selectedLeads.length === 0) return;
 
     const password = prompt(`Enter Admin Password to delete ${selectedLeads.length} leads:`);
-    if (password === "admin123") {
+   if (password === process.env.NEXT_PUBLIC_ADMIN_PASSWORD) {
       if (confirm(`Are you absolutely sure you want to delete ${selectedLeads.length} entries?`)) {
         setLoading(true);
         try {

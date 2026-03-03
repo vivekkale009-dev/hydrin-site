@@ -195,8 +195,17 @@ export default function InternshipLetterPortal() {
       uploadFormData.append('file', blob);
       uploadFormData.append('fileName', `ESFB_INT_2026_${serial}.pdf`);
 
+      console.log("Starting PDF upload...");
       const uploadRes = await fetch("/api/upload-pdf", { method: "POST", body: uploadFormData });
       const uploadResult = await uploadRes.json();
+      
+      // SURGICAL FIX: Validate that the URL exists before trying to sync to DB
+      if (!uploadResult.url) {
+        console.error("Upload failed: No URL returned from storage API");
+        throw new Error("Storage failure: The PDF was not assigned a public URL.");
+      }
+      
+      console.log("PDF uploaded successfully. URL:", uploadResult.url);
       
       const syncRes = await fetch("/api/issue-document", {
         method: "POST",
@@ -212,8 +221,16 @@ export default function InternshipLetterPortal() {
         setPdfUrl(uploadResult.url);
         alert("Internship Letter Issued Successfully!");
         await fetchSerial(); 
+      } else {
+        const errorData = await syncRes.json();
+        throw new Error(`DB Sync Failed: ${errorData.error || 'Unknown error'}`);
       }
-    } catch (err: any) { alert(err.message); } finally { setLoading(false); }
+    } catch (err: any) { 
+        console.error("Generation/Sync Error:", err.message);
+        alert(`Error: ${err.message}`); 
+    } finally { 
+        setLoading(false); 
+    }
   };
 
   return (

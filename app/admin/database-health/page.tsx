@@ -18,35 +18,22 @@ export default function DatabaseHealth() {
   const [lastBackup, setLastBackup] = useState<string>("Never");
   const [stats, setStats] = useState({ used: 0, limit: 524288000, tableCount: 0 });
 
-  // 📥 NEW: DOWNLOAD BLANK TEMPLATE
-const downloadTemplate = async () => {
+  // 📥 DOWNLOAD BLANK TEMPLATE
+  const downloadTemplate = async () => {
     if (selected.length !== 1) return Swal.fire("Selection Required", "Select one table to generate a template.", "info");
 
     setLoading(true);
     try {
-      // 1. Fetch the actual column names from the Database Schema (Public RPC)
       const { data: columnData, error: schemaError } = await supabase
         .rpc('get_table_columns', { table_name_input: selected[0] });
 
       let headers = "";
-
       if (!schemaError && columnData && columnData.length > 0) {
-        // Success: We got the real column names from the schema
         headers = columnData.map((c: any) => c.column_name).join(",");
       } else {
-        // 2. Fallback: If RPC fails, try to get headers from existing data
-        const { data: rowData, error: rowError } = await supabase
-          .from(selected[0])
-          .select('*')
-          .limit(1);
-          
-        if (rowData && rowData.length > 0) {
-          headers = Object.keys(rowData[0]).join(",");
-        } else {
-          // 3. Final Fallback if table is empty AND RPC is missing
-          headers = "id,created_at"; 
-          console.warn("RPC 'get_table_columns' not found. Falling back to defaults.");
-        }
+        const { data: rowData } = await supabase.from(selected[0]).select('*').limit(1);
+        if (rowData && rowData.length > 0) headers = Object.keys(rowData[0]).join(",");
+        else headers = "id,created_at"; 
       }
 
       const blob = new Blob([headers], { type: 'text/csv;charset=utf-8;' });
@@ -85,7 +72,6 @@ const downloadTemplate = async () => {
           const obj: any = {};
           headers.forEach((h, i) => {
             const val = values[i];
-            // Simple type conversion
             if (val === "true") obj[h] = true;
             else if (val === "false") obj[h] = false;
             else if (!isNaN(Number(val)) && val !== "") obj[h] = Number(val);
@@ -103,7 +89,7 @@ const downloadTemplate = async () => {
         Swal.fire("Import Failed", err.message, "error");
       } finally {
         setLoading(false);
-        e.target.value = ""; // Reset input
+        e.target.value = "";
       }
     };
     reader.readAsText(file);
@@ -133,24 +119,17 @@ const downloadTemplate = async () => {
   };
 
   const selectAll = () => setSelected(tables);
-
   const filteredTables = tables.filter(t => t.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const downloadCSV = async () => {
     if (selected.length === 0) return Swal.fire("Selection Required", "Select a table first", "info");
-
     setLoading(true);
     Swal.fire({ title: 'Preparing Exports...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
     try {
       for (const tableName of selected) {
         const { data, error } = await supabase.from(tableName).select('*');
-
-        if (error) {
-          console.error(`Error fetching ${tableName}:`, error);
-          continue;
-        }
-
+        if (error) continue;
         if (data && data.length > 0) {
           const headers = Object.keys(data[0]).join(",");
           const rows = data.map(row =>
@@ -163,16 +142,13 @@ const downloadTemplate = async () => {
           const csvContent = headers + "\n" + rows;
           const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
           const url = URL.createObjectURL(blob);
-
           const link = document.createElement("a");
           link.href = url;
           link.setAttribute("download", `${tableName}_${new Date().toISOString().split('T')[0]}.csv`);
           document.body.appendChild(link);
           link.click();
-
           document.body.removeChild(link);
           URL.revokeObjectURL(url);
-
           await new Promise(resolve => setTimeout(resolve, 600));
         }
       }
@@ -186,12 +162,31 @@ const downloadTemplate = async () => {
   const triggerAction = async (method: string, title: string) => {
     if (selected.length === 0) return Swal.fire("Selection Required", "Please select at least one table.", "info");
 
+    let isDryRun = false;
+
+    if (method === 'PUT') {
+      const result = await Swal.fire({
+        title: 'Restore Mode',
+        text: "Choose between a test run or actual data sync.",
+        icon: 'question',
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: 'Actual Restore',
+        denyButtonText: 'Dry Run (Test)',
+        cancelButtonText: 'Abort',
+        confirmButtonColor: '#0f172a',
+        denyButtonColor: '#6366f1',
+      });
+
+      if (result.isDismissed) return;
+      isDryRun = result.isDenied;
+    }
+
     const { value: password } = await Swal.fire({
       title: 'Security Verification',
-      text: `Confirm ${title} for ${selected.length} tables?`,
+      text: `Confirm ${isDryRun ? 'DRY RUN' : title} for ${selected.length} tables?`,
       input: 'password',
       showCancelButton: true,
-      confirmButtonColor: method === 'DELETE' ? '#ef4444' : '#0f172a'
     });
 
     if (password !== process.env.NEXT_PUBLIC_ADMIN_PASSWORD) {
@@ -206,17 +201,49 @@ const downloadTemplate = async () => {
       const res = await fetch("/api/admin/sync", {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ selectedTables: selected })
+        body: JSON.stringify({ selectedTables: selected, dryRun: isDryRun })
       });
+      
       const data = await res.json();
 
       if (res.ok) {
-        Swal.fire("Operation Successful", data.message, "success");
-        if (data.timestamp) {
-          setLastBackup(data.timestamp);
-          localStorage.setItem("last_backup_time", data.timestamp);
+        if (data.isDryRun) {
+          const summaryHtml = data.details.map((d: any) => {
+            const hasKey = d.keysUsed && d.keysUsed !== "None" && d.keysUsed !== "";
+            return `
+            <div style="text-align: left; margin-bottom: 12px; padding: 10px; background: ${hasKey ? '#f8fafc' : '#fef2f2'}; border-radius: 8px; border: 1px solid ${hasKey ? '#e2e8f0' : '#fecaca'};">
+              <strong style="color: ${hasKey ? '#0f172a' : '#991b1b'};">${d.table}</strong><br/>
+              <span style="font-size: 0.9rem;">Rows detected: <strong>${d.rowsToSync}</strong></span><br/>
+              <small style="color: ${hasKey ? '#6366f1' : '#dc2626'}; font-weight: ${hasKey ? '400' : '700'};">
+                ${hasKey ? `Primary Key Target: ${d.keysUsed}` : '⚠️ NO PRIMARY KEY DETECTED'}
+              </small>
+            </div>`;
+          }).join('');
+
+          Swal.fire({
+            title: "Dry Run Results",
+            html: `
+              <div style="background: #fff4e5; border: 1px solid #ff9800; padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: left;">
+                <h5 style="margin: 0 0 8px 0; color: #b45309;">⚠️ Why Primary Keys Matter</h5>
+                <p style="margin: 0; font-size: 0.85rem; color: #92400e; line-height: 1.4;">
+                  The <strong>Primary Key</strong> (like <em>id</em> or <em>fy_year</em>) is the unique fingerprint for your data. 
+                  <br/><br/>
+                  • <strong>Prevents Duplicates:</strong> Without it, every restore would create double rows.<br/>
+                  • <strong>Updates Data:</strong> It tells the system: "If this row exists, update it. If not, create it."
+                </p>
+              </div>
+              <div style="max-height: 250px; overflow-y: auto; padding-right: 5px;">
+                ${summaryHtml}
+              </div>
+            `,
+            icon: "info",
+            confirmButtonText: "I Understand",
+            confirmButtonColor: "#0f172a"
+          });
+        } else {
+          Swal.fire("Success", data.message, "success");
+          fetchDashboardData();
         }
-        fetchDashboardData();
       } else throw new Error(data.error);
     } catch (e: any) {
       Swal.fire("Error", e.message, "error");
@@ -230,7 +257,6 @@ const downloadTemplate = async () => {
   return (
     <div style={{ backgroundColor: "#f8fafc", minHeight: "100vh", padding: "40px", fontFamily: "sans-serif" }}>
       <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "40px" }}>
           <div>
             <Link href="/admin/scan-dashboard" style={{ color: "#64748b", textDecoration: "none", fontSize: "0.9rem" }}>← Back to Manager</Link>
@@ -240,7 +266,6 @@ const downloadTemplate = async () => {
           <button onClick={fetchDashboardData} style={{ padding: "10px 20px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "#fff", cursor: "pointer", fontWeight: "600" }}>🔄 Refresh Stats</button>
         </header>
 
-        {/* STORAGE GRAPH CARD */}
         <div style={{ background: "#fff", padding: "30px", borderRadius: "20px", border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)", marginBottom: "30px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "15px" }}>
             <div>
@@ -263,14 +288,11 @@ const downloadTemplate = async () => {
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "350px 1fr", gap: "30px", alignItems: "start" }}>
-
-          {/* LEFT: TABLE SELECTION (SCROLLABLE) */}
           <div style={{ background: "#fff", padding: "25px", borderRadius: "20px", border: "1px solid #e2e8f0", position: "sticky", top: "20px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
               <h3 style={{ margin: 0 }}>Select Tables</h3>
               <button onClick={selectAll} style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontSize: "0.85rem", fontWeight: "600" }}>Select All</button>
             </div>
-
             <input
               type="text"
               placeholder="Filter tables..."
@@ -278,7 +300,6 @@ const downloadTemplate = async () => {
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #e2e8f0", marginBottom: "15px", boxSizing: "border-box" }}
             />
-
             <div style={{ display: "flex", flexDirection: "column", gap: "2px", maxHeight: "400px", overflowY: "auto", paddingRight: "5px" }}>
               {filteredTables.length > 0 ? filteredTables.map(table => (
                 <label key={table} style={tableRowStyle(selected.includes(table))}>
@@ -293,7 +314,6 @@ const downloadTemplate = async () => {
             </div>
           </div>
 
-          {/* RIGHT: ACTIONS */}
           <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
             <ActionCard
               title="Cloud Synchronization"
@@ -304,13 +324,12 @@ const downloadTemplate = async () => {
             />
             <ActionCard
               title="Database Restore"
-              desc="Pull data from Google Sheets to overwrite local Supabase tables."
+              desc="Pull from Google Sheets. Supports Dry Run tests and Composite Keys."
               btn="Restore from Sheets"
               color="#0f172a"
               outline
               onClick={() => triggerAction("PUT", "Restore")}
             />
-            
             <ActionCard
               title="CSV Template"
               desc="Download a blank CSV with correct headers for the selected table."
@@ -318,15 +337,7 @@ const downloadTemplate = async () => {
               color="#6366f1"
               onClick={downloadTemplate}
             />
-
-            <input
-              type="file"
-              id="csvImport"
-              accept=".csv"
-              hidden
-              onChange={importCSV}
-            />
-
+            <input type="file" id="csvImport" accept=".csv" hidden onChange={importCSV} />
             <ActionCard
               title="Local CSV Import"
               desc="Upload a .csv file from your computer to sync into the selected table."
@@ -337,7 +348,6 @@ const downloadTemplate = async () => {
                 document.getElementById('csvImport')?.click();
               }}
             />
-
             <ActionCard
               title="Local CSV Export"
               desc="Download selected tables directly to your computer as .csv files."
@@ -345,7 +355,6 @@ const downloadTemplate = async () => {
               color="#2563eb"
               onClick={downloadCSV}
             />
-            
             <ActionCard
               title="Emergency Purge"
               desc="Wipe records from selected tables. This action is irreversible!"
@@ -354,14 +363,12 @@ const downloadTemplate = async () => {
               onClick={() => triggerAction("DELETE", "Purge")}
             />
           </div>
-
         </div>
       </div>
     </div>
   );
 }
 
-// UI Components
 function ActionCard({ title, desc, btn, onClick, color, outline }: any) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fff", padding: "25px", borderRadius: "20px", border: "1px solid #e2e8f0" }}>

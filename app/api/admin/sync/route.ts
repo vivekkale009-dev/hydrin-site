@@ -72,7 +72,7 @@ export async function POST(req: Request) {
       await sheets.spreadsheets.values.update({
         spreadsheetId,
         range: `${tableName}!A1`,
-        valueInputOption: "RAW", // Surgically changed to RAW to fix list_value error
+        valueInputOption: "RAW",
         requestBody: { values },
       });
     }
@@ -99,25 +99,66 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const { selectedTables } = await req.json();
+    const { selectedTables, dryRun = false } = await req.json();
     const sheets = await getSheetsInstance();
     const spreadsheetId = process.env.SHEET_ID!;
+    const dryRunSummary: any[] = [];
 
     for (const tableName of selectedTables) {
-      const response = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${tableName}!A:Z` });
+      // 1. Get ALL Primary Key columns (handles composite keys like fy_year + invoice_type)
+      const { data: pkColumns, error: rpcError } = await supabase.rpc('get_primary_key_columns', { 
+        table_name_input: tableName 
+      });
+
+      if (rpcError) console.error(`RPC Error for ${tableName}:`, rpcError);
+
+      // Join columns for onConflict target (e.g., "fy_year,invoice_type")
+      const actualPrimaryKey = (pkColumns && pkColumns.length > 0) ? pkColumns.join(',') : 'id';
+
+      const response = await sheets.spreadsheets.values.get({ 
+        spreadsheetId, 
+        range: `${tableName}!A:Z` 
+      });
       const rows = response.data.values;
       if (!rows || rows.length <= 1) continue;
 
-      const headers = rows[0];
+      const rawHeaders = rows[0].map(h => h.trim());
       const formatted = rows.slice(1).map(row => {
         const obj: any = {};
-        headers.forEach((h, i) => { obj[h] = row[i]; });
+        rawHeaders.forEach((h, i) => { 
+          const val = row[i];
+          const isPKColumn = pkColumns?.some(pk => pk.toLowerCase() === h.toLowerCase());
+          const cleanHeader = isPKColumn ? pkColumns.find(pk => pk.toLowerCase() === h.toLowerCase()) : h;
+          
+          if (val === "" || val === undefined) obj[cleanHeader] = null;
+          else if (!isNaN(Number(val)) && val !== "" && val.length < 15) obj[cleanHeader] = Number(val);
+          else obj[cleanHeader] = val;
+        });
         return obj;
       });
-      const { error } = await supabase.from(tableName).upsert(formatted);
-      if (error) throw error;
+
+      if (dryRun) {
+        dryRunSummary.push({
+          table: tableName,
+          rowsToSync: formatted.length,
+          keysUsed: actualPrimaryKey
+        });
+      } else {
+        const { error } = await supabase.from(tableName).upsert(formatted, { 
+          onConflict: actualPrimaryKey 
+        });
+        if (error) throw new Error(`[Table: ${tableName}] ${error.message}`);
+      }
     }
-    return NextResponse.json({ success: true, message: `Restored ${selectedTables.length} tables` });
+
+    if (!dryRun) await supabase.rpc('set_retention_sequences');
+
+    return NextResponse.json({ 
+      success: true, 
+      isDryRun: dryRun,
+      message: dryRun ? "Dry run finished." : "Restore successful.",
+      details: dryRun ? dryRunSummary : null
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
