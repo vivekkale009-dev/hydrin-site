@@ -46,7 +46,7 @@ export default function OfferLetterPortal() {
         doc.rect(5, 5, 200, 287); 
         try {
           doc.setGState(new (doc as any).GState({ opacity: 0.04 }));
-          doc.addImage("/OnlyESLogo.png", "PNG", 55, 100, 100, 100);
+          doc.addImage("/OnlyESLogo.png", "PNG", 55, 100, 100, 100, undefined, 'FAST');
           doc.setGState(new (doc as any).GState({ opacity: 1.0 }));
         } catch (e) {}
         doc.setFont("helvetica", "normal");
@@ -72,7 +72,7 @@ export default function OfferLetterPortal() {
 
       // ================= PAGE 1 =================
       applyPageShell("Strictly Confidential - Earthy Source Foods And Beverages | Page 1 of 3");
-      try { doc.addImage("/EarthyLogo.JPG", "JPEG", 20, 15, 58, 26); } catch (e) {}
+      try { doc.addImage("/EarthyLogo.JPG", "JPEG", 20, 15, 58, 26, undefined, 'FAST'); } catch (e) {}
       
       doc.setTextColor(slateGreen[0], slateGreen[1], slateGreen[2]);
       doc.setFontSize(12);

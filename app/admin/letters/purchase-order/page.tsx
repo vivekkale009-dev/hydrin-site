@@ -60,7 +60,7 @@ export default function PurchaseOrderPage() {
 
       try {
         doc.setGState(new (doc as any).GState({ opacity: 0.05 }));
-        doc.addImage("/OnlyESLogo.png", "PNG", 55, 100, 100, 100);
+        doc.addImage("/OnlyESLogo.png", "PNG", 55, 100, 100, 100, undefined, 'FAST');
         doc.setGState(new (doc as any).GState({ opacity: 1.0 })); 
       } catch (e) { }
 
@@ -68,7 +68,7 @@ export default function PurchaseOrderPage() {
       doc.setLineWidth(0.1);
       doc.rect(5, 5, 200, 287); 
 
-      try { doc.addImage("/EarthyLogo.JPG", "JPEG", 20, 15, 58, 26); } catch (e) { }
+      try { doc.addImage("/EarthyLogo.JPG", "JPEG", 20, 15, 58, 26, undefined, 'FAST'); } catch (e) { }
 
       doc.setTextColor(slateGreen[0], slateGreen[1], slateGreen[2]);
       doc.setFontSize(14);

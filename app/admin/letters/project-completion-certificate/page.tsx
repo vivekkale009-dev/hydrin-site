@@ -39,14 +39,18 @@ export default function ProjectCertificatePage() {
       const forestGreen = [79, 121, 66]; 
 
       // --- 1. WATERMARK ---
-      try {
-        doc.setGState(new (doc as any).GState({ opacity: 0.04 }));
-        doc.addImage("/OnlyESLogo.png", "PNG", 55, 100, 100, 100);
-        doc.setGState(new (doc as any).GState({ opacity: 1.0 })); 
-      } catch (e) { }
+try {
+  doc.setGState(new (doc as any).GState({ opacity: 0.05 }));
+  // Add 'FAST' at the end to compress
+  doc.addImage("/OnlyESLogo.png", "PNG", 55, 100, 100, 100, undefined, 'FAST');
+  doc.setGState(new (doc as any).GState({ opacity: 1.0 })); 
+} catch (e) { }
 
       // --- 2. HEADER LOGO ---
-      try { doc.addImage("/EarthyLogo.JPG", "JPEG", 20, 15, 58, 26); } catch (e) { }
+try { 
+  // Add 'FAST' here as well
+  doc.addImage("/EarthyLogo.JPG", "JPEG", 20, 15, 58, 26, undefined, 'FAST'); 
+} catch (e) { }
 
       // --- 3. COMPANY DETAILS ---
       doc.setTextColor(slateGreen[0], slateGreen[1], slateGreen[2]);

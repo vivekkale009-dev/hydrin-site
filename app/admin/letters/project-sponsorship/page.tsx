@@ -49,11 +49,12 @@ export default function ProjectSponsorshipPortal() {
       const forestGreen = [21, 128, 61]; 
 
       // --- 1. IMAGE WATERMARK ---
-      try {
-        doc.setGState(new (doc as any).GState({ opacity: 0.05 }));
-        doc.addImage("/OnlyESLogo.png", "PNG", 55, 100, 100, 100);
-        doc.setGState(new (doc as any).GState({ opacity: 1.0 })); 
-      } catch (e) { }
+try {
+  doc.setGState(new (doc as any).GState({ opacity: 0.05 }));
+  // Add 'FAST' at the end to compress
+  doc.addImage("/OnlyESLogo.png", "PNG", 55, 100, 100, 100, undefined, 'FAST');
+  doc.setGState(new (doc as any).GState({ opacity: 1.0 })); 
+} catch (e) { }
 
       // --- 2. SECURITY BORDER ---
       doc.setDrawColor(230);
@@ -61,9 +62,10 @@ export default function ProjectSponsorshipPortal() {
       doc.rect(5, 5, 200, 287); 
 
       // --- 3. LOGO & HEADER ---
-      try {
-        doc.addImage("/EarthyLogo.JPG", "JPEG", 20, 15, 58, 26); 
-      } catch (e) { }
+try { 
+  // Add 'FAST' here as well
+  doc.addImage("/EarthyLogo.JPG", "JPEG", 20, 15, 58, 26, undefined, 'FAST'); 
+} catch (e) { }
 
       doc.setTextColor(slateGreen[0], slateGreen[1], slateGreen[2]);
       doc.setFontSize(14);
