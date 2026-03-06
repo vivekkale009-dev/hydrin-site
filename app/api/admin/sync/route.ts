@@ -16,7 +16,7 @@ async function logAction(action: string, tables: string[], details: string = "")
   try {
     await supabase.from('admin_logs').insert({ // <--- Ensure this is 'admin_logs'
       action: action,
-      affected_tables: selectedTables.join(", "),
+      affected_tables: tables.join(", "),
       details: details,
       performed_at: new Date().toISOString()
     });
