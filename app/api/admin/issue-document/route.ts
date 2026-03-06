@@ -6,10 +6,8 @@ export async function POST(req: Request) {
     const { serial_no, category, document_url } = await req.json();
 
     // Use the Service Role Key to bypass RLS policies completely
-    const supabaseAdmin = createAdminClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY! // MUST be the secret key from settings
-    );
+// ✅ CORRECT: Keep it empty as per your existing logic
+const supabaseAdmin = await createAdminClient();
 
     const { data, error } = await supabaseAdmin
       .from('issued_documents')
