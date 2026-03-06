@@ -6,19 +6,26 @@ const supabase = createClient('https://xyyirkwiredufamtnqdu.supabase.co', 'eyJhb
 
 export default function AdminDashboard() {
     const [allData, setAllData] = useState([]);
-    const [employees, setEmployees] = useState([]); // Added to store contact numbers
+    const [employees, setEmployees] = useState([]); 
     const [selectedExec, setSelectedExec] = useState(null);
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
     useEffect(() => { 
         fetchData();
-        fetchEmployees(); // Fetch employee details on load
+        fetchEmployees(); 
     }, [date]);
 
-    async function fetchEmployees() {
-        const { data } = await supabase.from('employees').select('full_name, contact_number');
-        setEmployees(data || []);
-    }
+async function fetchEmployees() {
+    const { data, error } = await supabase
+        .from('employees')
+        .select('full_name, contact_number, role')
+        .ilike('role', 'Marketing') // ilike is case-insensitive
+        .eq('is_active', true);
+    
+    if (error) console.error("Supabase Error:", error.message);
+    console.log("Fetched Staff:", data); 
+    setEmployees(data || []);
+}
 
     async function fetchData() {
         const { data } = await supabase.from('marketing_visits')
@@ -35,7 +42,6 @@ export default function AdminDashboard() {
         if (!error) fetchData();
     };
 
-    const executives = [...new Set(allData.map(v => v.executive_name))];
     const filteredVisits = allData.filter(v => v.executive_name === selectedExec);
 
     const getWorkDuration = () => {
@@ -54,7 +60,6 @@ export default function AdminDashboard() {
         window.open(`https://www.google.com/maps/dir/${points}`, '_blank');
     };
 
-    // START OF DAY: Send Link
     const shareToWhatsapp = (name) => {
         const emp = employees.find(e => e.full_name === name);
         const phone = emp?.contact_number || "";
@@ -62,7 +67,6 @@ export default function AdminDashboard() {
         window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
     };
 
-    // END OF DAY: Send Summary
     const sendEndDaySummary = () => {
         const emp = employees.find(e => e.full_name === selectedExec);
         const phone = emp?.contact_number || "";
@@ -84,6 +88,7 @@ export default function AdminDashboard() {
 
     return (
         <div style={{ display: 'flex', height: '100vh', fontFamily: 'Arial', backgroundColor: '#f0f2f5' }}>
+            {/* Sidebar */}
             <div style={{ width: '320px', backgroundColor: '#2F4F4F', color: 'white', padding: '25px', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ background: 'white', padding: '15px', borderRadius: '15px', textAlign: 'center', marginBottom: '30px', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
                     <img src="/EarthyLogo.JPG" width="140" alt="Earthy Source" />
@@ -92,23 +97,31 @@ export default function AdminDashboard() {
                 <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={dateInput} />
                 <h3>STAFF</h3>
                 <div style={{ flex: 1, overflowY: 'auto' }}>
-                    {executives.map(name => (
-                        <div key={name} style={{
+                    {employees.map(emp => (
+                        <div key={emp.full_name} style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 15px', 
                             cursor: 'pointer', borderRadius: '10px', marginBottom: '10px', transition: '0.3s',
-                            backgroundColor: selectedExec === name ? '#007bff' : 'rgba(255,255,255,0.05)',
-                            border: selectedExec === name ? '1px solid #007bff' : '1px solid rgba(255,255,255,0.1)'
+                            backgroundColor: selectedExec === emp.full_name ? '#007bff' : 'rgba(255,255,255,0.05)',
+                            border: selectedExec === emp.full_name ? '1px solid #007bff' : '1px solid rgba(255,255,255,0.1)'
                         }}>
-                            <div onClick={() => setSelectedExec(name)} style={{ flex: 1 }}>👤 {name}</div>
-                            <button onClick={(e) => { e.stopPropagation(); shareToWhatsapp(name); }} style={waBtnStyle}>💬</button>
+                            <div onClick={() => setSelectedExec(emp.full_name)} style={{ flex: 1 }}>
+                                👤 {emp.full_name}
+                                {!allData.some(v => v.executive_name === emp.full_name) && 
+                                    <span style={{fontSize: '10px', display: 'block', opacity: 0.6}}>No visits today</span>
+                                }
+                            </div>
+                            <button onClick={(e) => { e.stopPropagation(); shareToWhatsapp(emp.full_name); }} style={waBtnStyle}>💬</button>
                         </div>
                     ))}
                 </div>
             </div>
 
+            {/* Main Content */}
             <div style={{ flex: 1, padding: '40px', overflowY: 'auto' }}>
                 {!selectedExec ? (
-                    <div style={{ textAlign: 'center', marginTop: '100px', color: '#888' }}><h2>No visits recorded.</h2></div>
+                    <div style={{ textAlign: 'center', marginTop: '100px', color: '#888' }}>
+                        <h2>Please select a staff member from the sidebar.</h2>
+                    </div>
                 ) : (
                     <>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
@@ -117,51 +130,60 @@ export default function AdminDashboard() {
                                 <small style={{color: '#666'}}>Date: {date}</small>
                             </div>
                             <div style={{display: 'flex', gap: '10px'}}>
-                                <button onClick={sendEndDaySummary} style={{...btnRoute, background: '#25D366'}}>📲 Send End Day Report</button>
-                                <button onClick={openMapRoute} style={btnRoute}>🗺️ Trace Sequence Route</button>
+                                <button onClick={() => shareToWhatsapp(selectedExec)} style={{...btnRoute, background: '#25D366'}}>📲 Send Link</button>
+                                {filteredVisits.length > 0 && (
+                                    <>
+                                        <button onClick={sendEndDaySummary} style={{...btnRoute, background: '#25D366'}}>📲 Send Summary</button>
+                                        <button onClick={openMapRoute} style={btnRoute}>🗺️ Trace Route</button>
+                                    </>
+                                )}
                             </div>
                         </div>
 
-                        <div style={statsRow}>
-                            <div style={statCard}>Stops<br/><strong>{filteredVisits.length}</strong></div>
-                            <div style={statCard}>Work Duration<br/><strong>{getWorkDuration()}</strong></div>
-                            {/* FIXED DUPLICATE ATTRIBUTE ERROR BELOW */}
-                            <div 
-                                onClick={() => window.location.href='/admin/expenses'} 
-                                style={{...statCard, cursor:'pointer', border:'1px solid #007bff'}}
-                            >
-                                💰 Billing<br/><span style={{fontSize:'12px', color:'#007bff'}}>Enter Manual Amount ➔</span>
+                        {filteredVisits.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '50px', background: '#fff', borderRadius: '15px' }}>
+                                <p style={{ color: '#666' }}>No visits recorded for {selectedExec} on this date.</p>
                             </div>
-                        </div>
+                        ) : (
+                            <>
+                                <div style={statsRow}>
+                                    <div style={statCard}>Stops<br/><strong>{filteredVisits.length}</strong></div>
+                                    <div style={statCard}>Work Duration<br/><strong>{getWorkDuration()}</strong></div>
+                                    <div onClick={() => window.location.href='/admin/expenses'} style={{...statCard, cursor:'pointer', border:'1px solid #007bff'}}>
+                                        💰 Billing<br/><span style={{fontSize:'12px', color:'#007bff'}}>Enter Manual Amount ➔</span>
+                                    </div>
+                                </div>
 
-                        <table style={tableStyle}>
-                            <thead>
-                                <tr style={{ background: '#f8f9fa' }}>
-                                    <th style={th}>#</th><th style={th}>Time</th><th style={th}>Shop</th><th style={th}>Remark</th><th style={th}>Proof</th><th style={th}>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredVisits.map((v, index) => {
-                                    const isSameLoc = index > 0 && v.latitude === filteredVisits[index-1].latitude && v.longitude === filteredVisits[index-1].longitude;
-                                    return (
-                                        <tr key={v.id} style={{ borderBottom: '1px solid #eee', background: isSameLoc ? '#fff3cd' : 'white' }}>
-                                            <td style={td}>{isSameLoc && '⚠️'} <strong>{index + 1}</strong></td>
-                                            <td style={td}>{new Date(v.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                                            <td style={td}>{v.shop_name}</td>
-                                            <td style={td}><span style={badge}>{v.outcome}</span></td>
-                                            <td style={td}><a href={v.photo_url} target="_blank">🖼️ View</a></td>
-                                            <td style={td}>
-                                                <select value={v.admin_status || "Pending"} onChange={(e) => updateVisitStatus(v.id, e.target.value)} style={{...actionSelect, backgroundColor: getStatusColor(v.admin_status)}}>
-                                                    <option value="Pending">⌛ Pending</option>
-                                                    <option value="Approved">✅ Approved</option>
-                                                    <option value="Invalid">❌ Invalid</option>
-                                                </select>
-                                            </td>
+                                <table style={tableStyle}>
+                                    <thead>
+                                        <tr style={{ background: '#f8f9fa' }}>
+                                            <th style={th}>#</th><th style={th}>Time</th><th style={th}>Shop</th><th style={th}>Remark</th><th style={th}>Proof</th><th style={th}>Action</th>
                                         </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
+                                    </thead>
+                                    <tbody>
+                                        {filteredVisits.map((v, index) => {
+                                            const isSameLoc = index > 0 && v.latitude === filteredVisits[index-1].latitude && v.longitude === filteredVisits[index-1].longitude;
+                                            return (
+                                                <tr key={v.id} style={{ borderBottom: '1px solid #eee', background: isSameLoc ? '#fff3cd' : 'white' }}>
+                                                    <td style={td}>{isSameLoc && '⚠️'} <strong>{index + 1}</strong></td>
+                                                    <td style={td}>{new Date(v.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                                                    <td style={td}>{v.shop_name}</td>
+                                                    <td style={td}><span style={badge}>{v.outcome}</span></td>
+                                                    <td style={td}><a href={v.photo_url} target="_blank">🖼️ View</a></td>
+                                                    <td style={td}>
+                                                        <select value={v.admin_status || "Pending"} onChange={(e) => updateVisitStatus(v.id, e.target.value)} style={{...actionSelect, backgroundColor: getStatusColor(v.admin_status)}}>
+                                                            <option value="Pending">⌛ Pending</option>
+                                                            <option value="Approved">✅ Approved</option>
+                                                            <option value="Invalid">❌ Invalid</option>
+                                                        </select>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </>
+                        )}
                     </>
                 )}
             </div>
@@ -169,6 +191,7 @@ export default function AdminDashboard() {
     );
 }
 
+// Styles
 const getStatusColor = (s) => (s === 'Approved' ? '#d4edda' : s === 'Invalid' ? '#f8d7da' : '#fff');
 const waBtnStyle = { background: '#25D366', border: 'none', borderRadius: '50%', width: '28px', height: '28px', color: 'white', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '10px' };
 const dateInput = { width: '100%', padding: '12px', marginBottom: '25px', borderRadius: '8px', border: 'none' };

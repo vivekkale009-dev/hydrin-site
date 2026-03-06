@@ -1,7 +1,10 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
-export const revalidate = 0;
+//export const revalidate = 0;
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,

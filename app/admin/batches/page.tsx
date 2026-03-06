@@ -31,7 +31,6 @@ export default function BatchManager() {
     production_date: new Date().toISOString().split('T')[0] 
   });
   const [isUploading, setIsUploading] = useState<number | null>(null);
-
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [dateFilter, setDateFilter] = useState("");
@@ -47,8 +46,7 @@ export default function BatchManager() {
 
   async function handleCreateBatch() {
     if(!newBatchForm.batch_code) return alert("Batch code is required");
-    
-    // Formatting numeric values before insert
+    setLoading(true);
     const payload = {
       ...newBatchForm,
       batch_code: newBatchForm.batch_code.trim().toUpperCase(),
@@ -56,27 +54,90 @@ export default function BatchManager() {
       tds_value: newBatchForm.tds_value ? parseInt(newBatchForm.tds_value.toString()) : null,
     };
 
-    const { error } = await supabase.from("batches").insert([payload]);
-    
-    if (!error) {
+    const res = await fetch('/api/admin/batches', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (res.ok) {
       setIsCreating(false);
-      setNewBatchForm({ 
-        status: 'PASSED', 
-        production_date: new Date().toISOString().split('T')[0] 
-      });
+      setNewBatchForm({ status: 'PASSED', production_date: new Date().toISOString().split('T')[0] });
       fetchBatches();
     } else {
-      alert("Error creating batch: " + error.message);
+      const err = await res.json();
+      alert("Error: " + err.error);
+    }
+    setLoading(false);
+  }
+
+  async function handleUpdate(id: number) {
+    // SECURE UPDATE via API
+    const res = await fetch('/api/admin/batches', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...editForm })
+    });
+
+    if (res.ok) { 
+      setEditingId(null); 
+      fetchBatches(); 
+    } else {
+      alert("Update failed");
     }
   }
 
-  const stats = useMemo(() => {
-    return {
+  async function uploadReport(e: React.ChangeEvent<HTMLInputElement>, batch: Batch) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploading(batch.id);
+    try {
+      const fileName = `${batch.batch_code}_${Date.now()}.${file.name.split('.').pop()}`;
+      
+      // 1. Upload to private storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("water-reports")
+        .upload(fileName, file);
+      if (uploadError) throw uploadError;
+
+      // 2. Save the internal path to DB via Admin API
+      const res = await fetch('/api/admin/batches', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: batch.id, report_url: uploadData.path })
+      });
+
+      if (!res.ok) throw new Error("Database update failed");
+
+      fetchBatches();
+      alert("Report saved internally.");
+      
+    } catch (err: any) {
+      alert("Upload Error: " + err.message);
+    } finally { setIsUploading(null); }
+  }
+
+  // New function to handle private viewing
+  async function handleViewReport(path: string) {
+    if (!path) return;
+    // If it's already a full URL (legacy), open it. If not, get signed URL.
+    if (path.startsWith('http')) {
+      window.open(path, '_blank');
+      return;
+    }
+
+    const res = await fetch(`/api/admin/batches?path=${path}`);
+    const data = await res.json();
+    if (data.url) window.open(data.url, '_blank');
+    else alert("Could not generate secure link");
+  }
+
+  // ... (Stats and Filter logic remains the same) ...
+  const stats = useMemo(() => ({
       passed: batches.filter(b => b.status === 'PASSED').length,
       failed: batches.filter(b => b.status === 'FAILED').length,
       pending: batches.filter(b => b.status === 'PENDING').length,
-    };
-  }, [batches]);
+  }), [batches]);
 
   const filteredBatches = useMemo(() => {
     return batches.filter((b) => {
@@ -87,44 +148,15 @@ export default function BatchManager() {
     });
   }, [batches, searchQuery, statusFilter, dateFilter]);
 
-  async function handleUpdate(id: number) {
-    const { error } = await supabase.from("batches").update(editForm).eq("id", id);
-    if (!error) { setEditingId(null); fetchBatches(); }
-  }
-
-  async function uploadReport(e: React.ChangeEvent<HTMLInputElement>, batch: Batch) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploading(batch.id);
-    try {
-      const fileName = `${batch.batch_code}_${Date.now()}.${file.name.split('.').pop()}`;
-      // Upload to the bucket
-      const { error: uploadError } = await supabase.storage.from("water-reports").upload(fileName, file);
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage.from("water-reports").getPublicUrl(fileName);
-      
-      // Update the DB record with the new URL
-      const { error: dbError } = await supabase.from("batches").update({ report_url: publicUrl }).eq("id", batch.id);
-      if (dbError) throw dbError;
-
-      setBatches(prev => prev.map(b => b.id === batch.id ? { ...b, report_url: publicUrl } : b));
-      
-    } catch (err: any) {
-      alert("Upload Error: " + err.message);
-    } finally { setIsUploading(null); }
-  }
-
   return (
     <div style={{ padding: "40px", background: "#f8fafc", minHeight: "100vh" }}>
+      {/* ... (Header and Create Panel Code remains the same) ... */}
       <div style={{ maxWidth: "1250px", margin: "0 auto" }}>
-        
         <div style={{ marginBottom: "30px", display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <div>
             <h1 style={{ color: "#0f172a", fontSize: "2.2rem", fontWeight: 800 }}>Production Batches</h1>
             <p style={{ color: "#64748b" }}>Control center for batch quality and reporting.</p>
           </div>
-          
           <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
             <button onClick={() => setIsCreating(true)} style={addBtnStyle}>+ New Batch</button>
             <div className="stat-pill" style={{ borderLeft: '4px solid #16a34a' }}>{stats.passed} Passed</div>
@@ -161,12 +193,7 @@ export default function BatchManager() {
           </div>
         )}
 
-        {/* Filter Section */}
-        <section style={{ 
-          background: "white", padding: "20px", borderRadius: "16px", marginBottom: "24px",
-          display: "flex", gap: "15px", flexWrap: "wrap", alignItems: "flex-end",
-          boxShadow: "0 2px 10px rgba(0,0,0,0.03)", border: "1px solid #e2e8f0" 
-        }}>
+        <section style={{ background: "white", padding: "20px", borderRadius: "16px", marginBottom: "24px", display: "flex", gap: "15px", flexWrap: "wrap", alignItems: "flex-end", boxShadow: "0 2px 10px rgba(0,0,0,0.03)", border: "1px solid #e2e8f0" }}>
           <div style={{ flex: 1, minWidth: "200px" }}>
             <label style={labelStyle}>Search Batch No.</label>
             <input type="text" placeholder="e.g. HYD001" style={inputStyle} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
@@ -236,7 +263,7 @@ export default function BatchManager() {
                       <div className="loader-text">Saving...</div> 
                       : batch.report_url ? (
                       <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                        <a href={batch.report_url} target="_blank" className="report-link">📎 View Report ✅</a>
+                        <button onClick={() => handleViewReport(batch.report_url!)} className="report-link" style={{border:'none', cursor:'pointer', textAlign:'left'}}>📎 View Report ✅</button>
                         <label className="replace-text">
                           Replace File
                           <input type="file" hidden accept="image/*,application/pdf" onChange={(e) => uploadReport(e, batch)} />
@@ -276,7 +303,7 @@ export default function BatchManager() {
   );
 }
 
-// Styles
+// ... (Styles below stay exactly the same as your original) ...
 const addBtnStyle = { background: "#0A6CFF", color: "white", border: "none", padding: "10px 20px", borderRadius: "10px", fontWeight: 700, cursor: "pointer" };
 const createPanelStyle = { background: "white", padding: "20px", borderRadius: "16px", marginBottom: "20px", border: "2px solid #0A6CFF", boxShadow: "0 10px 30px rgba(10,108,255,0.1)" };
 const saveBtnStyleLocal = { background: "#0A6CFF", color: "white", border: "none", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", fontWeight: 600 };

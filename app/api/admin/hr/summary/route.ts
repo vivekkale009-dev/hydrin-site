@@ -1,12 +1,17 @@
-import { NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+import { NextResponse } from "next/server";
+import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server";
+//import { createServerSupabaseClient } from "@/lib/supabase/server";
+//export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const monthParam = searchParams.get('month') || new Date().toISOString().slice(0, 7); 
-    const supabase = await createServerSupabaseClient();
+    //const supabase = await createServerSupabaseClient();
+	const supabase = await createAdminClient();
 
     const [year, month] = monthParam.split('-').map(Number);
     const lastDay = new Date(year, month, 0).getDate(); 

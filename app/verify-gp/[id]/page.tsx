@@ -59,44 +59,23 @@ export default function VerifyGatePass({ params }: { params: { id: string } }) {
     
     setIsUpdating(true);
     try {
-      // 1. Update Order Table
-      const { error: orderError } = await supabase
-        .from("orders")
-        .update({
-          exit_confirmed_at: new Date().toISOString(),
-          exit_notes: notes,
-          status: 'delivered'
-        })
-        .eq("id", params.id);
+      const response = await fetch('/api/gate-pass/confirm-exit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          id: params.id, 
+          notes: notes, 
+          items: items, 
+          orderUorn: order.uorn // passing the UORN for the inventory log
+        }),
+      });
 
-      if (orderError) throw orderError;
+      const result = await response.json();
 
-      // 2. Log final DEDUCT and Clear Inventory Reservations
-      for (const item of items) {
-        if (item.product_id && item.qty_boxes) {
-          
-          // ADDED: Create the audit trail entry for the final deduction
-          await supabase.from("inventory_movements").insert({
-            product_id: item.product_id,
-            order_id: params.id,
-            order_number: order.uorn,
-            movement_type: 'deduct', 
-            qty_boxes: Number(item.qty_boxes),
-            notes: `Vehicle Exit Confirmed: ${notes}`
-          });
-
-          // Clear the reservation in DB
-          const { error: rpcError } = await supabase.rpc('clear_reservation', { 
-            p_product_id: item.product_id, 
-            p_qty: Number(item.qty_boxes) 
-          });
-          
-          if (rpcError) console.error(`Inventory Error for ${item.product_id}:`, rpcError);
-        }
-      }
+      if (!response.ok) throw new Error(result.error || "Update failed");
 
       setStatusMsg("SUCCESS: Exit recorded. Inventory updated.");
-      await fetchOrderDetails();
+      await fetchOrderDetails(); // Refresh UI to show "VEHICLE EXITED"
     } catch (error: any) {
       alert("Error: " + error.message);
     } finally {

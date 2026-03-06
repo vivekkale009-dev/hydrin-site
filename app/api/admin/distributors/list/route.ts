@@ -1,10 +1,15 @@
-import { NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+import { NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 export async function GET(req: Request) {
   try {
-    const supabase = await createServerSupabaseClient();
+    // We use createAdminClient because RLS is now enabled 
+    // and we need the Service Role to bypass it safely.
+    const supabase = await createAdminClient();
+    
     const { searchParams } = new URL(req.url);
     const q = searchParams.get("q")?.trim();
 

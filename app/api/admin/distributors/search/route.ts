@@ -1,6 +1,10 @@
-import { NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+import { NextResponse } from "next/server";
+import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server";
+//import { createServerSupabaseClient } from "@/lib/supabase/server";
+//export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   try {
@@ -11,7 +15,8 @@ export async function GET(req: Request) {
       return NextResponse.json({ data: [] });
     }
 
-    const supabase = await createServerSupabaseClient();
+    //const supabase = await createServerSupabaseClient();
+	const supabase = await createAdminClient();
 
     const { data, error } = await supabase.rpc(
       "search_distributors_with_dues",

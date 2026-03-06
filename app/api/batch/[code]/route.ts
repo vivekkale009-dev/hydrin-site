@@ -1,3 +1,6 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
@@ -16,7 +19,8 @@ export async function GET(
   const { data, error } = await supabase
     .from("batches")
     .select(
-      "batch_code, production_date, status, ph_value, tds_value, report_url"
+      // HIDDEN report_url from public view for internal security
+      "batch_code, production_date, status, ph_value, tds_value" 
     )
     .eq("batch_code", code)
     .maybeSingle();
@@ -29,9 +33,7 @@ export async function GET(
   }
 
   // Log scan
-  await supabase.from("scans").insert([
-    { batch_code: code }
-  ]);
+  await supabase.from("scans").insert([{ batch_code: code }]);
 
   return NextResponse.json(data);
 }

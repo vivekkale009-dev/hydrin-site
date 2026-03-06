@@ -1,12 +1,17 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import { NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+//import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server";
 
 export async function GET(
   req: Request, 
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = await createServerSupabaseClient();
+    //const supabase = await createServerSupabaseClient();
+	const supabase = await createAdminClient();
     // In some Next.js versions, params must be awaited
     const id = params.id; 
 

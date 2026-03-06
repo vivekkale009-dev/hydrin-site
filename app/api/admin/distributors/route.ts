@@ -1,3 +1,6 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -6,6 +9,7 @@ export async function GET(req: Request) {
   const q = searchParams.get("q") || "";
 
   const s = await createServerSupabaseClient();
+  
 
   let query = s
     .from("distributors")

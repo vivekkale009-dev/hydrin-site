@@ -276,7 +276,7 @@ export default function OfferLetterPortal() {
       const uploadRes = await fetch("/api/upload-pdf", { method: "POST", body: uploadFormData });
       const uploadResult = await uploadRes.json();
       
-      await fetch("/api/issue-document", {
+      await fetch("/api/admin/issue-document", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ serial_no: serial, category: 'OFFER LETTER', document_url: uploadResult.url })

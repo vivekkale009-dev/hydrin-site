@@ -1,10 +1,13 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 // Only define these once at the top
-export const dynamic = 'force-dynamic';
+//export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
-export const revalidate = 0;
+//export const revalidate = 0;
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const { id } = params;

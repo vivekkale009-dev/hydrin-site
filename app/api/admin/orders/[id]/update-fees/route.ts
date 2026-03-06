@@ -1,16 +1,20 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import { NextResponse } from "next/server";
 // Use the exact name from your server file
-import { createServerSupabaseClient } from "@/lib/supabase/server"; 
+// 1. Change the import to use your Admin Client (Master Key)
+import { createAdminClient } from "@/lib/supabase/admin"; // Adjust path if needed
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
     const { id } = params;
     const { grossRevenue, taxAmount, deliveryFee, totalPayable, reason } = await req.json();
 
-    // 1. Initialize the client using your specific function
-    const supabase = await createServerSupabaseClient();
+    // 2. Use the Admin Client instead of the Server Client
+    const supabase = createAdminClient(); 
 
-    // 2. Update the Order
+    // 3. Update the Order
     const { error: updateError } = await supabase
       .from('orders')
       .update({

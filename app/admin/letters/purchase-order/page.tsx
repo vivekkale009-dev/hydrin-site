@@ -207,7 +207,7 @@ export default function PurchaseOrderPage() {
       const uploadRes = await fetch("/api/upload-pdf", { method: "POST", body: uploadFormData });
       const uploadResult = await uploadRes.json();
       
-      const syncRes = await fetch("/api/issue-document", {
+      const syncRes = await fetch("/api/admin/issue-document", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ serial_no: serial, category: 'PURCHASE ORDER', document_url: uploadResult.url })

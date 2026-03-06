@@ -211,7 +211,7 @@ try {
       
       console.log("PDF uploaded successfully. URL:", uploadResult.url);
       
-      const syncRes = await fetch("/api/issue-document", {
+      const syncRes = await fetch("/api/admin/issue-document", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

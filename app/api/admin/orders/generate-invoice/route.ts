@@ -1,5 +1,9 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import { NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+//import { createServerSupabaseClient } from "@/lib/supabase/server";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable"; 
 import fs from 'fs';
@@ -8,7 +12,8 @@ import path from 'path';
 export async function POST(req: Request) {
   try {
     const { orderId } = await req.json();
-    const supabase = await createServerSupabaseClient();
+    //const supabase = await createServerSupabaseClient();
+	const supabase = createAdminClient();
 
     // 1. Fetch Order with Items
     const { data: order, error: orderErr } = await supabase
