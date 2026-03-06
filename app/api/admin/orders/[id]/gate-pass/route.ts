@@ -8,8 +8,8 @@ import fs from "fs";
 import path from "path";
 import QRCode from "qrcode";
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+//export const dynamic = 'force-dynamic';
+//export const revalidate = 0;
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
