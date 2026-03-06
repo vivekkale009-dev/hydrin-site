@@ -81,8 +81,8 @@ export default function FinalExpenseDashboard() {
 
   // --- ANALYTICS: CATEGORY & TOP ITEM ---
   const analytics = useMemo(() => {
-    const stats: any = {};
-    const itemTotals: any = {};
+    const stats: Record<string, number> = {};
+    const itemTotals: Record<string, number> = {};
     Object.keys(BUSINESS_MAP).forEach(k => stats[k] = 0);
     
     filteredRows.forEach(ex => {
@@ -91,17 +91,19 @@ export default function FinalExpenseDashboard() {
       const val = Number(ex.amount || 0);
       if (stats[base] !== undefined) stats[base] += val;
       
-      // Track specific item leaks
       const key = `${ex.item_name} (${base})`;
       itemTotals[key] = (itemTotals[key] || 0) + val;
     });
 
-    const total = Object.values(stats).reduce((a: any, b: any) => a + b, 0) as number;
+    const total = Object.values(stats).reduce((a, b) => a + b, 0);
+    const sortedItems = Object.entries(itemTotals).sort((a, b) => b[1] - a[1]);
+    const topItemEntry = sortedItems[0];
     
-    // Find biggest single cost item
-    const topItemEntry = Object.entries(itemTotals).sort((a:any, b:any) => b[1] - a[1])[0];
-    
-    return { stats, total, topItem: topItemEntry ? { name: topItemEntry[0], amt: topItemEntry[1] } : null };
+    return { 
+      stats, 
+      total, 
+      topItem: topItemEntry ? { name: topItemEntry[0], amt: Number(topItemEntry[1]) } : null 
+    };
   }, [filteredRows]);
 
   const totalSpent = filteredRows.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
@@ -177,7 +179,8 @@ export default function FinalExpenseDashboard() {
           {analytics.topItem ? (
             <>
               <div style={{...ui.statVal, fontSize: '20px', marginTop: '10px'}}>{analytics.topItem.name}</div>
-              <div style={{...ui.statVal, color: '#ef4444', fontSize: '24px'}}>₹{analytics.topItem.amt.toLocaleString('en-IN')}</div>
+              {/* Fix: Explicitly ensuring amt is treated as a number */}
+              <div style={{...ui.statVal, color: '#ef4444', fontSize: '24px'}}>₹{(analytics.topItem.amt as number).toLocaleString('en-IN')}</div>
             </>
           ) : <div style={ui.miniSub}>No data yet</div>}
         </div>
