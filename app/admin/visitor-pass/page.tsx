@@ -20,8 +20,7 @@ export default function CreateVisitorPass() {
   });
   const [passData, setPassData] = useState<{id: string, serial: string, totalCount: number} | null>(null);
   const [loading, setLoading] = useState(false);
-
-  const handleCreate = async () => {
+const handleCreate = async () => {
     if (!form.visitor_name || !form.phone_number) {
       alert("Please enter Name and Phone Number");
       return;
@@ -31,24 +30,42 @@ export default function CreateVisitorPass() {
     const guestArray = form.guest_names_input.split(',').map(n => n.trim()).filter(n => n !== "");
     const professionalSerial = `ESF-${new Date().getFullYear()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
-    const { data, error } = await supabase.from('visitor_passes').insert([{ 
-      visitor_name: form.visitor_name, 
-      phone_number: form.phone_number, 
-      vehicle_no: form.vehicle_no,
-      purpose: form.purpose, 
-      host_person: form.host_person, 
-      serial_no: professionalSerial,
-      guest_names: guestArray, 
-      additional_guests: form.additional_count.toString(), 
-      status: 'pending' 
-    }]).select().single();
+    try {
+      // --- NEW SECURE API LOGIC ---
+      const response = await fetch('/api/admin/visitors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          visitor_name: form.visitor_name, 
+          phone_number: form.phone_number, 
+          vehicle_no: form.vehicle_no,
+          purpose: form.purpose, 
+          host_person: form.host_person, 
+          serial_no: professionalSerial,
+          guest_names: guestArray, 
+          additional_guests: form.additional_count.toString(), 
+          status: 'pending' 
+        })
+      });
 
-    if (!error && data) {
-      setPassData({ id: data.id, serial: professionalSerial, totalCount: form.additional_count });
-    } else {
-        alert(error?.message);
+      const data = await response.json();
+
+      if (response.ok && data) {
+        setPassData({ 
+          id: data.id, 
+          serial: professionalSerial, 
+          totalCount: form.additional_count 
+        });
+      } else {
+        alert("Error: " + (data.error || "Failed to create pass"));
+      }
+      // --- END API LOGIC ---
+    } catch (err) {
+      console.error(err);
+      alert("An unexpected error occurred.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
 const handleWhatsApp = () => {

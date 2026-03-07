@@ -19,27 +19,37 @@ export default function AdminDashboard() {
   const [securityPhone, setSecurityPhone] = useState(''); // New State for Security Phone
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchVisitors();
-    const subscription = supabase
-      .channel('table-db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'visitor_passes' }, () => {
-        fetchVisitors();
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(subscription); };
-  }, []);
+useEffect(() => {
+  fetchVisitors();
+  
+  // Real-time still works! 
+  // We keep the public subscription for the "ping", then fetch fresh data via API.
+  const subscription = supabase
+    .channel('table-db-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'visitor_passes' }, () => {
+      fetchVisitors(); 
+    })
+    .subscribe();
 
-  const fetchVisitors = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('visitor_passes')
-      .select('*')
-      .order('created_at', { ascending: false });
+  return () => { supabase.removeChannel(subscription); };
+}, []);
+
+// Inside AdminDashboard component
+const fetchVisitors = async () => {
+  setLoading(true);
+  try {
+    const response = await fetch('/api/admin/visitors');
+    const data = await response.json();
     
-    if (!error) setVisitors(data);
+    if (!response.ok) throw new Error(data.error || "Failed to fetch");
+    
+    setVisitors(data || []);
+  } catch (err: any) {
+    console.error("API Error:", err.message);
+  } finally {
     setLoading(false);
-  };
+  }
+};
 
   const filteredVisitors = visitors.filter(v => {
     const matchesSearch = v.visitor_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
