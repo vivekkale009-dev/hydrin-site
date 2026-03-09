@@ -15,13 +15,12 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// ==== STATIC VALUES (not from Supabase) ====
-const STATIC_PLANT =
-  "Gut N0 253 Earthy Source Foods And Beverages Khairi nimgaon Shrirampur, Ahilyanagar";
+// ==== STATIC VALUES ====
+const STATIC_PLANT = "Gut N0 253 Earthy Source Foods And Beverages Khairi nimgaon Shrirampur, Ahilyanagar";
 const STATIC_LICENSE = "12345678901234";
 const STATIC_FSSAI = "12345678901234";
 const SUPPORT_EMAIL = "support@earthysource.in";
-const SUPPORT_WHATSAPP = "911234567890"; // Update with your actual number
+const SUPPORT_WHATSAPP = "7758877307";
 
 export default function PurityCheck() {
   const [batch, setBatch] = useState("");
@@ -30,8 +29,6 @@ export default function PurityCheck() {
   const [loading, setLoading] = useState(false);
   const [isFake, setIsFake] = useState(false);
   const [isExpired, setIsExpired] = useState(false);
-
-  // fingerprint for first_scan + anti-abuse
   const [fingerprint, setFingerprint] = useState("");
 
   useEffect(() => {
@@ -190,7 +187,6 @@ export default function PurityCheck() {
     const doc = new jsPDF("p", "pt", "a4");
 
     const isSafetyAlert = data.status === "FAILED" || data.status === "PENDING";
-    
     const phRange = data.ph_value ? `${(data.ph_value - 0.5).toFixed(1)} - ${(data.ph_value + 0.5).toFixed(1)}` : "6.5 - 8.5 (Standard)";
     const tdsRange = data.tds_value ? `${data.tds_value - 5} - ${data.tds_value + 5} mg/L` : "70 - 120 mg/L";
 
@@ -200,12 +196,9 @@ export default function PurityCheck() {
       console.warn("Header logo not found");
     }
 
-    // Set Header color: Blue for Passed, Red for Warning
-if (isSafetyAlert) {
-  doc.setFillColor(185, 28, 28);
-} else {
-  doc.setFillColor(10, 108, 255);
-}
+    const primaryColor: [number, number, number] = isSafetyAlert ? [185, 28, 28] : [10, 108, 255];
+
+    doc.setFillColor(...primaryColor);
     doc.rect(90, 10, 465, 50, "F");  
     doc.setFontSize(18);
     doc.setTextColor(255, 255, 255);
@@ -225,7 +218,7 @@ if (isSafetyAlert) {
       startY: 160,
       margin: { left: 40, right: 40 },
       theme: "striped",
-      headStyles: { fillColor: isSafetyAlert ? [185, 28, 28] : [10, 108, 255], textColor: 255, fontStyle: "bold" },
+      headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: "bold" },
       bodyStyles: { textColor: 50, fontSize: 10 },
       columnStyles: { 0: { fontStyle: "bold", cellWidth: 150 } },
       head: [["Attribute", "Batch Details"]],
@@ -242,8 +235,8 @@ if (isSafetyAlert) {
       ],
     });
 
-    const tableBottom = (doc as any).lastAutoTable.finalY;
-    const footerY = tableBottom + 40;
+    const finalY = (doc as any).lastAutoTable?.finalY || 400;
+    const footerY = finalY + 40;
 
     if (isSafetyAlert) {
       doc.setFontSize(12);
@@ -256,7 +249,7 @@ if (isSafetyAlert) {
       doc.text([
         "This batch has not cleared our final quality check protocols.",
         "1. DO NOT CONSUME this bottle.",
-        "2. Please contact support immediately for a replacement or refund.",
+        "2. Please contact support immediately for a replacement.",
         `Support Email: ${SUPPORT_EMAIL}`
       ], 40, footerY + 20);
     } else {
@@ -277,6 +270,7 @@ if (isSafetyAlert) {
     doc.setDrawColor(200);
     doc.line(40, 780, 555, 780);
     doc.setFontSize(8);
+    doc.setTextColor(150);
     doc.text(`Digital Verification Hash: ${data.id.substring(0,8)}...`, 40, 800);
     doc.save(`EarthySource-Status-${data.batch_code}.pdf`);
   };
@@ -340,12 +334,11 @@ if (isSafetyAlert) {
 
             {data && !isExpired && (
               <>
-                {/* SURGICAL ADDITION: FAILED/PENDING ALERT */}
                 {(data.status === "FAILED" || data.status === "PENDING") ? (
                     <div style={alertCard}>
                         <h2 style={{ ...sectionTitle, color: "white" }}>Quality Alert: Do Not Consume ⚠️</h2>
                         <p style={{ fontSize: "1.1rem", marginBottom: "15px" }}>This batch (<strong>{data.batch_code}</strong>) is currently marked as <strong>{data.status}</strong>.</p>
-                        <p>Please do not consume this water. For your safety, contact us immediately for a replacement or refund.</p>
+                        <p>Please do not consume this water. For your safety, contact us immediately for a replacement.</p>
                         <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
                             <a href={`mailto:${SUPPORT_EMAIL}`} style={{ textDecoration: 'none' }}>
                                 <button style={{ padding: "12px 20px", borderRadius: "8px", background: "white", color: "black", border: "none", fontWeight: 700, cursor: "pointer" }}>Email Support</button>
@@ -357,7 +350,6 @@ if (isSafetyAlert) {
                         <button onClick={downloadCertificate} style={{ marginTop: "15px", background: "transparent", border: "1px solid white", color: "white", padding: "8px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "0.8rem" }}>Download Advisory PDF</button>
                     </div>
                 ) : (
-                    /* ORIGINAL SUCCESS UI */
                     <div style={card}>
                         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                         <h2 style={sectionTitle}>Bottle Verified</h2>
@@ -375,7 +367,6 @@ if (isSafetyAlert) {
                     </div>
                 )}
 
-                {/* Technical Cards Grid (Only show if passed) */}
                 {data.status === "PASSED" && (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px,1fr))", gap: 18 }}>
                   <div style={smallCard}>
