@@ -12,41 +12,15 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  AreaChart,
+  Area,
 } from "recharts";
 
-type DailyPoint = {
-  date: string;
-  verified: number;
-  fake: number;
-  expired: number;
-  total: number;
-};
-
-type CityPoint = {
-  city: string;
-  total: number;
-  verified: number;
-  fake: number;
-  expired: number;
-};
-
-type DevicePoint = {
-  fingerprint: string;
-  total: number;
-  first: number;
-  repeat: number;
-  city: string | null;
-  state: string | null;
-};
-
-type BatchPoint = {
-  batch: string;
-  total: number;
-  verified: number;
-  fake: number;
-  expired: number;
-};
-
+// --- TYPES ---
+type DailyPoint = { date: string; verified: number; fake: number; expired: number; total: number; };
+type CityPoint = { city: string; total: number; verified: number; fake: number; expired: number; };
+type DevicePoint = { fingerprint: string; total: number; first: number; repeat: number; city: string | null; state: string | null; };
+type BatchPoint = { batch: string; total: number; verified: number; fake: number; expired: number; };
 type InsightsResponse = {
   summary: { verified: number; fake: number; expired: number };
   daily: DailyPoint[];
@@ -55,6 +29,19 @@ type InsightsResponse = {
   byBatch: BatchPoint[];
 };
 
+// --- SUB-COMPONENTS ---
+function KPICard({ label, value, trend, color }: any) {
+  return (
+    <div style={{ background: "white", padding: "24px", borderRadius: "24px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+      <p style={{ fontSize: "11px", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "8px" }}>{label}</p>
+      <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
+        <span style={{ fontSize: "2rem", fontWeight: 900, color: color }}>{value}</span>
+        <span style={{ fontSize: "12px", color: color === "#ef4444" ? "#ef4444" : "#10b981", fontWeight: 700 }}>{trend}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function ScanAnalytics() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -62,21 +49,16 @@ export default function ScanAnalytics() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // default: last 30 days
   useEffect(() => {
     const now = new Date();
     const toStr = now.toISOString().slice(0, 10);
-    const fromStr = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .slice(0, 10);
+    const fromStr = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     setFrom(fromStr);
     setTo(toStr);
   }, []);
 
   useEffect(() => {
-    if (!from || !to) return;
-    fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (from && to) fetchData();
   }, [from, to]);
 
   async function fetchData() {
@@ -89,8 +71,7 @@ export default function ScanAnalytics() {
       const json = (await res.json()) as InsightsResponse;
       setData(json);
     } catch (e) {
-      console.error(e);
-      setError("Failed to load analytics.");
+      setError("Failed to sync analytics engine.");
     } finally {
       setLoading(false);
     }
@@ -101,335 +82,131 @@ export default function ScanAnalytics() {
   const deviceData = data?.byDevice ?? [];
   const batchData = data?.byBatch ?? [];
 
+  // Table Styles
+  const TableContainerStyle = { background: "white", borderRadius: "24px", padding: "24px", border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" };
+  const TableTitleStyle = { fontSize: "1.1rem", fontWeight: 700, marginBottom: "20px", color: "#0f172a" };
+  const TableStyle: React.CSSProperties = { width: "100%", borderCollapse: "collapse" };
+  const TableHeaderStyle = { color: "#94a3b8", fontSize: "10px", textTransform: "uppercase" as const, fontWeight: 800 };
+  const TableCellStyle = { padding: "12px 8px", fontSize: "13px" };
+
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        padding: "40px 20px",
-        background: "#050816",
-        color: "white",
-      }}
-    >
-      <h1 style={{ fontSize: "2.2rem", fontWeight: 800 }}>
-        Earthy Source Scan Analytics
-      </h1>
+    <main style={{ minHeight: "100vh", padding: "30px", background: "#f1f5f9", color: "#1e293b", fontFamily: "Inter, system-ui, sans-serif" }}>
+      
+      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "30px", maxWidth: "1400px", margin: "0 auto 30px auto" }}>
+        <div>
+          <h1 style={{ fontSize: "2rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.02em" }}>
+            Scan <span style={{ color: "#10b981" }}>Intelligence</span> Portal
+          </h1>
+          <p style={{ color: "#64748b", marginTop: "4px" }}>Forensics & Batch Tracking</p>
+        </div>
+        <a href="/admin/scan-dashboard" style={{ textDecoration: "none", color: "#6366f1", fontWeight: 600 }}>← Back</a>
+      </header>
 
-      {/* Simple link back to Overview */}
-      <div style={{ marginTop: 8, marginBottom: 16 }}>
-        <a href="/admin/scan-dashboard" style={{ textDecoration: "underline" }}>
-          ← Back to Overview
-        </a>
+      <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
+        <section style={{ background: "white", borderRadius: "20px", padding: "24px", display: "flex", gap: "24px", alignItems: "center", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", marginBottom: "32px", border: "1px solid #e2e8f0" }}>
+          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ padding: "8px", borderRadius: "8px", border: "1px solid #e2e8f0" }} />
+          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ padding: "8px", borderRadius: "8px", border: "1px solid #e2e8f0" }} />
+          <button onClick={fetchData} style={{ padding: "10px 20px", borderRadius: "10px", background: "#0f172a", color: "white", cursor: "pointer" }}>Sync Engine</button>
+        </section>
+
+        {!data ? (
+          <div style={{ textAlign: "center", padding: "40px" }}>Loading Forensics...</div>
+        ) : (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "20px", marginBottom: "32px" }}>
+              <KPICard label="Total Scans" value={data.summary.verified + data.summary.fake + data.summary.expired} trend="Live" color="#0f172a" />
+              <KPICard label="Verified" value={data.summary.verified} trend="Secure" color="#10b981" />
+              <KPICard label="Fake" value={data.summary.fake} trend="Critical" color="#ef4444" />
+              <KPICard label="Expired" value={data.summary.expired} trend="Alert" color="#f59e0b" />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "24px", marginBottom: "32px" }}>
+              <div style={TableContainerStyle}>
+                <h3 style={TableTitleStyle}>Timeline Forensic Analysis</h3>
+                <div style={{ width: "100%", height: 300 }}>
+                  <ResponsiveContainer>
+                    <AreaChart data={dailyData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="date" fontSize={10} />
+                      <YAxis fontSize={10} />
+                      <Tooltip />
+                      <Area type="monotone" dataKey="verified" stroke="#10b981" fill="#10b981" fillOpacity={0.1} />
+                      <Line type="monotone" dataKey="fake" stroke="#ef4444" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div style={TableContainerStyle}>
+                <h3 style={TableTitleStyle}>Top Cities</h3>
+                <div style={{ width: "100%", height: 300 }}>
+                  <ResponsiveContainer>
+                    <BarChart data={cityData.slice(0, 8)} layout="vertical">
+                      <XAxis type="number" hide />
+                      <YAxis dataKey="city" type="category" fontSize={10} width={70} />
+                      <Tooltip />
+                      <Bar dataKey="total" fill="#6366f1" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+                <div style={TableContainerStyle}>
+                    <h3 style={TableTitleStyle}>Device Identity</h3>
+                    <table style={TableStyle}>
+                        <thead>
+                            <tr style={TableHeaderStyle}>
+                                <th style={TableCellStyle}>Fingerprint</th>
+                                <th style={TableCellStyle}>Scans</th>
+                                <th style={TableCellStyle}>Location</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {deviceData.slice(0, 10).map((d) => (
+                                <tr key={d.fingerprint} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                                    <td style={TableCellStyle}>{d.fingerprint.slice(0, 10)}...</td>
+                                    <td style={TableCellStyle}>{d.total}</td>
+                                    <td style={TableCellStyle}>{d.city || "N/A"}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style={TableContainerStyle}>
+                    <h3 style={TableTitleStyle}>Batch Integrity</h3>
+                    <table style={TableStyle}>
+                        <thead>
+                            <tr style={TableHeaderStyle}>
+                                <th style={TableCellStyle}>Batch</th>
+                                <th style={TableCellStyle}>Total</th>
+                                <th style={TableCellStyle}>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {batchData.slice(0, 10).map((b) => {
+                                const fakePct = b.total > 0 ? (b.fake / b.total) * 100 : 0;
+                                return (
+                                    <tr key={b.batch} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                                        <td style={TableCellStyle}>{b.batch}</td>
+                                        <td style={TableCellStyle}>{b.total}</td>
+                                        <td style={TableCellStyle}>
+                                            <span style={{ color: fakePct > 20 ? "#ef4444" : "#10b981", fontWeight: 800 }}>
+                                                {fakePct > 20 ? "ALERT" : "SAFE"}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+          </>
+        )}
       </div>
-
-      {/* Date range filter */}
-      <section
-        style={{
-          marginTop: 12,
-          background: "rgba(15,23,42,0.9)",
-          borderRadius: 16,
-          padding: 16,
-          display: "flex",
-          gap: 16,
-          flexWrap: "wrap",
-          alignItems: "center",
-        }}
-      >
-        <div>
-          <label style={{ fontSize: "0.9rem" }}>From</label>
-          <br />
-          <input
-            type="date"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            style={{
-              padding: "6px 10px",
-              borderRadius: 8,
-              border: "1px solid #4b5563",
-              background: "#020617",
-              color: "white",
-            }}
-          />
-        </div>
-        <div>
-          <label style={{ fontSize: "0.9rem" }}>To</label>
-          <br />
-          <input
-            type="date"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            style={{
-              padding: "6px 10px",
-              borderRadius: 8,
-              border: "1px solid #4b5563",
-              background: "#020617",
-              color: "white",
-            }}
-          />
-        </div>
-        <button
-          onClick={fetchData}
-          style={{
-            marginTop: 18,
-            padding: "8px 16px",
-            borderRadius: 999,
-            border: "none",
-            background: "white",
-            color: "black",
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
-        >
-          Refresh
-        </button>
-        {loading && <span>Loading…</span>}
-        {error && <span style={{ color: "#f97316" }}>{error}</span>}
-      </section>
-
-      {!data ? (
-        <p style={{ marginTop: 20 }}>No data yet.</p>
-      ) : (
-        <>
-          {/* 1. Time series – scans per day */}
-          <section
-            style={{
-              marginTop: 24,
-              background: "rgba(15,23,42,0.9)",
-              borderRadius: 16,
-              padding: 16,
-            }}
-          >
-            <h2 style={{ marginBottom: 12 }}>Daily Scan Trend</h2>
-            <div style={{ width: "100%", height: 320 }}>
-              <ResponsiveContainer>
-                <LineChart data={dailyData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                  <XAxis dataKey="date" stroke="#9ca3af" />
-                  <YAxis stroke="#9ca3af" />
-                  <Tooltip
-                    contentStyle={{
-                      background: "#020617",
-                      border: "1px solid #4b5563",
-                      color: "white",
-                      fontSize: "0.8rem",
-                    }}
-                  />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="verified"
-                    name="Verified"
-                    dot={false}
-                    stroke="#22c55e"
-                    strokeWidth={2}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="fake"
-                    name="Fake"
-                    dot={false}
-                    stroke="#ef4444"
-                    strokeWidth={2}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="expired"
-                    name="Expired"
-                    dot={false}
-                    stroke="#f97316"
-                    strokeWidth={2}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </section>
-
-          {/* 2. Scans by City */}
-          <section
-            style={{
-              marginTop: 24,
-              background: "rgba(15,23,42,0.9)",
-              borderRadius: 16,
-              padding: 16,
-            }}
-          >
-            <h2 style={{ marginBottom: 12 }}>Scans by City (Top 20)</h2>
-            <div style={{ width: "100%", height: 360 }}>
-              <ResponsiveContainer>
-                <BarChart data={cityData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                  {/* we hide ticks to avoid clutter but still use city in tooltip */}
-                  <XAxis dataKey="city" hide />
-                  <YAxis stroke="#9ca3af" />
-                  <Tooltip
-                    cursor={{ fill: "rgba(148,163,184,0.2)" }}
-                    content={({ active, payload }) => {
-                      if (!active || !payload || payload.length === 0) {
-                        return null;
-                      }
-                      const d = payload[0].payload as CityPoint;
-                      return (
-                        <div
-                          style={{
-                            background: "#020617",
-                            border: "1px solid #4b5563",
-                            padding: "8px 10px",
-                            borderRadius: 8,
-                            fontSize: "0.8rem",
-                          }}
-                        >
-                          <div style={{ fontWeight: 700, marginBottom: 4 }}>
-                            {d.city || "Unknown city"}
-                          </div>
-                          <div>Total scans: {d.total}</div>
-                          <div>Verified: {d.verified}</div>
-                          <div>Fake: {d.fake}</div>
-                          <div>Expired: {d.expired}</div>
-                        </div>
-                      );
-                    }}
-                  />
-                  <Bar
-                    dataKey="total"
-                    name="Total Scans"
-                    fill="#38bdf8"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <div style={{ marginTop: 8, fontSize: "0.8rem", opacity: 0.8 }}>
-              Hover bars to see exact city name & breakdown.
-            </div>
-          </section>
-
-          {/* 3. Device / Retailer behavior via fingerprint */}
-          <section
-            style={{
-              marginTop: 24,
-              background: "rgba(15,23,42,0.9)",
-              borderRadius: 16,
-              padding: 16,
-            }}
-          >
-            <h2 style={{ marginBottom: 12 }}>
-              Top Devices / Shops (via fingerprint)
-            </h2>
-            <div style={{ overflowX: "auto" }}>
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  fontSize: "0.8rem",
-                }}
-              >
-                <thead>
-                  <tr>
-                    <th style={{ textAlign: "left", padding: "8px" }}>
-                      Device (Fingerprint)
-                    </th>
-                    <th style={{ textAlign: "left", padding: "8px" }}>Total</th>
-                    <th style={{ textAlign: "left", padding: "8px" }}>First</th>
-                    <th style={{ textAlign: "left", padding: "8px" }}>
-                      Repeat
-                    </th>
-                    <th style={{ textAlign: "left", padding: "8px" }}>
-                      Approx Location
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {deviceData.map((d) => (
-                    <tr key={d.fingerprint}>
-                      <td style={{ padding: "8px" }}>
-                        {d.fingerprint === "unknown"
-                          ? "Unknown"
-                          : d.fingerprint.slice(0, 10) + "…"}
-                      </td>
-                      <td style={{ padding: "8px" }}>{d.total}</td>
-                      <td style={{ padding: "8px" }}>{d.first}</td>
-                      <td style={{ padding: "8px" }}>{d.repeat}</td>
-                      <td style={{ padding: "8px" }}>
-                        {d.city || d.state
-                          ? `${d.city ?? "-"}, ${d.state ?? "-"}`
-                          : "-"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          {/* 4. Batch performance table – early bad batch detection */}
-          <section
-            style={{
-              marginTop: 24,
-              marginBottom: 40,
-              background: "rgba(15,23,42,0.9)",
-              borderRadius: 16,
-              padding: 16,
-            }}
-          >
-            <h2 style={{ marginBottom: 12 }}>
-              Batch Performance (Top 20 by scans)
-            </h2>
-            <div style={{ overflowX: "auto" }}>
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  fontSize: "0.8rem",
-                }}
-              >
-                <thead>
-                  <tr>
-                    <th style={{ textAlign: "left", padding: "8px" }}>Batch</th>
-                    <th style={{ textAlign: "left", padding: "8px" }}>Total</th>
-                    <th style={{ textAlign: "left", padding: "8px" }}>
-                      Verified
-                    </th>
-                    <th style={{ textAlign: "left", padding: "8px" }}>Fake</th>
-                    <th style={{ textAlign: "left", padding: "8px" }}>
-                      Expired
-                    </th>
-                    <th style={{ textAlign: "left", padding: "8px" }}>
-                      Fake % (flag)
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {batchData.map((b) => {
-                    const fakePct =
-                      b.total > 0 ? Math.round((b.fake / b.total) * 100) : 0;
-                    const flag = fakePct >= 20 ? "⚠️" : "";
-                    return (
-                      <tr key={b.batch}>
-                        <td style={{ padding: "8px" }}>{b.batch}</td>
-                        <td style={{ padding: "8px" }}>{b.total}</td>
-                        <td style={{ padding: "8px" }}>{b.verified}</td>
-                        <td style={{ padding: "8px" }}>{b.fake}</td>
-                        <td style={{ padding: "8px" }}>{b.expired}</td>
-                        <td
-                          style={{
-                            padding: "8px",
-                            color: fakePct >= 20 ? "#f97316" : "white",
-                          }}
-                        >
-                          {fakePct}% {flag}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <p style={{ marginTop: 8, fontSize: "0.8rem", opacity: 0.8 }}>
-              Any batch with Fake% ≥ 20% is a candidate for investigation or
-              recall.
-            </p>
-          </section>
-        </>
-      )}
     </main>
   );
 }

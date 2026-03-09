@@ -7,25 +7,17 @@ export async function GET(req: Request) {
       req.headers.get("x-real-ip") ||
       "0.0.0.0";
 
-    const ip = ipHeader === "::1" ? "8.8.8.8" : ipHeader;
+    const ip = ipHeader === "::1" || ipHeader === "127.0.0.1" ? "8.8.8.8" : ipHeader;
+    const TOKEN = "95b5add6d80b7b"; 
+    
+    const res = await fetch(`https://ipinfo.io/${ip}?token=${TOKEN}`);
+    const geo = await res.json();
 
-    const geo = await fetch(`https://ipwho.is/${ip}`).then((res) => res.json());
+    const [lat, lon] = (geo.loc || "0,0").split(",");
 
-    if (!geo.success) {
-      return NextResponse.json({
-        ip,
-        geo: {
-          country: null,
-          state: null,
-          city: null,
-          isp: null,
-          latitude: null,
-          longitude: null,
-          pincode: null,
-        },
-        error: geo.message,
-      });
-    }
+    // CLEAN THE ISP NAME: Removes "AS12345 " from the start
+    const rawIsp = geo.org || "Unknown ISP";
+    const cleanIsp = rawIsp.replace(/^AS\d+\s+/g, "");
 
     return NextResponse.json({
       ip,
@@ -33,19 +25,15 @@ export async function GET(req: Request) {
         country: geo.country ?? null,
         state: geo.region ?? null,
         city: geo.city ?? null,
-        isp: geo.connection?.isp ?? null,
-        latitude: geo.latitude ?? null,
-        longitude: geo.longitude ?? null,
+        isp: cleanIsp, 
+        latitude: lat ?? null,
+        longitude: lon ?? null,
         pincode: geo.postal ?? null,
+        // VPN Detection logic
+        is_vpn: !!(geo.privacy?.vpn || geo.privacy?.proxy || geo.privacy?.tor)
       },
     });
   } catch (err) {
-    return NextResponse.json(
-      {
-        error: "Geo lookup crashed",
-        details: String(err),
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Service Error" }, { status: 500 });
   }
 }

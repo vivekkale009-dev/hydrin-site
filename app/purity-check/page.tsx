@@ -37,158 +37,153 @@ export default function PurityCheck() {
       .then((fp) => setFingerprint(fp as string))
       .catch(() => setFingerprint(""));
   }, []);
-
-  async function handleVerify() {
-    setError("");
-    setData(null);
-    setIsFake(false);
-    setIsExpired(false);
-    setLoading(true);
-
-    const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
-    if (!siteKey) {
-      setError("reCAPTCHA sitekey not configured on server.");
-      setLoading(false);
-      return;
-    }
-
-    const captchaToken = (window as any).grecaptcha?.getResponse();
-    if (!captchaToken) {
-      setError("Please complete the CAPTCHA.");
-      setLoading(false);
-      return;
-    }
-
-    const captchaRes = await fetch("/api/verify-captcha", {
-      method: "POST",
-      body: JSON.stringify({ token: captchaToken }),
-    }).then((r) => r.json());
-
-    if (!captchaRes.success) {
-      setError("CAPTCHA failed. Try again.");
-      setLoading(false);
-      return;
-    }
-
-    (window as any).grecaptcha.reset();
-
-    let ip = "unknown";
-    let geo: any = { country: null, state: null, city: null, isp: null, latitude: null, longitude: null, pincode: null };
-
-// --- FIXED GEO & ISP & PINCODE MAPPING ---
-try {
-  const g = await fetch("/api/get-ip-geo").then((r) => r.json());
-  ip = g.ip || "unknown";
   
-  // The 'raw' object is what comes back from your /api/get-ip-geo route
-  const raw = g.geo || {};
+async function handleVerify() {
+  setError("");
+  setData(null);
+  setIsFake(false);
+  setIsExpired(false);
+  setLoading(true);
+
+  // 1. reCAPTCHA Validation
+  const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+  const captchaToken = (window as any).grecaptcha?.getResponse();
   
-  geo = {
-    country: raw.country ?? null,
-    state: raw.state ?? null,
-    city: raw.city ?? null,
-    // FIX: Ensure ISP is captured even if the API structure varies
-    isp: raw.isp ?? null,
-    // FIX: Map coordinates correctly for the map pins
-    latitude: raw.latitude ?? null,
-    longitude: raw.longitude ?? null,
-    // FIX: ipwho.is uses 'postal', but we want it in our 'pincode' variable
-    pincode: raw.pincode ?? raw.postal ?? null,
-  };
-} catch (e) {
-  console.warn("Geo lookup failed", e);
+  if (!captchaToken) {
+    setError("Please complete the CAPTCHA.");
+    setLoading(false);
+    return;
+  }
+
+  const captchaRes = await fetch("/api/verify-captcha", {
+    method: "POST",
+    body: JSON.stringify({ token: captchaToken }),
+  }).then((r) => r.json());
+
+  if (!captchaRes.success) {
+    setError("CAPTCHA failed. Try again.");
+    setLoading(false);
+    return;
+  }
+
+  (window as any).grecaptcha.reset(); 
+
+// 2. Geolocation & VPN Fetching
+  let ip = "unknown";
+  let geo: any = { country: null, state: null, city: null, isp: null, latitude: null, longitude: null, pincode: null, is_vpn: false };
+
+  try {
+    const g = await fetch("/api/get-ip-geo").then((r) => r.json());
+    ip = g.ip || "unknown";
+    const raw = g.geo || {};
+    
+    geo = {
+      country: raw.country ?? null,
+      state: raw.state ?? null,
+      city: raw.city ?? null,
+      isp: raw.isp ?? null,
+      latitude: raw.latitude ?? null,
+      longitude: raw.longitude ?? null,
+      pincode: raw.pincode ?? null,
+      is_vpn: raw.is_vpn ?? false, // ADDED VPN FLAG
+    };
+  } catch (e) {
+    console.warn("Geo lookup failed", e);
+  }
+
+  // 3. Rate Limit Check (New Shield)
+  try {
+    const { data: isLimited, error: rateError } = await supabase
+      .rpc('check_scan_rate', { user_ip: ip });
+
+    if (isLimited) {
+      setError("Too many attempts. Please wait 1 minute.");
+      setLoading(false);
+      return;
+    }
+  } catch (e) {
+    console.warn("Rate limit check failed", e);
+  }
+
+// 4. Blocked IP Check (REINFORCED)
+// Inside handleVerify, replace the "Blocked IP Check" with this:
+const accessCheck = await fetch(`/api/verify-access?ip=${ip}`).then(r => r.json());
+if (accessCheck.blocked) {
+  setError("Security Block: Access denied from this network.");
+  setLoading(false);
+  return;
 }
 
-    const deviceType = getDeviceType();
-    const browser = getBrowser();
+  if (!batch.trim()) {
+    setError("Please enter batch number.");
+    setLoading(false);
+    return;
+  }
 
-    try {
-      const { data: blocked } = await supabase
-        .from("blocked_ips")
-        .select("*")
-        .eq("ip_address", ip)
-        .eq("is_blocked", true)
-        .maybeSingle();
+  const normalizedBatch = batch.trim();
 
-      if (blocked) {
-        setError("Too many suspicious scans detected from your network. Please contact support.");
-        setLoading(false);
-        return;
-      }
-    } catch (e) {
-      console.warn("Blocked IP check failed", e);
-    }
+  // 5. Batch Lookup
+  const { data: batchData, error: fetchError } = await supabase
+    .from("batches")
+    .select("*")
+    .eq("batch_code", normalizedBatch)
+    .maybeSingle();
 
-    if (!batch.trim()) {
-      setError("Please enter batch number.");
-      setLoading(false);
-      return;
-    }
+  if (fetchError) {
+    setError("Database error. Try again.");
+    setLoading(false);
+    return;
+  }
 
-    const normalizedBatch = batch.trim();
-
-    const { data: batchData, error: fetchError } = await supabase
-      .from("batches")
-      .select("*")
+  // 6. Duplicate/Fingerprint Check
+  let isFirstScan = true;
+  if (fingerprint) {
+    const { data: existing } = await supabase
+      .from("scans")
+      .select("id")
       .eq("batch_code", normalizedBatch)
-      .maybeSingle();
+      .eq("fingerprint", fingerprint)
+      .limit(1);
+    isFirstScan = !existing || existing.length === 0;
+  }
 
-    if (fetchError) {
-      setError("Database error. Try again.");
-      setLoading(false);
-      return;
-    }
+  // 7. Common Insert Object (Includes VPN)
+  const scanEntry = {
+    batch_code: normalizedBatch,
+    ip_address: ip,
+    country: geo.country,
+    state: geo.state,
+    city: geo.city,
+    isp: geo.isp,
+    latitude: geo.latitude,
+    longitude: geo.longitude,
+    pincode: geo.pincode,
+    is_vpn: geo.is_vpn, // ADDED TO INSERT
+    device_type: getDeviceType(),
+    browser: getBrowser(),
+    fingerprint: fingerprint || null,
+    first_scan: isFirstScan,
+  };
 
-    let isFirstScan: boolean | null = null;
-    try {
-      if (fingerprint) {
-        const { data: existing, error: existingErr } = await supabase
-          .from("scans")
-          .select("id")
-          .eq("batch_code", normalizedBatch)
-          .eq("fingerprint", fingerprint)
-          .limit(1);
-        if (!existingErr) isFirstScan = !existing || existing.length === 0;
-      }
-    } catch (e) {
-      console.warn("first_scan check failed", e);
-    }
-
-    if (!batchData) {
-      setIsFake(true);
-      await supabase.from("scans").insert({
-        batch_code: normalizedBatch, status: "fake", ip_address: ip, country: geo.country,
-        state: geo.state, city: geo.city, isp: geo.isp, latitude: geo.latitude,
-        longitude: geo.longitude, pincode: geo.pincode, device_type: deviceType,
-        browser, fingerprint: fingerprint || null, first_scan: isFirstScan,
-      });
-      setLoading(false);
-      return;
-    }
-
+  // 8. Final Logic & Database Insertion
+  if (!batchData) {
+    setIsFake(true);
+    await supabase.from("scans").insert({ ...scanEntry, status: "fake" });
+  } else {
     const today = new Date();
     const expiry = new Date(batchData.expiry_date);
+    
     if (expiry < today) {
       setIsExpired(true);
-      await supabase.from("scans").insert({
-        batch_code: normalizedBatch, status: "expired", ip_address: ip, country: geo.country,
-        state: geo.state, city: geo.city, isp: geo.isp, latitude: geo.latitude,
-        longitude: geo.longitude, pincode: geo.pincode, device_type: deviceType,
-        browser, fingerprint: fingerprint || null, first_scan: isFirstScan,
-      });
-      setLoading(false);
-      return;
+      await supabase.from("scans").insert({ ...scanEntry, status: "expired" });
+    } else {
+      setData(batchData);
+      await supabase.from("scans").insert({ ...scanEntry, status: "verified" });
     }
-
-    setData(batchData);
-    await supabase.from("scans").insert({
-      batch_code: normalizedBatch, status: "verified", ip_address: ip, country: geo.country,
-      state: geo.state, city: geo.city, isp: geo.isp, latitude: geo.latitude,
-      longitude: geo.longitude, pincode: geo.pincode, device_type: deviceType,
-      browser, fingerprint: fingerprint || null, first_scan: isFirstScan,
-    });
-    setLoading(false);
   }
+
+  setLoading(false);
+}
 
   const downloadCertificate = () => {
     if (!data) return;
