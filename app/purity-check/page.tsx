@@ -201,7 +201,11 @@ export default function PurityCheck() {
     }
 
     // Set Header color: Blue for Passed, Red for Warning
-    doc.setFillColor(isSafetyAlert ? [185, 28, 28] : [10, 108, 255]);
+if (isSafetyAlert) {
+  doc.setFillColor(185, 28, 28);
+} else {
+  doc.setFillColor(10, 108, 255);
+}
     doc.rect(90, 10, 465, 50, "F");  
     doc.setFontSize(18);
     doc.setTextColor(255, 255, 255);
