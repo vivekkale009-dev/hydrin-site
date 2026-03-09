@@ -1,11 +1,22 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
-// 1. CREATE: Used when you click "Save Batch" in the modal
+// Helper to calculate expiry (Prod Date + 6 Months)
+const calculateExpiry = (prodDate: string) => {
+  const date = new Date(prodDate);
+  date.setMonth(date.getMonth() + 6);
+  return date.toISOString().split('T')[0];
+};
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const supabaseAdmin = await createAdminClient();
+
+    // Auto-calculate expiry before insert
+    if (body.production_date) {
+      body.expiry_date = calculateExpiry(body.production_date);
+    }
 
     const { data, error } = await supabaseAdmin
       .from('batches')
@@ -20,11 +31,15 @@ export async function POST(req: Request) {
   }
 }
 
-// 2. UPDATE: Used for Edit button AND for saving the PDF path after upload
 export async function PATCH(req: Request) {
   try {
     const { id, ...updates } = await req.json();
     const supabaseAdmin = await createAdminClient();
+
+    // Re-calculate expiry if production_date is being changed
+    if (updates.production_date) {
+      updates.expiry_date = calculateExpiry(updates.production_date);
+    }
 
     const { data, error } = await supabaseAdmin
       .from('batches')
@@ -39,6 +54,8 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+
+// ... GET function remains the same ...
 
 // 3. SECURE VIEW: Generates a temporary link for the Admin to see the PDF
 export async function GET(req: Request) {

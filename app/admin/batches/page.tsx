@@ -8,6 +8,12 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+type Product = {
+  id: string;
+  name: string;
+  volume_ml: number;
+};
+
 type Batch = {
   id: number;
   batch_code: string;
@@ -15,6 +21,7 @@ type Batch = {
   status: 'PASSED' | 'FAILED' | 'PENDING';
   expiry_date: string;
   net_quantity: string;
+  product_name?: string; // New field to track which product it is
   report_url?: string;
   ph_value?: number;
   tds_value?: number;
@@ -22,20 +29,39 @@ type Batch = {
 
 export default function BatchManager() {
   const [batches, setBatches] = useState<Batch[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Batch>>({});
   const [newBatchForm, setNewBatchForm] = useState<Partial<Batch>>({ 
     status: 'PASSED', 
-    production_date: new Date().toISOString().split('T')[0] 
+    production_date: new Date().toISOString().split('T')[0],
+    net_quantity: ""
   });
+  
   const [isUploading, setIsUploading] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [dateFilter, setDateFilter] = useState("");
 
-  useEffect(() => { fetchBatches(); }, []);
+  useEffect(() => { 
+    fetchBatches(); 
+    fetchProducts();
+  }, []);
+
+  // Helper to calculate expiry date (+ 6 months)
+  const calculateExpiry = (dateStr: string | undefined) => {
+    if (!dateStr) return "";
+    const date = new Date(dateStr);
+    date.setMonth(date.getMonth() + 6);
+    return date.toISOString().split('T')[0];
+  };
+
+  async function fetchProducts() {
+    const { data } = await supabase.from("products").select("id, name, volume_ml").eq("is_active", true);
+    setProducts(data || []);
+  }
 
   async function fetchBatches() {
     setLoading(true);
@@ -44,12 +70,26 @@ export default function BatchManager() {
     setLoading(false);
   }
 
+  // Handle Product Selection Change
+  const handleProductChange = (productId: string) => {
+    const selectedProd = products.find(p => p.id === productId);
+    if (selectedProd) {
+      setNewBatchForm({
+        ...newBatchForm,
+        product_name: selectedProd.name,
+        net_quantity: `${selectedProd.volume_ml} ML`
+      });
+    }
+  };
+
   async function handleCreateBatch() {
     if(!newBatchForm.batch_code) return alert("Batch code is required");
     setLoading(true);
+    
     const payload = {
       ...newBatchForm,
       batch_code: newBatchForm.batch_code.trim().toUpperCase(),
+      expiry_date: calculateExpiry(newBatchForm.production_date),
       ph_value: newBatchForm.ph_value ? parseFloat(newBatchForm.ph_value.toString()) : null,
       tds_value: newBatchForm.tds_value ? parseInt(newBatchForm.tds_value.toString()) : null,
     };
@@ -62,7 +102,7 @@ export default function BatchManager() {
 
     if (res.ok) {
       setIsCreating(false);
-      setNewBatchForm({ status: 'PASSED', production_date: new Date().toISOString().split('T')[0] });
+      setNewBatchForm({ status: 'PASSED', production_date: new Date().toISOString().split('T')[0], net_quantity: "" });
       fetchBatches();
     } else {
       const err = await res.json();
@@ -72,11 +112,16 @@ export default function BatchManager() {
   }
 
   async function handleUpdate(id: number) {
-    // SECURE UPDATE via API
+    const payload = {
+      ...editForm,
+      id,
+      expiry_date: calculateExpiry(editForm.production_date)
+    };
+
     const res = await fetch('/api/admin/batches', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, ...editForm })
+      body: JSON.stringify(payload)
     });
 
     if (res.ok) { 
@@ -93,14 +138,11 @@ export default function BatchManager() {
     setIsUploading(batch.id);
     try {
       const fileName = `${batch.batch_code}_${Date.now()}.${file.name.split('.').pop()}`;
-      
-      // 1. Upload to private storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("water-reports")
         .upload(fileName, file);
       if (uploadError) throw uploadError;
 
-      // 2. Save the internal path to DB via Admin API
       const res = await fetch('/api/admin/batches', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -108,31 +150,25 @@ export default function BatchManager() {
       });
 
       if (!res.ok) throw new Error("Database update failed");
-
       fetchBatches();
       alert("Report saved internally.");
-      
     } catch (err: any) {
       alert("Upload Error: " + err.message);
     } finally { setIsUploading(null); }
   }
 
-  // New function to handle private viewing
   async function handleViewReport(path: string) {
     if (!path) return;
-    // If it's already a full URL (legacy), open it. If not, get signed URL.
     if (path.startsWith('http')) {
       window.open(path, '_blank');
       return;
     }
-
     const res = await fetch(`/api/admin/batches?path=${path}`);
     const data = await res.json();
     if (data.url) window.open(data.url, '_blank');
     else alert("Could not generate secure link");
   }
 
-  // ... (Stats and Filter logic remains the same) ...
   const stats = useMemo(() => ({
       passed: batches.filter(b => b.status === 'PASSED').length,
       failed: batches.filter(b => b.status === 'FAILED').length,
@@ -150,8 +186,8 @@ export default function BatchManager() {
 
   return (
     <div style={{ padding: "40px", background: "#f8fafc", minHeight: "100vh" }}>
-      {/* ... (Header and Create Panel Code remains the same) ... */}
       <div style={{ maxWidth: "1250px", margin: "0 auto" }}>
+        {/* Header Section */}
         <div style={{ marginBottom: "30px", display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <div>
             <h1 style={{ color: "#0f172a", fontSize: "2.2rem", fontWeight: 800 }}>Production Batches</h1>
@@ -173,9 +209,31 @@ export default function BatchManager() {
                 <label style={labelStyle}>Batch Code</label>
                 <input style={inputStyle} placeholder="e.g. BATCH-001" onChange={e => setNewBatchForm({...newBatchForm, batch_code: e.target.value})} />
               </div>
+              
+              {/* Product Selection Dropdown */}
+              <div>
+                <label style={labelStyle}>Select Product</label>
+                <select style={inputStyle} onChange={(e) => handleProductChange(e.target.value)}>
+                  <option value="">-- Choose Product --</option>
+                  {products.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Net Quantity (Auto-filled but editable) */}
+              <div>
+                <label style={labelStyle}>Net Quantity</label>
+                <input style={inputStyle} placeholder="e.g. 500ml" value={newBatchForm.net_quantity} onChange={e => setNewBatchForm({...newBatchForm, net_quantity: e.target.value})} />
+              </div>
+
               <div>
                 <label style={labelStyle}>Prod. Date</label>
                 <input type="date" style={inputStyle} value={newBatchForm.production_date} onChange={e => setNewBatchForm({...newBatchForm, production_date: e.target.value})} />
+              </div>
+              <div>
+                <label style={labelStyle}>Expiry Date (Auto)</label>
+                <input type="date" style={{...inputStyle, background: "#f1f5f9"}} value={calculateExpiry(newBatchForm.production_date)} readOnly />
               </div>
               <div>
                 <label style={labelStyle}>pH Value</label>
@@ -193,6 +251,7 @@ export default function BatchManager() {
           </div>
         )}
 
+        {/* Filter Section */}
         <section style={{ background: "white", padding: "20px", borderRadius: "16px", marginBottom: "24px", display: "flex", gap: "15px", flexWrap: "wrap", alignItems: "flex-end", boxShadow: "0 2px 10px rgba(0,0,0,0.03)", border: "1px solid #e2e8f0" }}>
           <div style={{ flex: 1, minWidth: "200px" }}>
             <label style={labelStyle}>Search Batch No.</label>
@@ -210,13 +269,17 @@ export default function BatchManager() {
           <button onClick={() => { setSearchQuery(""); setStatusFilter("ALL"); setDateFilter(""); }} style={resetBtnStyle}>Reset</button>
         </section>
 
+        {/* Data Table */}
         <div style={{ background: "white", borderRadius: "20px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)", overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#f8fafc", textAlign: "left", borderBottom: "1px solid #e2e8f0" }}>
                 <th style={tHeadStyle}>Batch Code</th>
+                <th style={tHeadStyle}>Product</th>
+                <th style={tHeadStyle}>Net Qty</th>
                 <th style={tHeadStyle}>Details (pH/TDS)</th>
                 <th style={tHeadStyle}>Prod. Date</th>
+                <th style={tHeadStyle}>Expiry Date</th>
                 <th style={tHeadStyle}>Status</th>
                 <th style={tHeadStyle}>Purity Report</th>
                 <th style={tHeadStyle}>Actions</th>
@@ -229,6 +292,16 @@ export default function BatchManager() {
                     {editingId === batch.id ? 
                       <input style={editInputStyle} value={editForm.batch_code} onChange={e => setEditForm({...editForm, batch_code: e.target.value})} /> 
                       : <strong>{batch.batch_code}</strong>
+                    }
+                  </td>
+                  <td style={tCellStyle}>
+                    {/* Product Name Display */}
+                    <span style={{fontSize: '0.85rem', fontWeight: 600, color: '#475569'}}>{batch.product_name || 'N/A'}</span>
+                  </td>
+                  <td style={tCellStyle}>
+                    {editingId === batch.id ? 
+                      <input style={editInputStyle} value={editForm.net_quantity} onChange={e => setEditForm({...editForm, net_quantity: e.target.value})} /> 
+                      : <span>{batch.net_quantity}</span>
                     }
                   </td>
                   <td style={tCellStyle}>
@@ -245,6 +318,12 @@ export default function BatchManager() {
                     {editingId === batch.id ? 
                       <input type="date" style={editInputStyle} value={editForm.production_date} onChange={e => setEditForm({...editForm, production_date: e.target.value})} /> 
                       : batch.production_date
+                    }
+                  </td>
+                  <td style={tCellStyle}>
+                    {editingId === batch.id ? 
+                      <input type="date" style={{...editInputStyle, background: "#f1f5f9"}} value={calculateExpiry(editForm.production_date)} readOnly /> 
+                      : <span style={{color: "#ef4444", fontWeight: 600}}>{batch.expiry_date}</span>
                     }
                   </td>
                   <td style={tCellStyle}>
@@ -303,7 +382,6 @@ export default function BatchManager() {
   );
 }
 
-// ... (Styles below stay exactly the same as your original) ...
 const addBtnStyle = { background: "#0A6CFF", color: "white", border: "none", padding: "10px 20px", borderRadius: "10px", fontWeight: 700, cursor: "pointer" };
 const createPanelStyle = { background: "white", padding: "20px", borderRadius: "16px", marginBottom: "20px", border: "2px solid #0A6CFF", boxShadow: "0 10px 30px rgba(10,108,255,0.1)" };
 const saveBtnStyleLocal = { background: "#0A6CFF", color: "white", border: "none", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", fontWeight: 600 };
