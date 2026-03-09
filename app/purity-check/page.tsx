@@ -3,7 +3,7 @@
 import { useState, type CSSProperties, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 import BackgroundWrapper from "../components/BackgroundWrapper";
-import Script from "next/script"; // for reCAPTCHA
+import Script from "next/script";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -196,6 +196,7 @@ export default function PurityCheck() {
       console.warn("Header logo not found");
     }
 
+    // Header logic from older code: dynamic color tuple
     const primaryColor: [number, number, number] = isSafetyAlert ? [185, 28, 28] : [10, 108, 255];
 
     doc.setFillColor(...primaryColor);
@@ -235,8 +236,9 @@ export default function PurityCheck() {
       ],
     });
 
-    const finalY = (doc as any).lastAutoTable?.finalY || 400;
-    const footerY = finalY + 40;
+    // Dynamic Footer Calculation (Implemented correctly here)
+    const tableBottom = (doc as any).lastAutoTable.finalY;
+    const footerY = tableBottom + 40;
 
     if (isSafetyAlert) {
       doc.setFontSize(12);
@@ -249,7 +251,7 @@ export default function PurityCheck() {
       doc.text([
         "This batch has not cleared our final quality check protocols.",
         "1. DO NOT CONSUME this bottle.",
-        "2. Please contact support immediately for a replacement.",
+        "2. Please contact support immediately for a replacement or refund.",
         `Support Email: ${SUPPORT_EMAIL}`
       ], 40, footerY + 20);
     } else {
@@ -338,7 +340,7 @@ export default function PurityCheck() {
                     <div style={alertCard}>
                         <h2 style={{ ...sectionTitle, color: "white" }}>Quality Alert: Do Not Consume ⚠️</h2>
                         <p style={{ fontSize: "1.1rem", marginBottom: "15px" }}>This batch (<strong>{data.batch_code}</strong>) is currently marked as <strong>{data.status}</strong>.</p>
-                        <p>Please do not consume this water. For your safety, contact us immediately for a replacement.</p>
+                        <p>Please do not consume this water. For your safety, contact us immediately for a replacement or refund.</p>
                         <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
                             <a href={`mailto:${SUPPORT_EMAIL}`} style={{ textDecoration: 'none' }}>
                                 <button style={{ padding: "12px 20px", borderRadius: "8px", background: "white", color: "black", border: "none", fontWeight: 700, cursor: "pointer" }}>Email Support</button>
