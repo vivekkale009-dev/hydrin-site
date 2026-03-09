@@ -1,12 +1,16 @@
-// /api/products-basic/route.ts
 import { NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js"; // Import standard client
 
-export const dynamic = 'force-dynamic'; // Prevent stale "0" stock from caching
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET() {
   try {
-    const supabase = await createServerSupabaseClient();
+    // 1. USE THE SERVICE ROLE KEY TO BYPASS RLS
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY! 
+    );
 
     const { data, error } = await supabase
       .from("products")
