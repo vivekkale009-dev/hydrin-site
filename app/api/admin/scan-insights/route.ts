@@ -1,13 +1,13 @@
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-//export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+// Uses Service Role to bypass RLS for Admin Insights
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 export async function GET(req: Request) {
@@ -28,24 +28,28 @@ export async function GET(req: Request) {
     const toDate = new Date(to);
     toDate.setDate(toDate.getDate() + 1);
 
-    const { data: scans, error } = await supabase
+    // 1. Fetch Scans
+    const { data: scans, error: scanError } = await supabase
       .from("scans")
       .select("*")
       .gte("created_at", fromDate.toISOString())
       .lt("created_at", toDate.toISOString());
 
-    if (error) {
-      console.error("scan-insights DB error", error);
+    if (scanError) {
+      console.error("scan-insights DB error", scanError);
       return NextResponse.json(
-        { error: "DB error", details: error.message },
+        { error: "DB error", details: scanError.message },
         { status: 500 }
       );
     }
 
-    const rows = scans ?? [];
-    // ---------- build aggregates ----------
-    const summary = { verified: 0, fake: 0, expired: 0 };
+    // 2. Fetch Blocked IPs for the dashboard table
+    const { data: blockedIps } = await supabase.from("blocked_ips").select("*");
 
+    const rows = scans ?? [];
+    
+    // ---------- Build Aggregates ----------
+    const summary = { verified: 0, fake: 0, expired: 0 };
     const dailyMap: Record<string, any> = {};
     const cityMap: Record<string, any> = {};
     const deviceMap: Record<string, any> = {};
@@ -75,11 +79,7 @@ export async function GET(req: Request) {
       else if (status === "expired") dailyMap[dateKey].expired++;
 
       // city
-      const cityKey: string =
-        s.city ||
-        s.state ||
-        s.country ||
-        "Unknown";
+      const cityKey: string = s.city || s.state || s.country || "Unknown";
       if (!cityMap[cityKey]) {
         cityMap[cityKey] = {
           city: cityKey,
@@ -140,13 +140,17 @@ export async function GET(req: Request) {
       .sort((a: any, b: any) => b.total - a.total)
       .slice(0, 20);
 
+    // 3. Final Return
     return NextResponse.json({
       summary,
       daily,
       byCity,
       byDevice,
       byBatch,
+      scans: rows,           // Required for the Map pins
+      blockedIps: blockedIps // Required for the Dashboard table
     });
+
   } catch (err) {
     console.error("scan-insights route crash", err);
     return NextResponse.json(

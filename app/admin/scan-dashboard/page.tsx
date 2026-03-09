@@ -47,7 +47,7 @@ export default function ScanDashboard() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
-  // --- LOGIC RESTORED ---
+  // --- Initialize Dates ---
   useEffect(() => {
     const now = new Date();
     const toStr = now.toISOString().slice(0, 10);
@@ -92,30 +92,38 @@ export default function ScanDashboard() {
   }
 
   async function loadData() {
+    // PREVENT ERROR: Don't fetch if dates aren't set yet
+    if (!fromDate || !toDate) return;
+
     setLoading(true);
     try {
-      const { data: scanData, error: scanErr } = await supabase
-        .from("scans")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(1000);
+      const response = await fetch(`/api/admin/scan-insights?from=${fromDate}&to=${toDate}`);
+      const result = await response.json();
 
-      const { data: ipData, error: ipErr } = await supabase.from("blocked_ips").select("*");
-      if (scanErr) throw scanErr;
-      if (ipErr) throw ipErr;
+      if (!response.ok) throw new Error(result.error || "Failed to fetch");
 
-      setScans(scanData || []);
-      setBlockedIps(ipData || []);
+      setScans(result.scans || []); 
+      setBlockedIps(result.blockedIps || []);
+      
+      if (result.scans) {
+        autoBlock(result.scans, result.blockedIps || []);
+      }
+      
       setError("");
-      await autoBlock(scanData || [], ipData || []);
-    } catch (e) {
+    } catch (e: any) {
+      console.error("Dashboard Load Error:", e.message);
       setError("Failed to load scan data.");
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => { loadData(); }, []);
+  // TRIGGER LOAD: Only when dates are ready
+  useEffect(() => {
+    if (fromDate && toDate) {
+      loadData();
+    }
+  }, [fromDate, toDate]);
 
   const filteredScans = useMemo(() => {
     if (!fromDate || !toDate) return scans;
@@ -180,15 +188,12 @@ export default function ScanDashboard() {
 
   const isIpBlocked = (ip: string) => blockedIps.some((b) => b.ip_address === ip && b.is_blocked);
 
-  // --- FRESH THEME STYLING ---
   const freshGreen = "#16a34a";
   const softBg = "#f8fafc";
-  const navLinkStyle = { marginRight: 20, color: "#64748b", textDecoration: "none", fontSize: "0.9rem", fontWeight: 500 };
 
   return (
     <main style={{ minHeight: "100vh", padding: "40px 20px", background: softBg, color: "#1e293b" }}>
       
-      {/* HEADER */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, maxWidth: "1200px", margin: "0 auto 24px auto" }}>
         <h1 style={{ fontSize: "1.8rem", fontWeight: 800, color: "#0f172a" }}>Earthy Source <span style={{ color: freshGreen }}>Scans</span></h1>
         <button
@@ -202,73 +207,70 @@ export default function ScanDashboard() {
         </button>
       </div>
 
-{/* NAVIGATION BAR - FIXED FOR MOBILE SWIPING */}
-<nav 
-  className="admin-nav-scroll"
-  style={{ 
-    maxWidth: "1200px", 
-    margin: "0 auto 32px auto", 
-    background: "white", 
-    padding: "12px 16px", 
-    borderRadius: "16px", 
-    display: "flex", 
-    flexWrap: "nowrap", 
-    justifyContent: "flex-start", // Change from space-between to allow scrolling
-    alignItems: "center",
-    gap: "15px", // Give tabs some breathing room
-    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-    overflowX: "auto", // CHANGED: This allows you to swipe left/right
-    msOverflowStyle: "none", // IE and Edge
-    scrollbarWidth: "none", // Firefox
-    WebkitOverflowScrolling: "touch" // Smooth swiping on iPhone
-  }}
->
-  {/* Add a CSS hide for the scrollbar inside the component if you want */}
-  <style>{`
-    .admin-nav-scroll::-webkit-scrollbar { display: none; }
-  `}</style>
+      <nav 
+        className="admin-nav-scroll"
+        style={{ 
+          maxWidth: "1200px", 
+          margin: "0 auto 32px auto", 
+          background: "white", 
+          padding: "12px 16px", 
+          borderRadius: "16px", 
+          display: "flex", 
+          flexWrap: "nowrap", 
+          justifyContent: "flex-start",
+          alignItems: "center",
+          gap: "15px",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+          overflowX: "auto",
+          msOverflowStyle: "none",
+          scrollbarWidth: "none",
+          WebkitOverflowScrolling: "touch"
+        }}
+      >
+        <style>{`
+          .admin-nav-scroll::-webkit-scrollbar { display: none; }
+        `}</style>
 
-  {[
-    { label: "Overview", href: "/admin/scan-dashboard", active: true },
-    { label: "Analytics", href: "/admin/scan-dashboard/analytics" },
-    { label: "Orders", href: "/admin/orders" },
-    { label: "Inventory", href: "/admin/inventory" },
-    { label: "HR", href: "/admin/hr/dashboard" },
-    { label: "VAN", href: "/admin/vans" },
-    { label: "SKU & Production", href: "/admin/production-parameters" },
-    { label: "Batches", href: "/admin/batches" },
-    { label: "Expenses", href: "/admin/expenses" },
-    { label: "Distributors", href: "/admin/distributors" },
-    { label: "CRM", href: "/admin/crm" },
-	{ label: "Marketing", href: "/admin/marketing" },
-	{ label: "Visitor Pass", href: "/admin/visitor-dashboard" },
-	{ label: "Careers", href: "/admin/careers-manager" },
-	{ label: "Letters", href: "/admin/letters" },
-	{ label: "DB Health", href: "/admin/database-health" },
-    { label: "Main Dashboard", href: "/admin/dashboard" },
-  ].map((link) => (
-    <a 
-      key={link.href}
-      href={link.href} 
-      style={{ 
-        textDecoration: "none",
-        fontSize: "13px", 
-        padding: "8px 12px", 
-        whiteSpace: "nowrap", // Prevents text from breaking
-        color: link.active ? "#15803d" : "#64748b", 
-        fontWeight: link.active ? 700 : 500,
-        flexShrink: 0, // IMPORTANT: Prevents the tab from getting squashed
-        transition: "0.2s",
-        borderBottom: link.active ? "2px solid #15803d" : "none"
-      }}
-    >
-      {link.label}
-    </a>
-  ))}
-</nav>
+        {[
+          { label: "Overview", href: "/admin/scan-dashboard", active: true },
+          { label: "Analytics", href: "/admin/scan-dashboard/analytics" },
+          { label: "Orders", href: "/admin/orders" },
+          { label: "Inventory", href: "/admin/inventory" },
+          { label: "HR", href: "/admin/hr/dashboard" },
+          { label: "VAN", href: "/admin/vans" },
+          { label: "SKU & Production", href: "/admin/production-parameters" },
+          { label: "Batches", href: "/admin/batches" },
+          { label: "Expenses", href: "/admin/expenses" },
+          { label: "Distributors", href: "/admin/distributors" },
+          { label: "CRM", href: "/admin/crm" },
+          { label: "Marketing", href: "/admin/marketing" },
+          { label: "Visitor Pass", href: "/admin/visitor-dashboard" },
+          { label: "Careers", href: "/admin/careers-manager" },
+          { label: "Letters", href: "/admin/letters" },
+          { label: "DB Health", href: "/admin/database-health" },
+          { label: "Main Dashboard", href: "/admin/dashboard" },
+        ].map((link) => (
+          <a 
+            key={link.href}
+            href={link.href} 
+            style={{ 
+              textDecoration: "none",
+              fontSize: "13px", 
+              padding: "8px 12px", 
+              whiteSpace: "nowrap",
+              color: link.active ? "#15803d" : "#64748b", 
+              fontWeight: link.active ? 700 : 500,
+              flexShrink: 0,
+              transition: "0.2s",
+              borderBottom: link.active ? "2px solid #15803d" : "none"
+            }}
+          >
+            {link.label}
+          </a>
+        ))}
+      </nav>
+
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-        
-        {/* DATE FILTER SECTION */}
         <section style={{ background: "white", borderRadius: "20px", padding: "24px", display: "flex", gap: 20, flexWrap: "wrap", alignItems: "center", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", marginBottom: 24 }}>
           <div>
             <label style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>From</label><br />
@@ -284,21 +286,18 @@ export default function ScanDashboard() {
           {loading && <span style={{ color: "#94a3b8", fontSize: "0.9rem" }}>Loading...</span>}
         </section>
 
-        {/* METRICS */}
-      {/* METRICS - RESPONSIVE GRID */}
-<section style={{ 
-  display: "grid", 
-  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", 
-  gap: 20, 
-  marginBottom: 24 
-}}>
-  <MetricCard label="Scans Today" value={stats.totalToday} color="#0f172a" />
-  <MetricCard label="Verified" value={stats.verified} color={freshGreen} />
-  <MetricCard label="Fake Attempts" value={stats.fake} color="#ef4444" />
-  <MetricCard label="Expired Scans" value={stats.expired} color="#f59e0b" />
-</section>
+        <section style={{ 
+          display: "grid", 
+          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", 
+          gap: 20, 
+          marginBottom: 24 
+        }}>
+          <MetricCard label="Scans Today" value={stats.totalToday} color="#0f172a" />
+          <MetricCard label="Verified" value={stats.verified} color={freshGreen} />
+          <MetricCard label="Fake Attempts" value={stats.fake} color="#ef4444" />
+          <MetricCard label="Expired Scans" value={stats.expired} color="#f59e0b" />
+        </section>
 
-        {/* IP ACTIVITY TABLE */}
         <section style={{ background: "white", borderRadius: "20px", padding: "24px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", marginBottom: 24 }}>
           <h2 style={{ marginBottom: 20, fontSize: "1.2rem", fontWeight: 700 }}>IP Activity & Control</h2>
           <div style={{ overflowX: "auto" }}>
@@ -336,7 +335,6 @@ export default function ScanDashboard() {
           </div>
         </section>
 
-        {/* MAP SECTION - PRESERVED */}
         <section style={{ background: "white", borderRadius: "20px", padding: "24px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
           <h2 style={{ marginBottom: 20, fontSize: "1.2rem", fontWeight: 700 }}>Geographic Distribution</h2>
           <div style={{ borderRadius: "16px", overflow: "hidden", border: "1px solid #e2e8f0" }}>
@@ -359,13 +357,11 @@ export default function ScanDashboard() {
             />
           </div>
         </section>
-
       </div>
     </main>
   );
 }
 
-// SUB-COMPONENTS
 function MetricCard({ label, value, color }: { label: string; value: number; color: string }) {
   return (
     <div style={{ background: "white", borderRadius: "20px", padding: "24px", border: "1px solid #f1f5f9", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>

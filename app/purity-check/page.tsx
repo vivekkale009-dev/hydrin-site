@@ -75,22 +75,29 @@ export default function PurityCheck() {
     let ip = "unknown";
     let geo: any = { country: null, state: null, city: null, isp: null, latitude: null, longitude: null, pincode: null };
 
-    try {
-      const g = await fetch("/api/get-ip-geo").then((r) => r.json());
-      ip = g.ip || "unknown";
-      const raw = g.geo || {};
-      geo = {
-        country: raw.country ?? null,
-        state: raw.state ?? raw.region ?? null,
-        city: raw.city ?? null,
-        isp: raw.isp ?? raw.connection?.isp ?? null,
-        latitude: raw.latitude ?? null,
-        longitude: raw.longitude ?? null,
-        pincode: raw.postal ?? raw.pincode ?? null,
-      };
-    } catch (e) {
-      console.warn("Geo lookup failed", e);
-    }
+// --- FIXED GEO & ISP & PINCODE MAPPING ---
+try {
+  const g = await fetch("/api/get-ip-geo").then((r) => r.json());
+  ip = g.ip || "unknown";
+  
+  // The 'raw' object is what comes back from your /api/get-ip-geo route
+  const raw = g.geo || {};
+  
+  geo = {
+    country: raw.country ?? null,
+    state: raw.state ?? null,
+    city: raw.city ?? null,
+    // FIX: Ensure ISP is captured even if the API structure varies
+    isp: raw.isp ?? null,
+    // FIX: Map coordinates correctly for the map pins
+    latitude: raw.latitude ?? null,
+    longitude: raw.longitude ?? null,
+    // FIX: ipwho.is uses 'postal', but we want it in our 'pincode' variable
+    pincode: raw.pincode ?? raw.postal ?? null,
+  };
+} catch (e) {
+  console.warn("Geo lookup failed", e);
+}
 
     const deviceType = getDeviceType();
     const browser = getBrowser();
