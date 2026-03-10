@@ -19,9 +19,35 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const supabase = await createAdminClient();
-    const body = await req.json();
-    // Payload includes quantity, rate_per_unit, and amount
-    const { data, error } = await supabase.from('business_expenses').insert([body]).select();
+    const formData = await req.formData();
+    
+    // Extract file and data
+    const file = formData.get("file") as File | null;
+    const expenseData: any = {};
+    formData.forEach((value, key) => {
+      if (key !== "file") expenseData[key] = value;
+    });
+
+    let attachment_url = expenseData.attachment_url || null;
+
+    // Handle File Upload on Server
+    if (file && file.size > 0) {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      
+      const { data: upData, error: upErr } = await supabase.storage
+        .from('expense-attachments')
+        .upload(fileName, file);
+
+      if (upErr) throw upErr;
+      attachment_url = upData.path;
+    }
+
+    const { data, error } = await supabase
+      .from('business_expenses')
+      .insert([{ ...expenseData, attachment_url }])
+      .select();
+
     if (error) throw error;
     return NextResponse.json(data[0]);
   } catch (error: any) {
@@ -32,8 +58,33 @@ export async function POST(req: Request) {
 export async function PATCH(req: Request) {
   try {
     const supabase = await createAdminClient();
-    const { id, ...updates } = await req.json();
-    const { data, error } = await supabase.from('business_expenses').update(updates).eq('id', id).select();
+    const formData = await req.formData();
+    
+    const file = formData.get("file") as File | null;
+    const id = formData.get("id");
+    const updates: any = {};
+    formData.forEach((value, key) => {
+      if (key !== "file" && key !== "id") updates[key] = value;
+    });
+
+    let attachment_url = updates.attachment_url || null;
+
+    if (file && file.size > 0) {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const { data: upData, error: upErr } = await supabase.storage
+        .from('expense-attachments')
+        .upload(fileName, file);
+      if (upErr) throw upErr;
+      attachment_url = upData.path;
+    }
+
+    const { data, error } = await supabase
+      .from('business_expenses')
+      .update({ ...updates, attachment_url })
+      .eq('id', id)
+      .select();
+
     if (error) throw error;
     return NextResponse.json(data[0]);
   } catch (error: any) {

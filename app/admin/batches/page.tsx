@@ -62,10 +62,31 @@ export default function BatchManager() {
     return date.toISOString().split('T')[0];
   };
 
-  const generateCode = () => {
-    const date = new Date().toISOString().split('T')[0].replace(/-/g, '').slice(2);
-    const random = Math.floor(100 + Math.random() * 900);
-    setNewBatchForm({ ...newBatchForm, batch_code: `HYD-${date}-${random}` });
+const generateCode = () => {
+    const now = new Date();
+    
+    // 1. Get last 2 digits of year (e.g., 2026 -> 26)
+    const year = now.getFullYear().toString().slice(-2);
+
+    // 2. Calculate Julian Day (Day of the year)
+    const start = new Date(now.getFullYear(), 0, 0);
+    const diff = (now.getTime() - start.getTime()) + ((start.getTimezoneOffset() - now.getTimezoneOffset()) * 60 * 1000);
+    const oneDay = 1000 * 60 * 60 * 24;
+    const dayOfYear = Math.floor(diff / oneDay).toString().padStart(3, '0');
+
+    // 3. Determine the Suffix (A, B, C...) based on existing batches today
+    const todayPrefix = `${year}${dayOfYear}`;
+    
+    // Look at current batches to see how many exist for today
+    const batchesToday = batches.filter(b => b.batch_code.startsWith(todayPrefix));
+    
+    // Convert count to Alphabet (0 = A, 1 = B, etc.)
+    // charCode 65 is 'A'
+    const suffix = String.fromCharCode(65 + batchesToday.length);
+
+    const finalCode = `${todayPrefix}${suffix}`;
+    
+    setNewBatchForm({ ...newBatchForm, batch_code: finalCode });
   };
 
   async function fetchProducts() {

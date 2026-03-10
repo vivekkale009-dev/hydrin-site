@@ -2,13 +2,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-// Initialize Supabase directly for maximum reliability
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// --- LOCKED UI CONFIGURATION ---
 const BUSINESS_MAP: any = {
   "Raw Materials": { items: ["Bottle Cap", "Preform", "PVC Sheet", "Boxes", "Stickers", "Labels"], color: "#3b82f6", bg: "#eff6ff", icon: "📦" },
   "Utilities": { items: ["Electricity", "Water", "Internet"], color: "#10b981", bg: "#ecfdf5", icon: "⚡" },
@@ -18,17 +16,15 @@ const BUSINESS_MAP: any = {
 };
 
 export default function FinalExpenseDashboard() {
-  // Data States
   const [expenses, setExpenses] = useState<any[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
 
-  // Filter States
   const [fCat, setFCat] = useState("All");
   const [fStart, setFStart] = useState("");
   const [fEnd, setFEnd] = useState("");
 
-  // Form States
   const [mainCat, setMainCat] = useState("Raw Materials");
   const [subItem, setSubItem] = useState("Bottle Cap");
   const [customName, setCustomName] = useState("");
@@ -37,6 +33,25 @@ export default function FinalExpenseDashboard() {
   const [rate, setRate] = useState(""); 
   const [notes, setNotes] = useState(""); 
   const [entryDate, setEntryDate] = useState(new Date().toISOString().split('T')[0]);
+
+  const [supplierGstin, setSupplierGstin] = useState("");
+  const [gstRate, setGstRate] = useState("18");
+  const [isInterstate, setIsInterstate] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [existingFileUrl, setExistingFileUrl] = useState<string | null>(null);
+
+  const taxCalc = useMemo(() => {
+    const total = parseFloat(amt) || 0;
+    const gRate = parseFloat(gstRate) || 0;
+    const taxable = total / (1 + gRate / 100);
+    const totalTax = total - taxable;
+    return {
+      taxable: taxable.toFixed(2),
+      cgst: isInterstate ? 0 : (totalTax / 2).toFixed(2),
+      sgst: isInterstate ? 0 : (totalTax / 2).toFixed(2),
+      igst: isInterstate ? totalTax.toFixed(2) : 0
+    };
+  }, [amt, gstRate, isInterstate]);
 
   useEffect(() => {
     if (qty && rate) {
@@ -52,20 +67,14 @@ export default function FinalExpenseDashboard() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Failed to fetch");
       setExpenses(data || []);
-    } catch (err) {
-      console.error("Fetch Error:", err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error("Fetch Error:", err); } finally { setLoading(false); }
   };
 
   useEffect(() => { refreshData(); }, []);
 
   const handleMainCatChange = (val: string) => {
     setMainCat(val);
-    if (BUSINESS_MAP[val]) {
-        setSubItem(BUSINESS_MAP[val].items[0]);
-    }
+    if (BUSINESS_MAP[val]) setSubItem(BUSINESS_MAP[val].items[0]);
   };
 
   const filteredRows = useMemo(() => {
@@ -79,7 +88,6 @@ export default function FinalExpenseDashboard() {
     });
   }, [expenses, fCat, fStart, fEnd]);
 
-  // --- ANALYTICS: CATEGORY & TOP ITEM ---
   const analytics = useMemo(() => {
     const stats: Record<string, number> = {};
     const itemTotals: Record<string, number> = {};
@@ -90,52 +98,78 @@ export default function FinalExpenseDashboard() {
       const base = rawCat.startsWith("Misc:") ? "Miscellaneous" : rawCat;
       const val = Number(ex.amount || 0);
       if (stats[base] !== undefined) stats[base] += val;
-      
       const key = `${ex.item_name} (${base})`;
       itemTotals[key] = (itemTotals[key] || 0) + val;
     });
 
     const total = Object.values(stats).reduce((a, b) => a + b, 0);
     const sortedItems = Object.entries(itemTotals).sort((a, b) => b[1] - a[1]);
-    const topItemEntry = sortedItems[0];
+    const itcTotal = filteredRows.reduce((a, b) => a + (Number(b.cgst_amount || 0) + Number(b.sgst_amount || 0) + Number(b.igst_amount || 0)), 0);
     
     return { 
-      stats, 
-      total, 
-      topItem: topItemEntry ? { name: topItemEntry[0], amt: Number(topItemEntry[1]) } : null 
+      stats, total, itcTotal,
+      topItem: sortedItems[0] ? { name: sortedItems[0][0], amt: Number(sortedItems[0][1]) } : null 
     };
   }, [filteredRows]);
 
-  const totalSpent = filteredRows.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+  const totalSpent = analytics.total;
 
-  const onSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const isMisc = mainCat === "Miscellaneous";
-    const payload = {
-      expense_date: entryDate,
-      category: isMisc ? `Misc: ${customName}` : mainCat,
-      item_name: isMisc ? customName : subItem,
-      amount: parseFloat(amt),
-      quantity: qty ? parseFloat(qty) : null,
-      rate_per_unit: rate ? parseFloat(rate) : null,
-      notes: notes,
-      ...(editingId && { id: editingId })
-    };
-
-    try {
-      const method = editingId ? 'PATCH' : 'POST';
-      const response = await fetch('/api/admin/expenses', {
-        method: method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (!response.ok) throw new Error("Save failed");
-      setEditingId(null); setAmt(""); setQty(""); setRate(""); setNotes(""); setCustomName("");
-      refreshData();
-    } catch (err) {
-      alert("Error saving data.");
-    }
+  const handleExportGSTR2 = () => {
+    const headers = ["GSTIN of Supplier", "Invoice date", "Total Invoice Value", "Taxable Value", "IGST", "CGST", "SGST"];
+    const csvData = filteredRows.map(r => [
+      r.supplier_gstin || "N/A", r.expense_date, r.amount, r.taxable_value, r.igst_amount, r.cgst_amount, r.sgst_amount
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers, ...csvData].map(e => e.join(",")).join("\n");
+    const link = document.createElement("a");
+    link.href = encodeURI(csvContent);
+    link.download = `GSTR2_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
   };
+
+const onSave = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setUploading(true);
+
+  try {
+    const formData = new FormData();
+    const isMisc = mainCat === "Miscellaneous";
+    
+    formData.append("expense_date", entryDate);
+    formData.append("category", isMisc ? `Misc: ${customName}` : mainCat);
+    formData.append("item_name", isMisc ? customName : subItem);
+    formData.append("amount", amt);
+    formData.append("quantity", qty || "");
+    formData.append("rate_per_unit", rate || "");
+    formData.append("notes", notes);
+    formData.append("supplier_gstin", supplierGstin);
+    formData.append("gst_rate", gstRate);
+    formData.append("taxable_value", taxCalc.taxable);
+    formData.append("cgst_amount", taxCalc.cgst.toString());
+    formData.append("sgst_amount", taxCalc.sgst.toString());
+    formData.append("igst_amount", taxCalc.igst.toString());
+    formData.append("is_interstate", String(isInterstate));
+
+    if (editingId) formData.append("id", editingId);
+    if (file) formData.append("file", file); 
+    if (existingFileUrl && !file) formData.append("attachment_url", existingFileUrl);
+
+    const method = editingId ? 'PATCH' : 'POST';
+    const response = await fetch('/api/admin/expenses', {
+      method,
+      body: formData,
+    });
+
+    if (!response.ok) throw new Error("Save failed");
+
+    setEditingId(null); setAmt(""); setQty(""); setRate(""); setNotes(""); 
+    setCustomName(""); setFile(null); setSupplierGstin(""); setExistingFileUrl(null);
+    refreshData();
+  } catch (err) { 
+    alert("Error saving data."); 
+  } finally { 
+    setUploading(false); 
+  }
+};
 
   const handleEdit = (row: any) => {
     setEditingId(row.id);
@@ -144,6 +178,10 @@ export default function FinalExpenseDashboard() {
     setRate(row.rate_per_unit?.toString() || "");
     setNotes(row.notes || "");
     setEntryDate(row.expense_date);
+    setSupplierGstin(row.supplier_gstin || "");
+    setGstRate(row.gst_rate?.toString() || "18");
+    setIsInterstate(row.is_interstate || false);
+    setExistingFileUrl(row.attachment_url || null);
     if (row.category && row.category.startsWith("Misc:")) {
       setMainCat("Miscellaneous");
       setCustomName(row.item_name);
@@ -154,35 +192,27 @@ export default function FinalExpenseDashboard() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this record?")) return;
+    if (!confirm("Are you sure?")) return;
     try {
       const response = await fetch(`/api/admin/expenses?id=${id}`, { method: 'DELETE' });
       if (!response.ok) throw new Error("Delete failed");
       refreshData();
-    } catch (err) {
-      alert("Error deleting record.");
-    }
+    } catch (err) { alert("Error deleting record."); }
   };
 
   return (
     <div style={ui.wrapper}>
-      {/* 1. SMART ANALYTICS STRIP */}
       <header style={ui.header}>
         <div style={ui.statCard}>
           <label style={ui.capsLabel}>Total Filtered Burn</label>
           <div style={ui.statVal}>₹{totalSpent.toLocaleString('en-IN')}</div>
-          <div style={ui.miniSub}>Across {filteredRows.length} entries</div>
+          <button onClick={handleExportGSTR2} style={{...ui.resetBtn, background: '#0f172a', width: '100%', marginTop: '10px'}}>📥 Export GSTR-2</button>
         </div>
 
-        <div style={ui.statCard}>
-          <label style={ui.capsLabel}>🚩 Highest Expense Leak</label>
-          {analytics.topItem ? (
-            <>
-              <div style={{...ui.statVal, fontSize: '20px', marginTop: '10px'}}>{analytics.topItem.name}</div>
-              {/* Fix: Explicitly ensuring amt is treated as a number */}
-              <div style={{...ui.statVal, color: '#ef4444', fontSize: '24px'}}>₹{(analytics.topItem.amt as number).toLocaleString('en-IN')}</div>
-            </>
-          ) : <div style={ui.miniSub}>No data yet</div>}
+        <div style={{...ui.statCard, borderLeft: '5px solid #10b981'}}>
+          <label style={ui.capsLabel}>Total ITC Summary</label>
+          <div style={{...ui.statVal, color: '#10b981'}}>₹{analytics.itcTotal.toLocaleString('en-IN')}</div>
+          <div style={ui.miniSub}>Claimable Input Tax Credit</div>
         </div>
         
         <div style={{...ui.statCard, flex: 2}}>
@@ -192,15 +222,8 @@ export default function FinalExpenseDashboard() {
               const percentage = analytics.total > 0 ? (val / analytics.total) * 100 : 0;
               if (percentage === 0) return null;
               return (
-                <div 
-                  key={cat} 
-                  onClick={() => setFCat(cat)}
-                  style={{
-                    width: `${percentage}%`, 
-                    background: BUSINESS_MAP[cat].color, 
-                    height: '100%',
-                    cursor: 'pointer'
-                  }} 
+                <div key={cat} onClick={() => setFCat(cat)}
+                  style={{ width: `${percentage}%`, background: BUSINESS_MAP[cat].color, height: '100%', cursor: 'pointer' }} 
                   title={`${cat}: ₹${val}`}
                 />
               );
@@ -218,17 +241,14 @@ export default function FinalExpenseDashboard() {
         </div>
       </header>
 
-      {/* 2. PERSISTENT FILTER BAR */}
       <section style={ui.filterBar}>
-        <div style={ui.fGroup}>
-          <label style={ui.fLabel}>Category View</label>
+        <div style={ui.fGroup}><label style={ui.fLabel}>Category View</label>
           <select value={fCat} onChange={e => setFCat(e.target.value)} style={ui.fInput}>
             <option value="All">All Categories</option>
             {Object.keys(BUSINESS_MAP).map(k => <option key={k} value={k}>{k}</option>)}
           </select>
         </div>
-        <div style={ui.fGroup}>
-          <label style={ui.fLabel}>Date Range</label>
+        <div style={ui.fGroup}><label style={ui.fLabel}>Date Range</label>
           <div style={{display:'flex', gap:'10px'}}>
             <input type="date" value={fStart} onChange={e => setFStart(e.target.value)} style={ui.fInput} />
             <input type="date" value={fEnd} onChange={e => setFEnd(e.target.value)} style={ui.fInput} />
@@ -237,46 +257,74 @@ export default function FinalExpenseDashboard() {
         <button onClick={() => {setFCat("All"); setFStart(""); setFEnd("");}} style={ui.resetBtn}>Reset Dashboard</button>
       </section>
 
-      {/* 3. CORE INTERFACE */}
       <div style={ui.mainGrid}>
         <aside style={ui.sideCard}>
           <h3 style={{margin: '0 0 20px 0'}}>{editingId ? "📝 Edit Record" : "➕ Log Expense"}</h3>
           <form onSubmit={onSave} style={ui.form}>
-            <label style={ui.fLabel}>Main Category</label>
-            <select value={mainCat} onChange={e => handleMainCatChange(e.target.value)} style={ui.input}>
-              {Object.keys(BUSINESS_MAP).map(k => <option key={k} value={k}>{k}</option>)}
-            </select>
+            <label style={ui.fLabel}>Supplier GSTIN</label>
+            <input placeholder="27XXXXX..." value={supplierGstin} onChange={e => setSupplierGstin(e.target.value.toUpperCase())} style={ui.input} />
+
+            <div style={{display:'flex', gap:'10px'}}>
+              <div style={{flex: 1}}><label style={ui.fLabel}>Main Category</label>
+                <select value={mainCat} onChange={e => handleMainCatChange(e.target.value)} style={ui.input}>
+                  {Object.keys(BUSINESS_MAP).map(k => <option key={k} value={k}>{k}</option>)}
+                </select>
+              </div>
+              <div style={{flex: 1}}><label style={ui.fLabel}>GST %</label>
+                <select value={gstRate} onChange={e => setGstRate(e.target.value)} style={ui.input}>
+                  <option value="18">18%</option><option value="12">12%</option><option value="5">5%</option><option value="0">0%</option>
+                </select>
+              </div>
+            </div>
 
             <label style={ui.fLabel}>Specific Item</label>
             {mainCat === "Miscellaneous" ? (
-              <input placeholder="Item description..." value={customName} onChange={e => setCustomName(e.target.value)} style={ui.input} required />
+              <input 
+                placeholder="Enter item name..." 
+                value={customName} 
+                onChange={e => setCustomName(e.target.value)} 
+                style={ui.input} 
+                required 
+              />
             ) : (
               <select value={subItem} onChange={e => setSubItem(e.target.value)} style={ui.input}>
                 {BUSINESS_MAP[mainCat]?.items.map((item: string) => <option key={item} value={item}>{item}</option>)}
               </select>
             )}
 
+            <div style={{background: '#f8fafc', padding: '12px', borderRadius: '10px', fontSize: '11px', border: '1px dashed #cbd5e1', display: 'flex', justifyContent: 'space-between'}}>
+               <span>Taxable: ₹{taxCalc.taxable}</span>
+               <span style={{color: '#10b981', fontWeight: 'bold'}}>GST: ₹{(parseFloat(taxCalc.cgst as any) + parseFloat(taxCalc.sgst as any) + parseFloat(taxCalc.igst as any)).toFixed(2)}</span>
+            </div>
+
+            <label style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: 'bold'}}>
+              <input type="checkbox" checked={isInterstate} onChange={e => setIsInterstate(e.target.checked)} /> Interstate (IGST)
+            </label>
+
             <div style={{display:'flex', gap:'10px'}}>
-              <div style={{flex: 1}}>
-                <label style={ui.fLabel}>Qty</label>
-                <input type="number" step="0.01" value={qty} onChange={e => setQty(e.target.value)} style={ui.input} placeholder="0" />
+              <div style={{flex: 1}}><label style={ui.fLabel}>Qty</label>
+                <input type="number" step="0.01" value={qty} onChange={e => setQty(e.target.value)} style={ui.input} />
               </div>
-              <div style={{flex: 1}}>
-                <label style={ui.fLabel}>Rate</label>
-                <input type="number" step="0.01" value={rate} onChange={e => setRate(e.target.value)} style={ui.input} placeholder="0.00" />
+              <div style={{flex: 1}}><label style={ui.fLabel}>Rate</label>
+                <input type="number" step="0.01" value={rate} onChange={e => setRate(e.target.value)} style={ui.input} />
               </div>
             </div>
 
-            <label style={ui.fLabel}>Total Amount (INR)</label>
+            <label style={ui.fLabel}>Total Bill Amount</label>
             <input type="number" step="0.01" value={amt} onChange={e => setAmt(e.target.value)} style={{...ui.input, background: '#eef2ff', borderColor: '#3b82f6'}} required />
             
             <label style={ui.fLabel}>Notes</label>
-            <textarea placeholder="Add any details..." value={notes} onChange={e => setNotes(e.target.value)} style={{...ui.input, height: '60px', resize: 'none'}} />
+            <input 
+              placeholder="Any remarks..." 
+              value={notes} 
+              onChange={e => setNotes(e.target.value)} 
+              style={ui.input} 
+            />
 
-            <label style={ui.fLabel}>Expense Date</label>
-            <input type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)} style={ui.input} />
+            <label style={ui.fLabel}>Upload Invoice</label>
+            <input type="file" onChange={e => setFile(e.target.files?.[0] || null)} style={{...ui.input, fontSize: '12px'}} />
 
-            <button type="submit" style={ui.saveBtn}>{editingId ? "Save Changes" : "Log Transaction"}</button>
+            <button type="submit" disabled={uploading} style={ui.saveBtn}>{uploading ? "Uploading..." : editingId ? "Save Changes" : "Log Transaction"}</button>
             {editingId && <button type="button" onClick={() => setEditingId(null)} style={{...ui.saveBtn, background:'#94a3b8', marginTop:'-5px'}}>Cancel</button>}
           </form>
         </aside>
@@ -287,37 +335,45 @@ export default function FinalExpenseDashboard() {
               <thead style={ui.thRow}>
                 <tr>
                   <th style={ui.th}>DATE</th>
-                  <th style={ui.th}>CATEGORY</th>
-                  <th style={ui.th}>DESCRIPTION</th>
-                  <th style={ui.th}>QTY / RATE</th>
-                  <th style={ui.th}>AMOUNT</th>
+                  <th style={ui.th}>EXPENSE TYPE</th>
+                  <th style={ui.th}>SUPPLIER / ITEM</th>
+                  <th style={ui.th}>NOTES</th>
+                  <th style={ui.th}>TAXABLE</th>
+                  <th style={ui.th}>GST</th>
+                  <th style={ui.th}>TOTAL</th>
+                  <th style={ui.th}>VIEW</th>
                   <th style={ui.th}>ACTION</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredRows.map(row => {
-                  const base = (row.category || "").includes('Misc:') ? "Miscellaneous" : row.category;
-                  const set = BUSINESS_MAP[base] || BUSINESS_MAP["Miscellaneous"];
+                  const gstTotal = (row.cgst_amount || 0) + (row.sgst_amount || 0) + (row.igst_amount || 0);
                   return (
                     <tr key={row.id} style={ui.tr}>
                       <td style={ui.td}>{new Date(row.expense_date).toLocaleDateString('en-IN')}</td>
+                      <td style={{...ui.td, fontSize: '12px', color: '#64748b'}}>{row.category}</td>
                       <td style={ui.td}>
-                        <span style={{...ui.badge, color: set.color, backgroundColor: set.bg}}>
-                          {set.icon} {row.category}
-                        </span>
+                        <div style={{fontSize: '10px', color: '#94a3b8'}}>{row.supplier_gstin || 'No GSTIN'}</div>
+                        <div style={{fontWeight: 'bold'}}>{row.item_name}</div>
                       </td>
-                      <td style={ui.td}>
-                        <div>{row.item_name}</div>
-                        {row.notes && <div style={{fontSize: '11px', color: '#64748b', fontWeight: 'normal', marginTop: '4px'}}>Note: {row.notes}</div>}
-                      </td>
-                      <td style={ui.td}>
-                        {row.quantity ? `${row.quantity} x ₹${row.rate_per_unit}` : '--'}
-                      </td>
+                      <td style={{...ui.td, fontSize: '11px', color: '#64748b', maxWidth: '150px'}}>{row.notes || '-'}</td>
+                      <td style={ui.td}>₹{row.taxable_value || '--'}</td>
+                      <td style={{...ui.td, color: '#10b981'}}>₹{gstTotal.toFixed(2)}</td>
                       <td style={ui.tdAmt}>₹{Number(row.amount || 0).toLocaleString('en-IN')}</td>
+                      <td style={ui.td}>
+                        {row.attachment_url ? (
+                          <button 
+                            onClick={() => window.open(supabase.storage.from('expense-attachments').getPublicUrl(row.attachment_url).data.publicUrl)} 
+                            style={{...ui.editBtn, background: '#e0f2fe', color: '#0369a1'}}
+                          >
+                            📄 Open
+                          </button>
+                        ) : <span style={{fontSize: '11px', color: '#cbd5e1'}}>None</span>}
+                      </td>
                       <td style={ui.td}>
                         <div style={{display: 'flex', gap: '8px'}}>
                             <button onClick={() => handleEdit(row)} style={ui.editBtn}>Edit</button>
-                            <button onClick={() => handleDelete(row.id)} style={ui.delBtn}>Delete</button>
+                            <button onClick={() => handleDelete(row.id)} style={ui.delBtn}>Del</button>
                         </div>
                       </td>
                     </tr>
@@ -326,18 +382,12 @@ export default function FinalExpenseDashboard() {
               </tbody>
             </table>
           </div>
-          {loading ? (
-            <p style={{textAlign:'center', padding:'40px', color:'#94a3b8'}}>Fetching latest records...</p>
-          ) : filteredRows.length === 0 && (
-            <p style={{textAlign:'center', padding:'40px', color:'#94a3b8'}}>No expenses found.</p>
-          )}
         </main>
       </div>
     </div>
   );
 }
 
-// --- STYLING ---
 const ui: any = {
   wrapper: { padding: '40px', background: '#f8fafc', minHeight: '100vh', fontFamily: 'Inter, sans-serif' },
   header: { display: 'flex', gap: '20px', marginBottom: '30px', flexWrap: 'wrap' },
@@ -345,14 +395,12 @@ const ui: any = {
   capsLabel: { fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', display: 'block', marginBottom: '10px' },
   statVal: { fontSize: '34px', fontWeight: '900', color: '#0f172a', lineHeight: '1.2' },
   miniSub: { fontSize: '12px', color: '#64748b', marginTop: '5px', fontWeight: '600' },
-  
   burnBarContainer: { height: '14px', width: '100%', background: '#f1f5f9', borderRadius: '10px', display: 'flex', overflow: 'hidden', marginBottom: '20px' },
   legendGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '8px' },
-  legendItem: { display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s' },
+  legendItem: { display: 'flex', alignItems: 'center', gap: '8px' },
   dot: { width: '8px', height: '8px', borderRadius: '50%' },
   legendText: { fontSize: '11px', fontWeight: '700', color: '#64748b', flex: 1 },
   legendVal: { fontSize: '11px', fontWeight: '800', color: '#1e293b' },
-
   filterBar: { background: '#0f172a', color: '#fff', padding: '20px 30px', borderRadius: '20px', display: 'flex', gap: '40px', marginBottom: '30px', alignItems: 'flex-end', flexWrap: 'wrap' },
   fGroup: { display: 'flex', flexDirection: 'column', gap: '8px' },
   fLabel: { fontSize: '11px', fontWeight: 'bold', color: '#94a3b8' },
@@ -370,7 +418,6 @@ const ui: any = {
   tr: { borderBottom: '1px solid #f1f5f9' },
   td: { padding: '18px 20px', fontSize: '14px', fontWeight: '600', color: '#475569' },
   tdAmt: { padding: '18px 20px', fontWeight: '800', color: '#0f172a', fontSize: '15px' },
-  badge: { padding: '6px 14px', borderRadius: '12px', fontSize: '11px', fontWeight: '800', display: 'inline-flex', alignItems: 'center', gap: '6px' },
   editBtn: { background: '#f1f5f9', border: 'none', padding: '8px 16px', borderRadius: '10px', cursor: 'pointer', fontWeight: '800', color: '#475569', fontSize: '12px' },
   delBtn: { background: '#fee2e2', border: 'none', padding: '8px 16px', borderRadius: '10px', cursor: 'pointer', fontWeight: '800', color: '#ef4444', fontSize: '12px' }
 };
