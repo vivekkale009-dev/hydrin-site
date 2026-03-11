@@ -15,6 +15,20 @@ const BUSINESS_MAP: any = {
   "Miscellaneous": { items: ["Other"], color: "#64748b", bg: "#f8fafc", icon: "📎" }
 };
 
+// NEW CONSTANTS FOR GST
+const GST_ITC_CATEGORIES = [
+  { id: "inputs", label: "Inputs (Raw Materials)" },
+  { id: "capital_goods", label: "Capital Goods (Machinery)" },
+  { id: "input_services", label: "Input Services (Rent/Bills)" },
+  { id: "ineligible", label: "Ineligible (Blocked)" }
+];
+
+const RECO_STATUS = [
+  { id: "pending", label: "🟡 Pending", color: "#f59e0b" },
+  { id: "matched", label: "🟢 Matched in 2B", color: "#10b981" },
+  { id: "mismatch", label: "🔴 Mismatch", color: "#ef4444" }
+];
+
 export default function FinalExpenseDashboard() {
   const [expenses, setExpenses] = useState<any[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -33,6 +47,10 @@ export default function FinalExpenseDashboard() {
   const [rate, setRate] = useState(""); 
   const [notes, setNotes] = useState(""); 
   const [entryDate, setEntryDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // NEW STATES
+  const [gstCategory, setGstCategory] = useState("inputs");
+  const [recoStatus, setRecoStatus] = useState("pending");
 
   const [supplierGstin, setSupplierGstin] = useState("");
   const [gstRate, setGstRate] = useState("18");
@@ -115,9 +133,9 @@ export default function FinalExpenseDashboard() {
   const totalSpent = analytics.total;
 
   const handleExportGSTR2 = () => {
-    const headers = ["GSTIN of Supplier", "Invoice date", "Total Invoice Value", "Taxable Value", "IGST", "CGST", "SGST"];
+    const headers = ["GSTIN of Supplier", "Invoice date", "Total Invoice Value", "Taxable Value", "IGST", "CGST", "SGST", "ITC Category", "Status"];
     const csvData = filteredRows.map(r => [
-      r.supplier_gstin || "N/A", r.expense_date, r.amount, r.taxable_value, r.igst_amount, r.cgst_amount, r.sgst_amount
+      r.supplier_gstin || "N/A", r.expense_date, r.amount, r.taxable_value, r.igst_amount, r.cgst_amount, r.sgst_amount, r.gst_category, r.reco_status
     ]);
     const csvContent = "data:text/csv;charset=utf-8," + [headers, ...csvData].map(e => e.join(",")).join("\n");
     const link = document.createElement("a");
@@ -143,6 +161,8 @@ const onSave = async (e: React.FormEvent) => {
     formData.append("notes", notes);
     formData.append("supplier_gstin", supplierGstin);
     formData.append("gst_rate", gstRate);
+    formData.append("gst_category", gstCategory); // Added
+    formData.append("reco_status", recoStatus);   // Added
     formData.append("taxable_value", taxCalc.taxable);
     formData.append("cgst_amount", taxCalc.cgst.toString());
     formData.append("sgst_amount", taxCalc.sgst.toString());
@@ -180,6 +200,8 @@ const onSave = async (e: React.FormEvent) => {
     setEntryDate(row.expense_date);
     setSupplierGstin(row.supplier_gstin || "");
     setGstRate(row.gst_rate?.toString() || "18");
+    setGstCategory(row.gst_category || "inputs"); // Added
+    setRecoStatus(row.reco_status || "pending");   // Added
     setIsInterstate(row.is_interstate || false);
     setExistingFileUrl(row.attachment_url || null);
     if (row.category && row.category.startsWith("Misc:")) {
@@ -261,8 +283,33 @@ const onSave = async (e: React.FormEvent) => {
         <aside style={ui.sideCard}>
           <h3 style={{margin: '0 0 20px 0'}}>{editingId ? "📝 Edit Record" : "➕ Log Expense"}</h3>
           <form onSubmit={onSave} style={ui.form}>
+		  
+		  {/* ADDED: Date Input so you can enter it manually */}
+            <label style={ui.fLabel}>Bill / Invoice Date</label>
+            <input 
+              type="date" 
+              value={entryDate} 
+              onChange={e => setEntryDate(e.target.value)} 
+              style={ui.input} 
+              required 
+            />
+		  
             <label style={ui.fLabel}>Supplier GSTIN</label>
             <input placeholder="27XXXXX..." value={supplierGstin} onChange={e => setSupplierGstin(e.target.value.toUpperCase())} style={ui.input} />
+
+            {/* NEW: ITC AND STATUS SELECTORS */}
+            <div style={{display:'flex', gap:'10px'}}>
+              <div style={{flex: 1}}><label style={ui.fLabel}>ITC Category</label>
+                <select value={gstCategory} onChange={e => setGstCategory(e.target.value)} style={ui.input}>
+                  {GST_ITC_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                </select>
+              </div>
+              <div style={{flex: 1}}><label style={ui.fLabel}>Reco Status</label>
+                <select value={recoStatus} onChange={e => setRecoStatus(e.target.value)} style={{...ui.input, borderColor: RECO_STATUS.find(s=>s.id===recoStatus)?.color}}>
+                  {RECO_STATUS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                </select>
+              </div>
+            </div>
 
             <div style={{display:'flex', gap:'10px'}}>
               <div style={{flex: 1}}><label style={ui.fLabel}>Main Category</label>
@@ -336,7 +383,7 @@ const onSave = async (e: React.FormEvent) => {
                 <tr>
                   <th style={ui.th}>DATE</th>
                   <th style={ui.th}>EXPENSE TYPE</th>
-                  <th style={ui.th}>SUPPLIER / ITEM</th>
+                  <th style={ui.th}>ITEM / STATUS</th> {/* Updated */}
                   <th style={ui.th}>NOTES</th>
                   <th style={ui.th}>TAXABLE</th>
                   <th style={ui.th}>GST</th>
@@ -348,13 +395,17 @@ const onSave = async (e: React.FormEvent) => {
               <tbody>
                 {filteredRows.map(row => {
                   const gstTotal = (row.cgst_amount || 0) + (row.sgst_amount || 0) + (row.igst_amount || 0);
+                  const statusObj = RECO_STATUS.find(s => s.id === row.reco_status) || RECO_STATUS[0];
                   return (
                     <tr key={row.id} style={ui.tr}>
                       <td style={ui.td}>{new Date(row.expense_date).toLocaleDateString('en-IN')}</td>
-                      <td style={{...ui.td, fontSize: '12px', color: '#64748b'}}>{row.category}</td>
+                      <td style={{...ui.td, fontSize: '12px', color: '#64748b'}}>
+                        {row.category}
+                        <div style={{fontSize: '9px', color: '#94a3b8'}}>{row.gst_category}</div>
+                      </td>
                       <td style={ui.td}>
-                        <div style={{fontSize: '10px', color: '#94a3b8'}}>{row.supplier_gstin || 'No GSTIN'}</div>
                         <div style={{fontWeight: 'bold'}}>{row.item_name}</div>
+                        <div style={{fontSize: '10px', color: statusObj.color, fontWeight: '800'}}>{statusObj.label}</div>
                       </td>
                       <td style={{...ui.td, fontSize: '11px', color: '#64748b', maxWidth: '150px'}}>{row.notes || '-'}</td>
                       <td style={ui.td}>₹{row.taxable_value || '--'}</td>
