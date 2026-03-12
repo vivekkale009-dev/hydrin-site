@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-// Namespace import is the most robust way to avoid "not exported" errors
-import * as otplib from "otplib";
+
+// Using require because otplib's ESM exports are inconsistent in production bundles
+const otplib = require("otplib");
 
 export const dynamic = 'force-dynamic';
 
@@ -23,10 +24,11 @@ export async function POST(req: Request) {
     }
 
     // 2. 2FA Check
-    // Using @ts-ignore ensures the build passes even if TS is confused, 
-    // while the otplib.authenticator path works perfectly at runtime.
-    // @ts-ignore
-    const isValidToken = otplib.authenticator.check(totpCode, secret);
+    // In production, require('otplib') returns the authenticator directly 
+    // or as a property. This check handles both scenarios.
+    const authenticator = otplib.authenticator || otplib;
+    
+    const isValidToken = authenticator.check(totpCode, secret);
     const isRecoveryUsed = recovery && totpCode === recovery;
 
     if (!isValidToken && !isRecoveryUsed) {
@@ -41,7 +43,7 @@ export async function POST(req: Request) {
     
     res.cookies.set("oxy_admin", "1", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: true,
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 2, 
