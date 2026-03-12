@@ -1,56 +1,40 @@
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
 import { NextResponse } from "next/server";
+import { authenticator } from "otplib";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json().catch(() => ({}));
-    const password = body.password as string | undefined;
+    const { username, password, totpCode } = await req.json();
 
-    if (!password) {
-      return NextResponse.json(
-        { success: false, error: "Password required" },
-        { status: 400 }
-      );
+    const expectedUser = process.env.ADMIN_USERNAME;
+    const expectedPass = process.env.ADMIN_PASSWORD;
+    const secret = process.env.ADMIN_TOTP_SECRET;
+    const recovery = process.env.ADMIN_RECOVERY_CODE;
+
+    // 1. Basic Auth Check
+    if (username !== expectedUser || password !== expectedPass) {
+      return NextResponse.json({ success: false, error: "Invalid username or password" }, { status: 401 });
     }
 
-    const expected = process.env.ADMIN_PASSWORD;
-    if (!expected) {
-      console.error("ADMIN_PASSWORD is not set in environment variables");
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Server auth is not configured.",
-        },
-        { status: 500 }
-      );
+    // 2. 2FA Check (Zoho Code OR Recovery Code)
+    const isValidToken = authenticator.check(totpCode, secret || "");
+    const isRecoveryUsed = totpCode === recovery && recovery !== undefined;
+
+    if (!isValidToken && !isRecoveryUsed) {
+      return NextResponse.json({ success: false, error: "Invalid Auth Code" }, { status: 401 });
     }
 
-    if (password !== expected) {
-      return NextResponse.json(
-        { success: false, error: "Invalid password" },
-        { status: 401 }
-      );
-    }
-
+    // 3. Successful Login
     const res = NextResponse.json({ success: true });
-
-    // Set admin cookie for 12 hours
     res.cookies.set("oxy_admin", "1", {
       httpOnly: true,
       secure: true,
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 12,
+      maxAge: 60 * 60 * 2, // 2-hour session
     });
 
     return res;
   } catch (e) {
-    console.error("Admin login error:", e);
-    return NextResponse.json(
-      { success: false, error: "Unexpected error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: "Internal Server Error" }, { status: 500 });
   }
 }

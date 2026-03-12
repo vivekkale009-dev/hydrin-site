@@ -2,15 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
-import Image from "next/image";
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [totpCode, setTotpCode] = useState(""); // 6-digit code from Zoho
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const redirectTarget = "/admin/scan-dashboard";
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -21,22 +20,18 @@ export default function AdminLoginPage() {
       const res = await fetch("/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ username, password, totpCode }),
       });
 
       const json = await res.json();
-
       if (!res.ok || !json.success) {
         setError(json.error || "Access Denied");
         setLoading(false);
         return;
       }
-	  // --- ADD THIS LINE HERE ---
-localStorage.setItem("is_admin", "true"); 
 
-router.push(redirectTarget);
-
-      router.push(redirectTarget);
+      localStorage.setItem("is_admin", "true"); 
+      router.push("/admin/scan-dashboard");
     } catch (e) {
       setError("Connection error. Please try again.");
       setLoading(false);
@@ -45,60 +40,40 @@ router.push(redirectTarget);
 
   return (
     <main style={styles.page}>
-      {/* Decorative background element */}
-      <div style={styles.blob} />
-
       <div style={styles.loginCard}>
         <div style={styles.logoSection}>
-          <div style={styles.logoWrapper}>
-            <img 
-              src="/EarthyLogo.JPG" 
-              alt="Earthy Source Logo" 
-              style={styles.logoImage}
-            />
-          </div>
-          <h1 style={styles.brandName}>Earthy Source</h1>
-          <p style={styles.brandSub}>Foods & Beverages</p>
+           <img src="/EarthyLogo.JPG" alt="Logo" style={styles.logoImage} />
+           <h1 style={styles.brandName}>Earthy Source</h1>
         </div>
 
-        <div style={styles.divider} />
-
         <form onSubmit={handleSubmit} style={styles.form}>
-          <h2 style={styles.loginTitle}>Admin Portal</h2>
-          
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>Admin Username</label>
+            <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} style={styles.input} required />
+          </div>
+
           <div style={styles.inputGroup}>
             <label style={styles.label}>Security Password</label>
-            <input
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={styles.input}
-              required
-            />
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={styles.input} required />
+          </div>
+
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>Zoho OneAuth Code</label>
+            <input type="text" placeholder="000000" maxLength={6} value={totpCode} onChange={(e) => setTotpCode(e.target.value)} style={styles.input} required />
           </div>
 
           {error && <div style={styles.errorBox}>{error}</div>}
 
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              ...styles.button,
-              background: loading ? "#94a3b8" : "#2d4f3e", // Slate green
-            }}
-          >
-            {loading ? "Authenticating..." : "Access Dashboard"}
+          <button type="submit" disabled={loading} style={{...styles.button, background: loading ? "#94a3b8" : "#2d4f3e"}}>
+            {loading ? "Verifying..." : "Access Dashboard"}
           </button>
         </form>
-
-        <p style={styles.footer}>
-          Restricted Access &bull; Authorized Personnel Only
-        </p>
       </div>
     </main>
   );
 }
+
+// ... styles remain the same
 
 const styles: any = {
   page: {
