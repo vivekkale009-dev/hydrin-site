@@ -1,45 +1,64 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 
 export const dynamic = 'force-dynamic';
+
+// Helper to verify TOTP without external libraries
+function verifyTOTP(token: string, secret: string) {
+  try {
+    // 1. Decode Base32 Secret to Bytes
+    const base32chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+    let bits = "";
+    for (let i = 0; i < secret.length; i++) {
+      const val = base32chars.indexOf(secret.charAt(i).toUpperCase());
+      bits += val.toString(2).padStart(5, '0');
+    }
+    const buffer = Buffer.from(bits.match(/.{1,8}/g)!.map(b => parseInt(b, 2)));
+
+    // 2. Get current 30-second time step
+    const counter = Math.floor(Date.now() / 30000);
+    const counterBuffer = Buffer.alloc(8);
+    counterBuffer.writeBigInt64BE(BigInt(counter));
+
+    // 3. Generate HMAC-SHA1 hash
+    const hmac = crypto.createHmac("sha1", buffer).update(counterBuffer).digest();
+
+    // 4. Dynamic Truncation
+    const offset = hmac[hmac.length - 1] & 0xf;
+    const code = ((hmac[offset] & 0x7f) << 24 |
+                  (hmac[offset + 1] & 0xff) << 16 |
+                  (hmac[offset + 2] & 0xff) << 8 |
+                  (hmac[offset + 3] & 0xff)) % 1000000;
+
+    return code.toString().padStart(6, '0') === token;
+  } catch (e) {
+    return false;
+  }
+}
 
 export async function POST(req: Request) {
   try {
     const { username, password, totpCode } = await req.json();
 
-    // 1. Basic Credential Check
+    // 1. Check Credentials
     if (username !== process.env.ADMIN_USERNAME || password !== process.env.ADMIN_PASSWORD) {
       return NextResponse.json({ success: false, error: "Invalid Credentials" }, { status: 401 });
     }
 
-    // 2. Load v13 API
-    const otplib = require("otplib");
-    
-    // In v13, 'verifySync' is the direct replacement for 'authenticator.check'
-    const verifyFunc = otplib.verifySync || otplib.verify;
-
-    if (!verifyFunc) {
-      console.error("Library Error: verify function not found in bundle", otplib);
-      throw new Error("MFA Library configuration error.");
-    }
-    
+    // 2. Verify TOTP or Recovery Code
     const secret = (process.env.ADMIN_TOTP_SECRET || "").replace(/\s+/g, "");
     const recovery = process.env.ADMIN_RECOVERY_CODE;
 
-    // 3. Strict 2FA Validation using v13 verifySync
-    // The arguments for verifySync are (token, secret) or an options object.
-    // Standard usage for v13: verifySync({ token, secret })
-    const isValidToken = verifyFunc({
-      token: totpCode,
-      secret: secret
-    });
-
+    const isValidToken = verifyTOTP(totpCode, secret);
     const isRecoveryUsed = recovery && totpCode === recovery;
+
+    console.log(`Login Attempt - Token: ${totpCode}, Valid: ${isValidToken}`);
 
     if (!isValidToken && !isRecoveryUsed) {
       return NextResponse.json({ success: false, error: "Invalid Auth Code" }, { status: 401 });
     }
 
-    // 4. Success Logic
+    // 3. Set Cookie and Success
     const res = NextResponse.json({ success: true });
     res.cookies.set("oxy_admin", "1", {
       httpOnly: true,
@@ -51,7 +70,6 @@ export async function POST(req: Request) {
 
     return res;
   } catch (e: any) {
-    console.error("Critical Login Error:", e.message);
-    return NextResponse.json({ success: false, error: "System Error: " + e.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: "Auth System Error" }, { status: 500 });
   }
 }
