@@ -68,6 +68,11 @@ export default function AdminLoginPage() {
             {loading ? "Verifying..." : "Access Dashboard"}
           </button>
         </form>
+		
+		 <p style={styles.footer}>
+          Restricted Access &bull; Authorized Personnel Only
+        </p>
+		
       </div>
     </main>
   );
