@@ -11,25 +11,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "Invalid Credentials" }, { status: 401 });
     }
 
-    // 2. Dynamic Library Discovery
-    const lib = require("otplib");
+    // 2. Load v13 API
+    const otplib = require("otplib");
     
-    // This looks for 'authenticator' in 4 different places to handle all bundle types
-    const authenticator = lib.authenticator || 
-                          (lib.default && lib.default.authenticator) || 
-                          lib || 
-                          lib.default;
+    // In v13, 'verifySync' is the direct replacement for 'authenticator.check'
+    const verifyFunc = otplib.verifySync || otplib.verify;
 
-    if (!authenticator || typeof authenticator.check !== 'function') {
-      console.error("Library Error: Authenticator not found in bundle", lib);
-      throw new Error("Authenticator library failed to load properly.");
+    if (!verifyFunc) {
+      console.error("Library Error: verify function not found in bundle", otplib);
+      throw new Error("MFA Library configuration error.");
     }
     
     const secret = (process.env.ADMIN_TOTP_SECRET || "").replace(/\s+/g, "");
     const recovery = process.env.ADMIN_RECOVERY_CODE;
 
-    // 3. Strict 2FA Validation
-    const isValidToken = authenticator.check(totpCode, secret);
+    // 3. Strict 2FA Validation using v13 verifySync
+    // The arguments for verifySync are (token, secret) or an options object.
+    // Standard usage for v13: verifySync({ token, secret })
+    const isValidToken = verifyFunc({
+      token: totpCode,
+      secret: secret
+    });
+
     const isRecoveryUsed = recovery && totpCode === recovery;
 
     if (!isValidToken && !isRecoveryUsed) {
