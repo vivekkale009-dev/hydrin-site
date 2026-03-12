@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { authenticator } from "otplib";
+// Use this specific import style to bypass the 'authenticator' export error
+import * as otplib from "otplib";
 
 export async function POST(req: Request) {
   try {
@@ -16,8 +17,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "Invalid credentials" }, { status: 401 });
     }
 
-    // 2. 2FA Check (otplib v13 supports .check for easy validation)
-    const isValidToken = authenticator.check(totpCode, secret);
+    // 2. 2FA Check - Accessing via the otplib namespace
+    const isValidToken = otplib.authenticator.check(totpCode, secret);
     const isRecoveryUsed = recovery && totpCode === recovery;
 
     if (!isValidToken && !isRecoveryUsed) {
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
     const res = NextResponse.json({ success: true });
     res.cookies.set("oxy_admin", "1", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: true,
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 2,
