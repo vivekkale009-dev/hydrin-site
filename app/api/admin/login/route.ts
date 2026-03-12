@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-// Use this specific import style to bypass the 'authenticator' export error
-import * as otplib from "otplib";
+// Use 'require' to get exactly what we need without TS export errors
+const { authenticator } = require("otplib");
 
 export async function POST(req: Request) {
   try {
@@ -17,8 +17,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "Invalid credentials" }, { status: 401 });
     }
 
-    // 2. 2FA Check - Accessing via the otplib namespace
-    const isValidToken = otplib.authenticator.check(totpCode, secret);
+    // 2. 2FA Check
+    // We use the authenticator we just 'required' above
+    const isValidToken = authenticator.check(totpCode, secret);
     const isRecoveryUsed = recovery && totpCode === recovery;
 
     if (!isValidToken && !isRecoveryUsed) {
