@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-// Use 'require' to get exactly what we need without TS export errors
-const { authenticator } = require("otplib");
+// Direct sub-module import is the only bulletproof way for Next.js 14+ production builds
+import { authenticator } from "otplib/authenticator";
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
@@ -14,31 +16,42 @@ export async function POST(req: Request) {
 
     // 1. Basic Auth Check
     if (username !== expectedUser || password !== expectedPass) {
-      return NextResponse.json({ success: false, error: "Invalid credentials" }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: "Invalid username or password" }, 
+        { status: 401 }
+      );
     }
 
-    // 2. 2FA Check
-    // We use the authenticator we just 'required' above
+    // 2. 2FA Check (TOTP or Recovery)
+    // Direct path import ensures 'authenticator' and '.check' are defined
     const isValidToken = authenticator.check(totpCode, secret);
     const isRecoveryUsed = recovery && totpCode === recovery;
 
     if (!isValidToken && !isRecoveryUsed) {
-      return NextResponse.json({ success: false, error: "Invalid Auth Code" }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: "Invalid 6-digit Auth Code" }, 
+        { status: 401 }
+      );
     }
 
-    // 3. Successful Login
+    // 3. Successful Login & Cookie Setup
     const res = NextResponse.json({ success: true });
+    
     res.cookies.set("oxy_admin", "1", {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 2,
+      maxAge: 60 * 60 * 2, // 2 Hour Session
     });
 
     return res;
-  } catch (e) {
-    console.error("Login Error:", e);
-    return NextResponse.json({ success: false, error: "Internal Server Error" }, { status: 500 });
+
+  } catch (e: any) {
+    console.error("Login Error Details:", e.message);
+    return NextResponse.json(
+      { success: false, error: "Authentication system error" }, 
+      { status: 500 }
+    );
   }
 }
