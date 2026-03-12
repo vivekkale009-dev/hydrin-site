@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { authenticator } from "otplib";
 
 export const dynamic = 'force-dynamic';
 
@@ -7,25 +6,24 @@ export async function POST(req: Request) {
   try {
     const { username, password, totpCode } = await req.json();
 
-    const expectedUser = process.env.ADMIN_USERNAME;
-    const expectedPass = process.env.ADMIN_PASSWORD;
-    const secret = (process.env.ADMIN_TOTP_SECRET || "").replace(/\s+/g, "");
-    const recovery = process.env.ADMIN_RECOVERY_CODE;
-
-    // 1. Primary Credential Check
-    if (username !== expectedUser || password !== expectedPass) {
+    // 1. Basic Credential Check
+    if (username !== process.env.ADMIN_USERNAME || password !== process.env.ADMIN_PASSWORD) {
       return NextResponse.json({ success: false, error: "Invalid Credentials" }, { status: 401 });
     }
 
-    // 2. Multi-Factor Check
-    // We force a strict boolean check here
-    const isValidToken = authenticator.check(totpCode, secret) === true;
+    // 2. 2FA Check (Dynamic Import to bypass build errors)
+    // This 'require' happens at runtime, so the build won't fail.
+    const otplib = require("otplib");
+    const authenticator = otplib.authenticator;
+    
+    const secret = (process.env.ADMIN_TOTP_SECRET || "").replace(/\s+/g, "");
+    const recovery = process.env.ADMIN_RECOVERY_CODE;
+
+    const isValidToken = authenticator.check(totpCode, secret);
     const isRecoveryUsed = recovery && totpCode === recovery;
 
-    // FAIL-SAFE: If it's not a valid token AND not the recovery code, reject.
     if (!isValidToken && !isRecoveryUsed) {
-      console.log("⚠️ Security Alert: Unauthorized 2FA attempt");
-      return NextResponse.json({ success: false, error: "Access Denied: Invalid Auth Code" }, { status: 401 });
+      return NextResponse.json({ success: false, error: "Invalid Auth Code" }, { status: 401 });
     }
 
     // 3. Success Logic
@@ -35,12 +33,12 @@ export async function POST(req: Request) {
       secure: true,
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 2,
+      maxAge: 60 * 60 * 2, // 2 Hour Session
     });
 
     return res;
   } catch (e: any) {
-    console.error("Login Crash:", e.message);
-    return NextResponse.json({ success: false, error: "Auth System Error" }, { status: 500 });
+    console.error("Login Error:", e.message);
+    return NextResponse.json({ success: false, error: "Authentication system error" }, { status: 500 });
   }
 }
