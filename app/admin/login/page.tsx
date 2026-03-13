@@ -58,8 +58,8 @@ export default function AdminLoginPage() {
           </div>
 
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Zoho OneAuth Code</label>
-            <input type="text" placeholder="000000" maxLength={6} value={totpCode} onChange={(e) => setTotpCode(e.target.value)} style={styles.input} required />
+            <label style={styles.label}>SECURITY TOKEN</label>
+            <input type="text" placeholder="" maxLength={6} value={totpCode} onChange={(e) => setTotpCode(e.target.value)} style={styles.input} required />
           </div>
 
           {error && <div style={styles.errorBox}>{error}</div>}
