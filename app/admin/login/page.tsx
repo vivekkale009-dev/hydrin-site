@@ -96,7 +96,7 @@ export default function AdminLoginPage() {
             {error && <div style={styles.errorBox}>{error}</div>}
 
             <button type="submit" disabled={loading} style={{...styles.button, background: loading ? "#94a3b8" : "#2d4f3e"}}>
-              {loading ? "Verifying..." : "Continue"}
+              {loading ? "Verifying..." : "Sign In"}
             </button>
           </form>
         ) : (
