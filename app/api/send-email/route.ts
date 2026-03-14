@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     const isLocal = host?.includes("localhost");
     
     // Replace with your actual domain
-    if (!isLocal && referer && !referer.includes("earthysource.com")) {
+    if (!isLocal && referer && !referer.includes("earthysource.in")) {
        return Response.json({ error: "Unauthorized source" }, { status: 403 });
     }
 
