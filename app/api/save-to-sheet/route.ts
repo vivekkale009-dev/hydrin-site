@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     // 2. SECURITY: REFERRER CHECK
     const referer = headers.get("referer");
     const host = headers.get("host");
-    if (!host?.includes("localhost") && referer && !referer.includes("earthysource.com")) {
+    if (!host?.includes("localhost") && referer && !referer.includes("earthysource.in")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
