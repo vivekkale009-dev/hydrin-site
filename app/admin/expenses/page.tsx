@@ -429,7 +429,8 @@ formData.append("invoice_no", invoiceNo); // Use the column name from your DB
   <tbody>
     {filteredRows.map(row => {
       const gstTotal = (row.cgst_amount || 0) + (row.sgst_amount || 0) + (row.igst_amount || 0);
-      const statusObj = RECO_STATUS.find(s => s.id === row.reco_status) || RECO_STATUS;
+      // Force TypeScript to treat this as the specific object type
+const statusObj = (RECO_STATUS.find(s => s.id === row.reco_status) || RECO_STATUS) as { id: string; label: string; color: string };
       
       return (
         <tr key={row.id} style={ui.tr}>
@@ -448,7 +449,7 @@ formData.append("invoice_no", invoiceNo); // Use the column name from your DB
           {/* 4. ITEM / STATUS */}
           <td style={ui.td}>
             <div style={{fontWeight: 'bold'}}>{row.item_name}</div>
-            <div style={{fontSize: '10px', color: (statusObj as any).color, fontWeight: '800'}}>{statusObj.label}</div>
+            <div style={{fontSize: '10px', color: statusObj.color, fontWeight: '800'}}>{statusObj.label}</div>
           </td>
 
           {/* 5. NOTES */}
