@@ -23,7 +23,7 @@ const GST_ITC_CATEGORIES = [
   { id: "ineligible", label: "Ineligible (Blocked)" }
 ];
 
-const RECO_STATUS = [
+const RECO_STATUS: { id: string; label: string; color: string }[] = [
   { id: "pending", label: "🟡 Pending", color: "#f59e0b" },
   { id: "matched", label: "🟢 Matched in 2B", color: "#10b981" },
   { id: "mismatch", label: "🔴 Mismatch", color: "#ef4444" }
@@ -448,7 +448,7 @@ formData.append("invoice_no", invoiceNo); // Use the column name from your DB
           {/* 4. ITEM / STATUS */}
           <td style={ui.td}>
             <div style={{fontWeight: 'bold'}}>{row.item_name}</div>
-            <div style={{fontSize: '10px', color: statusObj.color, fontWeight: '800'}}>{statusObj.label}</div>
+            <div style={{fontSize: '10px', color: (statusObj as any).color, fontWeight: '800'}}>{statusObj.label}</div>
           </td>
 
           {/* 5. NOTES */}
