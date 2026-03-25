@@ -24,7 +24,7 @@ export default function AdminOrderCreatePage() {
   const [paymentMethod, setPaymentMethod] = useState("");
   const [transactionId, setTransactionId] = useState("");
 
-  const [gstEnabled, setGstEnabled] = useState(false);
+  const [gstEnabled, setGstEnabled] = useState(true);
   const [hsnList, setHsnList] = useState<any[]>([]);
   const [selectedHsn, setSelectedHsn] = useState<any>(null);
   const [states, setStates] = useState<any[]>([]);
@@ -43,7 +43,7 @@ export default function AdminOrderCreatePage() {
   const totalBoxes = items.reduce((sum, i) => sum + Number(i.qty_boxes || 0), 0);
   const itemsSubtotal = items.reduce((sum, i) => sum + (Number(i.qty_boxes || 0) * Number(i.price_per_box || 0)), 0);
   const deliveryFee = deliveryType === "delivery" ? (Number(distanceKm || 0) * Number(ratePerKm || 0)) : 0;
-const taxableAmount = itemsSubtotal; // Tax is only on products
+  const taxableAmount = itemsSubtotal; // Tax is only on products
   const taxValue = gstEnabled ? (taxableAmount * (Number(selectedHsn?.tax_rate || 0))) / 100 : 0;
   
   // Grand Total = (Products + Tax) + Delivery Fee
@@ -77,49 +77,67 @@ const taxableAmount = itemsSubtotal; // Tax is only on products
     setItems([...items, { product_id: p.id, name: p.name, qty_boxes: 1, price_per_box: "" }]);
   }
 
-async function submitOrder() {
-  if (isSubmitting) return;
+  async function submitOrder() {
+    if (isSubmitting) return;
 
-  // 1. STOCK CHECK
-  const shortages = items.filter(orderItem => {
-    const masterProd = products.find(p => String(p.id) === String(orderItem.product_id));
-    const requested = Number(orderItem.qty_boxes || 0);
-    const available = Number(masterProd?.available_boxes || 0);
-    return requested > available;
-  });
-
-  // 2. SHOW SWEETALERT IF SHORTAGE
-  if (shortages.length > 0) {
-    const shortageListHtml = shortages.map(s => {
-      const p = products.find(prod => String(prod.id) === String(s.product_id));
-      const stockCount = p?.available_boxes ?? 0;
-      return `<li style="text-align: left;"><b>${s.name}</b>: Need ${s.qty_boxes} (Stock: ${stockCount})</li>`;
-    }).join('');
-
-    const result = await Swal.fire({
-      title: '⚠️ Insufficient Stock!',
-      html: `
-        <p>The following items exceed current inventory:</p>
-        <ul style="list-style-type: none; padding: 0;">${shortageListHtml}</ul>
-        <p><b>Do you want to proceed with negative inventory?</b></p>
-      `,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Yes, proceed anyway',
-      cancelButtonText: 'No, let me fix it'
+    // 1. STOCK CHECK
+    const shortages = items.filter(orderItem => {
+      const masterProd = products.find(p => String(p.id) === String(orderItem.product_id));
+      const requested = Number(orderItem.qty_boxes || 0);
+      const available = Number(masterProd?.available_boxes || 0);
+      return requested > available;
     });
 
-    if (!result.isConfirmed) return; 
-  }
-  // ... rest of your mandatory validation and fetch logic
+    if (shortages.length > 0) {
+      const shortageListHtml = shortages.map(s => {
+        const p = products.find(prod => String(prod.id) === String(s.product_id));
+        const stockCount = p?.available_boxes ?? 0;
+        return `<li style="text-align: left;"><b>${s.name}</b>: Need ${s.qty_boxes} (Stock: ${stockCount})</li>`;
+      }).join('');
 
-  // 2. MANDATORY VALIDATION
-  if ((orderType === "end_consumer" || orderType === "bulk_consumer") && !consumerPhone) {
-    alert("Please enter a WhatsApp number for the Consumer.");
-    return;
-  }
+      const result = await Swal.fire({
+        title: '⚠️ Insufficient Stock!',
+        html: `
+          <p>The following items exceed current inventory:</p>
+          <ul style="list-style-type: none; padding: 0;">${shortageListHtml}</ul>
+          <p><b>Do you want to proceed with negative inventory?</b></p>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, proceed anyway',
+        cancelButtonText: 'No, let me fix it'
+      });
+
+      if (!result.isConfirmed) return; 
+    }
+
+    // 2. MANDATORY VALIDATION
+    if (gstEnabled) {
+      if (!billing.gstin || billing.gstin.trim() === "") {
+        alert("GSTIN is mandatory when GST is enabled.");
+        return;
+      }
+      if (!selectedHsn) {
+        alert("Please select an HSN code; it is mandatory for GST orders.");
+        return;
+      }
+    }
+
+    if (!billing.name.trim() || !billing.address.trim() || !billing.state) {
+      alert("Billing Name, Address, and State are mandatory for the invoice.");
+      return;
+    }
+	 if (!shipping.name.trim() || !shipping.address.trim() || !shipping.state) {
+      alert("Shipping Name, Address, and State are mandatory for the invoice.");
+      return;
+    }
+
+    if ((orderType === "end_consumer" || orderType === "bulk_consumer") && !consumerPhone) {
+      alert("Please enter a WhatsApp number for the Consumer.");
+      return;
+    }
 
     setIsSubmitting(true);
 
@@ -127,7 +145,6 @@ async function submitOrder() {
       orderType,
       deliveryType,
       distributorId: selectedDistributor?.id,
-      // FIX: Ensure phone is pulled from distributor or consumer field
       customerPhone: orderType === "distributor" ? selectedDistributor?.phone : consumerPhone,
       vanId: selectedVan?.id,
       items,
@@ -154,7 +171,6 @@ async function submitOrder() {
       if (res.ok) {
         const data = await res.json();
         alert(`Order ${data.uorn} Created Successfully!`);
-        // Force refresh by redirecting to avoid stale list on UI
         window.location.href = "/admin/orders";
       } else {
         const err = await res.json();
@@ -189,7 +205,6 @@ async function submitOrder() {
               </select>
             </div>
 
-            {/* MANDATORY PHONE FIELD FOR NON-DISTRIBUTORS */}
             {(orderType === "end_consumer" || orderType === "bulk_consumer") && (
               <div style={{ marginTop: 15 }}>
                 <input 
@@ -260,25 +275,25 @@ async function submitOrder() {
             )}
             <div style={styles.grid2}>
                <div style={styles.subBox}>
-                  <h4 style={styles.smallHeading}>Bill To</h4>
-                  <input style={styles.inputSmall} placeholder="Name" value={billing.name} onChange={e => setBilling({...billing, name: e.target.value})} />
-                  <input style={styles.inputSmall} placeholder="Address" value={billing.address} onChange={e => setBilling({...billing, address: e.target.value})} />
+                  <h4 style={styles.smallHeading}>Bill To *</h4>
+                  <input style={styles.inputSmall} placeholder="Name(Mandatory) *" value={billing.name} onChange={e => setBilling({...billing, name: e.target.value})} />
+                  <input style={styles.inputSmall} placeholder="Address(Mandatory) *" value={billing.address} onChange={e => setBilling({...billing, address: e.target.value})} />
                   <select style={styles.inputSmall} value={billing.state} onChange={e => setBilling({...billing, state: e.target.value})}>
-                    <option value="">Select State</option>
+                    <option value="">Select State *</option>
                     {states.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                   </select>
                </div>
                <div style={styles.subBox}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <h4 style={styles.smallHeading}>Ship To</h4>
+                    <h4 style={styles.smallHeading}>Ship To *</h4>
                     <label style={styles.checkboxLabel}><input type="checkbox" checked={isSameAddress} onChange={e => { setIsSameAddress(e.target.checked); if(e.target.checked) setShipping({...billing}); }} /> Same</label>
                   </div>
                   {!isSameAddress && (
                     <>
-                      <input style={styles.inputSmall} placeholder="Name" value={shipping.name} onChange={e => setShipping({...shipping, name: e.target.value})} />
-                      <input style={styles.inputSmall} placeholder="Address" value={shipping.address} onChange={e => setShipping({...shipping, address: e.target.value})} />
+                      <input style={styles.inputSmall} placeholder="Name(Mandatory) *" value={shipping.name} onChange={e => setShipping({...shipping, name: e.target.value})} />
+                      <input style={styles.inputSmall} placeholder="Address(Mandatory) *" value={shipping.address} onChange={e => setShipping({...shipping, address: e.target.value})} />
                       <select style={styles.inputSmall} value={shipping.state} onChange={e => setShipping({...shipping, state: e.target.value})}>
-                        <option value="">Select State</option>
+                        <option value="">Select State *</option>
                         {states.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                       </select>
                     </>
@@ -295,10 +310,10 @@ async function submitOrder() {
             </div>
             {gstEnabled && (
               <div style={{ ...styles.grid2, marginBottom: 15 }}>
-                <input style={styles.input} placeholder="GSTIN" value={billing.gstin} onChange={e => setBilling({...billing, gstin: e.target.value})} />
+                <input style={styles.input} placeholder="GSTIN (Mandatory) *" value={billing.gstin} onChange={e => setBilling({...billing, gstin: e.target.value})} />
                 <select style={styles.input} value={selectedHsn?.id || ""} onChange={e => setSelectedHsn(hsnList.find(h => h.id === e.target.value))}>
-                  <option value="">Select HSN</option>
-                  {hsnList.map(h => <option key={h.id} value={h.id}>{h.hsn_code} ({h.tax_rate}%)</option>)}
+                   <option value="">Select HSN (Mandatory) *</option>
+                   {hsnList.map(h => <option key={h.id} value={h.id}>{h.hsn_code} ({h.tax_rate}%)</option>)}
                 </select>
               </div>
             )}
@@ -403,7 +418,6 @@ async function submitOrder() {
   );
 }
 
-// STYLES OBJECT (Kept identical as provided)
 const styles: any = {
   page: { minHeight: "100vh", backgroundImage: "url('/hero-deep.jpg')", backgroundSize: "cover", padding: "40px 20px", position: "relative" },
   overlay: { position: "absolute", inset: 0, background: "rgba(15, 23, 42, 0.85)" },

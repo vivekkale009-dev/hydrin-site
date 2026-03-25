@@ -38,10 +38,12 @@ export default function FinalExpenseDashboard() {
   const [fCat, setFCat] = useState("All");
   const [fStart, setFStart] = useState("");
   const [fEnd, setFEnd] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [mainCat, setMainCat] = useState("Raw Materials");
   const [subItem, setSubItem] = useState("Bottle Cap");
   const [customName, setCustomName] = useState("");
+  const [invoiceNo, setInvoiceNo] = useState("");
   const [amt, setAmt] = useState("");
   const [qty, setQty] = useState(""); 
   const [rate, setRate] = useState(""); 
@@ -101,10 +103,17 @@ export default function FinalExpenseDashboard() {
       const categoryToMatch = rawCat.startsWith("Misc:") ? "Miscellaneous" : rawCat;
       const matchCat = fCat === "All" || categoryToMatch === fCat;
       const matchStart = !fStart || x.expense_date >= fStart;
-      const matchEnd = !fEnd || x.expense_date <= fEnd;
-      return matchCat && matchStart && matchEnd;
+      const matchEnd = !fEnd || x.expense_date <= fEnd
+	  const s = searchTerm.toLowerCase();
+    const matchSearch = !searchTerm || 
+      (x.item_name?.toLowerCase().includes(s)) ||
+      (x.category?.toLowerCase().includes(s)) ||
+      (x.notes?.toLowerCase().includes(s)) ||
+      (x.invoice_no?.toLowerCase().includes(s)) ||
+      (x.supplier_gstin?.toLowerCase().includes(s))
+      return matchCat && matchStart && matchEnd && matchSearch;
     });
-  }, [expenses, fCat, fStart, fEnd]);
+  }, [expenses, fCat, fStart, fEnd, searchTerm]);
 
   const analytics = useMemo(() => {
     const stats: Record<string, number> = {};
@@ -133,9 +142,9 @@ export default function FinalExpenseDashboard() {
   const totalSpent = analytics.total;
 
   const handleExportGSTR2 = () => {
-    const headers = ["GSTIN of Supplier", "Invoice date", "Total Invoice Value", "Taxable Value", "IGST", "CGST", "SGST", "ITC Category", "Status"];
+    const headers = ["GSTIN of Supplier", "Invoice date", "Total Invoice Value", "Taxable Value", "IGST", "CGST", "SGST", "ITC Category", "Status", "RCM"];
     const csvData = filteredRows.map(r => [
-      r.supplier_gstin || "N/A", r.expense_date, r.amount, r.taxable_value, r.igst_amount, r.cgst_amount, r.sgst_amount, r.gst_category, r.reco_status
+      r.supplier_gstin || "N/A", r.expense_date, r.amount, r.taxable_value, r.igst_amount, r.cgst_amount, r.sgst_amount, r.gst_category, r.reco_status, r.is_rcm
     ]);
     const csvContent = "data:text/csv;charset=utf-8," + [headers, ...csvData].map(e => e.join(",")).join("\n");
     const link = document.createElement("a");
@@ -168,6 +177,8 @@ const onSave = async (e: React.FormEvent) => {
     formData.append("sgst_amount", taxCalc.sgst.toString());
     formData.append("igst_amount", taxCalc.igst.toString());
     formData.append("is_interstate", String(isInterstate));
+	// Inside onSave function
+formData.append("invoice_no", invoiceNo); // Use the column name from your DB
 
     if (editingId) formData.append("id", editingId);
     if (file) formData.append("file", file); 
@@ -181,7 +192,7 @@ const onSave = async (e: React.FormEvent) => {
 
     if (!response.ok) throw new Error("Save failed");
 
-    setEditingId(null); setAmt(""); setQty(""); setRate(""); setNotes(""); 
+    setEditingId(null); setAmt(""); setQty(""); setRate(""); setNotes(""); setInvoiceNo("");
     setCustomName(""); setFile(null); setSupplierGstin(""); setExistingFileUrl(null);
     refreshData();
   } catch (err) { 
@@ -192,6 +203,7 @@ const onSave = async (e: React.FormEvent) => {
 };
 
   const handleEdit = (row: any) => {
+  setInvoiceNo(row.invoice_no || "");
     setEditingId(row.id);
     setAmt(row.amount.toString());
     setQty(row.quantity?.toString() || "");
@@ -228,7 +240,7 @@ const onSave = async (e: React.FormEvent) => {
         <div style={ui.statCard}>
           <label style={ui.capsLabel}>Total Filtered Burn</label>
           <div style={ui.statVal}>₹{totalSpent.toLocaleString('en-IN')}</div>
-          <button onClick={handleExportGSTR2} style={{...ui.resetBtn, background: '#0f172a', width: '100%', marginTop: '10px'}}>📥 Export GSTR-2</button>
+          <button onClick={handleExportGSTR2} style={{...ui.resetBtn, background: '#0f172a', width: '100%', marginTop: '10px'}}>📥 Export CSV File</button>
         </div>
 
         <div style={{...ui.statCard, borderLeft: '5px solid #10b981'}}>
@@ -275,8 +287,25 @@ const onSave = async (e: React.FormEvent) => {
             <input type="date" value={fStart} onChange={e => setFStart(e.target.value)} style={ui.fInput} />
             <input type="date" value={fEnd} onChange={e => setFEnd(e.target.value)} style={ui.fInput} />
           </div>
-        </div>
-        <button onClick={() => {setFCat("All"); setFStart(""); setFEnd("");}} style={ui.resetBtn}>Reset Dashboard</button>
+		  
+		  </div>
+		  
+		  <div style={ui.fGroup}>
+  <label style={ui.fLabel}>Search</label>
+  <input 
+    type="text" 
+    placeholder="Search items, notes, or GSTIN..." 
+    value={searchTerm} 
+    onChange={e => setSearchTerm(e.target.value)} 
+    style={{...ui.fInput, width: '220px'}} 
+  />
+</div>
+        <button 
+  onClick={() => { setFCat("All"); setFStart(""); setFEnd(""); setSearchTerm(""); }} 
+  style={ui.resetBtn}
+>
+  Reset Dashboard
+</button>
       </section>
 
       <div style={ui.mainGrid}>
@@ -285,6 +314,10 @@ const onSave = async (e: React.FormEvent) => {
           <form onSubmit={onSave} style={ui.form}>
 		  
 		  {/* ADDED: Date Input so you can enter it manually */}
+		  
+		   <label style={ui.fLabel}>Invoice No</label>
+            <input placeholder="Enter Invoice Number" value={invoiceNo} onChange={e => setInvoiceNo(e.target.value.toUpperCase())} style={ui.input} />
+			
             <label style={ui.fLabel}>Bill / Invoice Date</label>
             <input 
               type="date" 
@@ -378,60 +411,82 @@ const onSave = async (e: React.FormEvent) => {
 
         <main style={ui.tableCard}>
           <div style={{ overflowX: 'auto' }}>
-            <table style={ui.table}>
-              <thead style={ui.thRow}>
-                <tr>
-                  <th style={ui.th}>DATE</th>
-                  <th style={ui.th}>EXPENSE TYPE</th>
-                  <th style={ui.th}>ITEM / STATUS</th> {/* Updated */}
-                  <th style={ui.th}>NOTES</th>
-                  <th style={ui.th}>TAXABLE</th>
-                  <th style={ui.th}>GST</th>
-                  <th style={ui.th}>TOTAL</th>
-                  <th style={ui.th}>VIEW</th>
-                  <th style={ui.th}>ACTION</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRows.map(row => {
-                  const gstTotal = (row.cgst_amount || 0) + (row.sgst_amount || 0) + (row.igst_amount || 0);
-                  const statusObj = RECO_STATUS.find(s => s.id === row.reco_status) || RECO_STATUS[0];
-                  return (
-                    <tr key={row.id} style={ui.tr}>
-                      <td style={ui.td}>{new Date(row.expense_date).toLocaleDateString('en-IN')}</td>
-                      <td style={{...ui.td, fontSize: '12px', color: '#64748b'}}>
-                        {row.category}
-                        <div style={{fontSize: '9px', color: '#94a3b8'}}>{row.gst_category}</div>
-                      </td>
-                      <td style={ui.td}>
-                        <div style={{fontWeight: 'bold'}}>{row.item_name}</div>
-                        <div style={{fontSize: '10px', color: statusObj.color, fontWeight: '800'}}>{statusObj.label}</div>
-                      </td>
-                      <td style={{...ui.td, fontSize: '11px', color: '#64748b', maxWidth: '150px'}}>{row.notes || '-'}</td>
-                      <td style={ui.td}>₹{row.taxable_value || '--'}</td>
-                      <td style={{...ui.td, color: '#10b981'}}>₹{gstTotal.toFixed(2)}</td>
-                      <td style={ui.tdAmt}>₹{Number(row.amount || 0).toLocaleString('en-IN')}</td>
-                      <td style={ui.td}>
-                        {row.attachment_url ? (
-                          <button 
-                            onClick={() => window.open(supabase.storage.from('expense-attachments').getPublicUrl(row.attachment_url).data.publicUrl)} 
-                            style={{...ui.editBtn, background: '#e0f2fe', color: '#0369a1'}}
-                          >
-                            📄 Open
-                          </button>
-                        ) : <span style={{fontSize: '11px', color: '#cbd5e1'}}>None</span>}
-                      </td>
-                      <td style={ui.td}>
-                        <div style={{display: 'flex', gap: '8px'}}>
-                            <button onClick={() => handleEdit(row)} style={ui.editBtn}>Edit</button>
-                            <button onClick={() => handleDelete(row.id)} style={ui.delBtn}>Del</button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+<table style={ui.table}>
+  <thead style={ui.thRow}>
+    <tr>
+      <th style={ui.th}>DATE</th>
+      <th style={ui.th}>INVOICE NO</th>
+      <th style={ui.th}>EXPENSE TYPE</th>
+      <th style={ui.th}>ITEM / STATUS</th>
+      <th style={ui.th}>NOTES</th>
+      <th style={ui.th}>TAXABLE</th>
+      <th style={ui.th}>GST</th>
+      <th style={ui.th}>TOTAL</th>
+      <th style={ui.th}>VIEW</th>
+      <th style={ui.th}>ACTION</th>
+    </tr>
+  </thead>
+  <tbody>
+    {filteredRows.map(row => {
+      const gstTotal = (row.cgst_amount || 0) + (row.sgst_amount || 0) + (row.igst_amount || 0);
+      const statusObj = RECO_STATUS.find(s => s.id === row.reco_status) || RECO_STATUS;
+      
+      return (
+        <tr key={row.id} style={ui.tr}>
+          {/* 1. DATE */}
+          <td style={ui.td}>{new Date(row.expense_date).toLocaleDateString('en-IN')}</td>
+          
+          {/* 2. INVOICE NO (Matches Header) */}
+          <td style={{...ui.td, fontSize: '12px', fontWeight: 'bold'}}>{row.invoice_no || '-'}</td>
+          
+          {/* 3. EXPENSE TYPE (Category) */}
+          <td style={{...ui.td, fontSize: '12px', color: '#64748b'}}>
+            {row.category}
+            <div style={{fontSize: '9px', color: '#94a3b8'}}>{row.gst_category}</div>
+          </td>
+
+          {/* 4. ITEM / STATUS */}
+          <td style={ui.td}>
+            <div style={{fontWeight: 'bold'}}>{row.item_name}</div>
+            <div style={{fontSize: '10px', color: statusObj.color, fontWeight: '800'}}>{statusObj.label}</div>
+          </td>
+
+          {/* 5. NOTES */}
+          <td style={{...ui.td, fontSize: '11px', color: '#64748b', maxWidth: '150px'}}>{row.notes || '-'}</td>
+
+          {/* 6. TAXABLE */}
+          <td style={ui.td}>₹{row.taxable_value || '--'}</td>
+
+          {/* 7. GST */}
+          <td style={{...ui.td, color: '#10b981'}}>₹{gstTotal.toFixed(2)}</td>
+
+          {/* 8. TOTAL */}
+          <td style={ui.tdAmt}>₹{Number(row.amount || 0).toLocaleString('en-IN')}</td>
+
+          {/* 9. VIEW */}
+          <td style={ui.td}>
+            {row.attachment_url ? (
+              <button 
+                onClick={() => window.open(supabase.storage.from('expense-attachments').getPublicUrl(row.attachment_url).data.publicUrl)} 
+                style={{...ui.editBtn, background: '#e0f2fe', color: '#0369a1'}}
+              >
+                📄 Open
+              </button>
+            ) : <span style={{fontSize: '11px', color: '#cbd5e1'}}>None</span>}
+          </td>
+
+          {/* 10. ACTION */}
+          <td style={ui.td}>
+            <div style={{display: 'flex', gap: '8px'}}>
+                <button onClick={() => handleEdit(row)} style={ui.editBtn}>Edit</button>
+                <button onClick={() => handleDelete(row.id)} style={ui.delBtn}>Del</button>
+            </div>
+          </td>
+        </tr>
+      );
+    })}
+  </tbody>
+</table>
           </div>
         </main>
       </div>
