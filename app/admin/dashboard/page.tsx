@@ -55,7 +55,7 @@ const defaultDates = {
 
     while (curr <= end) {
       // FIXED: Added
-      const dKey = curr.toISOString().split('T'); 
+      const dKey = curr.toISOString().split('T');
       dailyData[dKey] = { rev: 0, pCost: 0, ownV: 0, extV: 0, salaries: 0, expenses: 0 };
       curr.setDate(curr.getDate() + 1);
     }
