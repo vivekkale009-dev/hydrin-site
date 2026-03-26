@@ -13,8 +13,8 @@ export default function CompleteCommandCenter() {
   const [viewMode, setViewMode] = useState<"BREAKDOWN" | "INFLOW">("BREAKDOWN");
 
 const defaultDates = {
-  start: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T'), // Add
-  end: new Date().toISOString().split('T') // Add
+  start: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T'),
+  end: new Date().toISOString().split('T')
 };
 
   const [filters, setFilters] = useState({
@@ -56,7 +56,7 @@ const end = new Date(filters.endDate as unknown as string);
 while (curr <= end) {
   // Add here as well to keep the keys consistent
   const dKey = curr.toISOString().split('T'); 
-  dailyData[dKey] = { rev: 0, pCost: 0, ownV: 0, extV: 0, salaries: 0, expenses: 0 };
+dailyData[dKey] = { rev: 0, pCost: 0, ownV: 0, extV: 0, salaries: 0, expenses: 0 };
   curr.setDate(curr.getDate() + 1);
 }
 
