@@ -13,7 +13,7 @@ export default function CompleteCommandCenter() {
   const [viewMode, setViewMode] = useState<"BREAKDOWN" | "INFLOW">("BREAKDOWN");
 
 const defaultDates = {
-  // FIXED: added to get string
+  // FIXED: Added
   start: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T'),
   end: new Date().toISOString().split('T')
 };
@@ -54,7 +54,7 @@ const defaultDates = {
     const end = new Date(filters.endDate as unknown as string);
 
     while (curr <= end) {
-      // FIXED: added to ensure dKey is a string for indexing
+      // FIXED: Added
       const dKey = curr.toISOString().split('T'); 
       dailyData[dKey] = { rev: 0, pCost: 0, ownV: 0, extV: 0, salaries: 0, expenses: 0 };
       curr.setDate(curr.getDate() + 1);
@@ -62,7 +62,7 @@ const defaultDates = {
 
     // Process Orders & SKU Logic
     const filteredOrders = (data.orders || []).filter((o: any) => {
-      // FIXED: added
+      // FIXED: Added
       const d = o.created_at?.split('T');
       const isDateMatch = d >= filters.startDate && d <= filters.endDate;
       
@@ -91,7 +91,7 @@ const defaultDates = {
       const deliveryFee = Number(o.delivery_fee || 0);
 
       // Add to Daily Totals
-      // FIXED: added
+      // FIXED: Added
       const dKey = o.created_at?.split('T');
       if (dailyData[dKey]) {
         dailyData[dKey].rev += orderRev;
@@ -109,13 +109,13 @@ const defaultDates = {
     });
 
     const expTotal = (data.expenses || []).filter((e: any) => {
-      // FIXED: added
+      // FIXED: Added
       const d = (e.expense_date || e.created_at)?.split('T');
       return d >= filters.startDate && d <= filters.endDate;
     }).reduce((a: any, b: any) => a + Number(b.amount || 0), 0);
 
     const salTotal = [...(data.salaryAdvances || []), ...(data.salaryPayments || [])].filter((s: any) => {
-      // FIXED: added
+      // FIXED: Added
       const d = (s.request_date || s.payment_date || s.created_at)?.split('T');
       return d >= filters.startDate && d <= filters.endDate;
     }).reduce((a: any, b: any) => a + Number(b.amount || 0), 0);
