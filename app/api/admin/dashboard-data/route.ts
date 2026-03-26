@@ -12,39 +12,54 @@ export async function GET(req: NextRequest) {
     
     const supabase = await createAdminClient();
 
-    // Helper to apply date filter if params exist
-    const applyFilter = (query: any, column: string) => {
-      if (start && end) {
-        return query.gte(column, start).lte(column, end);
-      }
-      return query;
-    };
+    // 1. Initialize queries
+    let ordersQuery = supabase.from('orders_with_details').select('*, order_items(*, products(*))');
+    let expensesQuery = supabase.from('business_expenses').select('*');
+    let advancesQuery = supabase.from('salary_advances').select('*');
+    let paymentsQuery = supabase.from('salary_payments').select('*');
 
-    const [orders, costs, rules, vans, products, expenses, advances, payments] = await Promise.all([
-      applyFilter(supabase.from('orders_with_details').select('*, order_items(*, products(*))'), 'created_at'),
-      supabase.from('product_cost_components').select('*'), // Static configs don't need date filters
+    // 2. Apply filters only if dates are provided
+    if (start && end) {
+      ordersQuery = ordersQuery.gte('created_at', start).lte('created_at', end);
+      expensesQuery = expensesQuery.gte('expense_date', start).lte('expense_date', end);
+      advancesQuery = advancesQuery.gte('request_date', start).lte('request_date', end);
+      paymentsQuery = paymentsQuery.gte('payment_date', start).lte('payment_date', end);
+    }
+
+    // 3. Execute all at once
+    const [
+      { data: ordersData, error: ordersError },
+      { data: costsData },
+      { data: rulesData },
+      { data: vansData },
+      { data: productsData },
+      { data: expensesData },
+      { data: advancesData },
+      { data: paymentsData }
+    ] = await Promise.all([
+      ordersQuery,
+      supabase.from('product_cost_components').select('*'),
       supabase.from('business_rules').select('*'),
       supabase.from('vans').select('*'),
       supabase.from('products').select('*'),
-      applyFilter(supabase.from('business_expenses').select('*'), 'expense_date'),
-      applyFilter(supabase.from('salary_advances').select('*'), 'request_date'),
-      applyFilter(supabase.from('salary_payments').select('*'), 'payment_date')
+      expensesQuery,
+      advancesQuery,
+      paymentsQuery
     ]);
 
-    // Check for errors in the data response
-    if (orders.error || expenses.error) {
-       console.error("Supabase Error:", orders.error || expenses.error);
+    if (ordersError) {
+       console.error("Supabase Error:", ordersError);
     }
 
     return NextResponse.json({
-      orders: orders.data || [],
-      costs: costs.data || [],
-      rules: rules.data || [],
-      vans: vans.data || [],
-      products: products.data || [],
-      expenses: expenses.data || [],
-      salaryAdvances: advances.data || [],
-      salaryPayments: payments.data || []
+      orders: ordersData || [],
+      costs: costsData || [],
+      rules: rulesData || [],
+      vans: vansData || [],
+      products: productsData || [],
+      expenses: expensesData || [],
+      salaryAdvances: advancesData || [],
+      salaryPayments: paymentsData || []
     });
   } catch (error) {
     console.error("Route Error:", error);
