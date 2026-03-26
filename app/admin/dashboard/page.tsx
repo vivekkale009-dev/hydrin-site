@@ -12,10 +12,10 @@ export default function CompleteCommandCenter() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"BREAKDOWN" | "INFLOW">("BREAKDOWN");
 
-  const defaultDates = {
-    start: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T'),
-    end: new Date().toISOString().split('T')
-  };
+const defaultDates = {
+  start: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T'), // Add
+  end: new Date().toISOString().split('T') // Add
+};
 
   const [filters, setFilters] = useState({
     startDate: defaultDates.start,
@@ -49,13 +49,16 @@ export default function CompleteCommandCenter() {
     const dailyData: any = {};
     
     // Initialize Dates
-    let curr = new Date(filters.startDate);
-    const end = new Date(filters.endDate);
-    while (curr <= end) {
-      const dKey = curr.toISOString().split('T');
-      dailyData[dKey] = { rev: 0, pCost: 0, ownV: 0, extV: 0, salaries: 0, expenses: 0 };
-      curr.setDate(curr.getDate() + 1);
-    }
+// The line causing the Vercel error (Line 52)
+let curr = new Date(filters.startDate as unknown as string); 
+const end = new Date(filters.endDate as unknown as string);
+
+while (curr <= end) {
+  // Add here as well to keep the keys consistent
+  const dKey = curr.toISOString().split('T'); 
+  dailyData[dKey] = { rev: 0, pCost: 0, ownV: 0, extV: 0, salaries: 0, expenses: 0 };
+  curr.setDate(curr.getDate() + 1);
+}
 
     // Process Orders & SKU Logic
     const filteredOrders = (data.orders || []).filter((o: any) => {
