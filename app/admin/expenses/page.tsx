@@ -141,15 +141,35 @@ export default function FinalExpenseDashboard() {
 
   const totalSpent = analytics.total;
 
-  const handleExportGSTR2 = () => {
-    const headers = ["GSTIN of Supplier", "Invoice date", "Total Invoice Value", "Taxable Value", "IGST", "CGST", "SGST", "ITC Category", "Status", "RCM"];
-    const csvData = filteredRows.map(r => [
-      r.supplier_gstin || "N/A", r.expense_date, r.amount, r.taxable_value, r.igst_amount, r.cgst_amount, r.sgst_amount, r.gst_category, r.reco_status, r.is_rcm
-    ]);
+const handleExportGSTR2 = () => {
+    // 1. Added "Document URL" to the end of the headers list
+    const headers = ["GSTIN of Supplier", "Invoice date", "Total Invoice Value", "Taxable Value", "IGST", "CGST", "SGST", "ITC Category", "Status", "RCM", "Document URL"];
+    
+    const csvData = filteredRows.map(r => {
+      // 2. This part creates the full link if a file exists, otherwise it leaves it blank
+      const fullFileUrl = r.attachment_url 
+        ? `https://xyyirkwiredufamtnqdu.supabase.co/storage/v1/object/public/expense-attachments/${r.attachment_url}`
+        : "No Attachment";
+
+      return [
+        r.supplier_gstin || "N/A", 
+        r.expense_date, 
+        r.amount, 
+        r.taxable_value, 
+        r.igst_amount, 
+        r.cgst_amount, 
+        r.sgst_amount, 
+        r.gst_category, 
+        r.reco_status, 
+        r.is_rcm,
+        fullFileUrl // 3. Added the new URL here
+      ];
+    });
+
     const csvContent = "data:text/csv;charset=utf-8," + [headers, ...csvData].map(e => e.join(",")).join("\n");
     const link = document.createElement("a");
     link.href = encodeURI(csvContent);
-    link.download = `GSTR2_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `GSTR3B_${new Date().toISOString().split('T')}.csv`;
     link.click();
   };
 

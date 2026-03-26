@@ -51,15 +51,35 @@ export default function GSTFilingPage() {
   // --- EXPORT LOGIC ---
   
   // NEW: Download exactly what you see on the screen
-  const downloadFilteredView = () => {
+const downloadFilteredView = () => {
     if (!filteredRecords.length) return alert("No records to export");
     
-    const headers = ["Date", "Order ID", "Invoice #", "Customer", "GSTIN", "HSN", "Taxable Value", "CGST", "SGST", "IGST", "Place of Supply"];
-    const rows = filteredRecords.map((r: any) => [
-      r.invoice_date, r.order_number, r.invoice_no, r.customer_name, 
-      r.customer_gstin || "URD", r.hsn_code || "N/A", r.taxable_value, 
-      r.cgst_amount, r.sgst_amount, r.igst_amount, r.place_of_supply
-    ]);
+    // 1. Added "Invoice Link" to the end of the headers
+    const headers = ["Date", "Order ID", "Invoice No", "Customer", "GSTIN", "HSN", "Taxable Value", "CGST", "SGST", "IGST", "Place of Supply", "Invoice Link"];
+    
+    const rows = filteredRecords.map((r: any) => {
+      // 2. We take the path (e.g., "non-tax-invoices/file.pdf") and turn it into a full link
+      // NOTE: Make sure 'attachment_url' is the correct name of the column in your 'r' object
+      const pathValue = r.invoice_pdf_path || ""; 
+      const publicUrl = pathValue 
+        ? `https://xyyirkwiredufamtnqdu.supabase.co/storage/v1/object/public/${pathValue}`
+        : "No File";
+
+      return [
+        r.invoice_date, 
+        r.order_number, 
+        r.invoice_no, 
+        r.customer_name, 
+        r.customer_gstin || "URD", 
+        r.hsn_code || "N/A", 
+        r.taxable_value, 
+        r.cgst_amount, 
+        r.sgst_amount, 
+        r.igst_amount, 
+        r.place_of_supply,
+        publicUrl // 3. This puts the permanent link into the last column
+      ];
+    });
     
     exportToCSV(headers, rows, `Filtered_GST_View_${month}.csv`);
   };
