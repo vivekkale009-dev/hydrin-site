@@ -54,8 +54,8 @@ const defaultDates = {
     const end = new Date(filters.endDate as unknown as string);
 
 while (curr <= end) {
-  // Add the here. This picks ONLY the date part from the split array.
-  const dKey = curr.toISOString().split('T'); 
+  // THE FIX: Added at the end of split('T')
+  const dKey = curr.toISOString().split('T')[0]; 
   
   dailyData[dKey] = { rev: 0, pCost: 0, ownV: 0, extV: 0, salaries: 0, expenses: 0 };
   curr.setDate(curr.getDate() + 1);
