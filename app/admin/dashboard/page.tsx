@@ -14,8 +14,8 @@ export default function CompleteCommandCenter() {
 
 const defaultDates = {
   // FIXED: Added
-  start: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T'),
-  end: new Date().toISOString().split('T')
+  start: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
+  end: new Date().toISOString().split('T')[0]
 };
 
   const [filters, setFilters] = useState({
