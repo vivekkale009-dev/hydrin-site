@@ -13,7 +13,7 @@ export default function CompleteCommandCenter() {
   const [viewMode, setViewMode] = useState<"BREAKDOWN" | "INFLOW">("BREAKDOWN");
 
 const defaultDates = {
-  // FIXED: added
+  // FIXED: added to get string
   start: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T'),
   end: new Date().toISOString().split('T')
 };
@@ -54,7 +54,7 @@ const defaultDates = {
     const end = new Date(filters.endDate as unknown as string);
 
     while (curr <= end) {
-      // FIXED: added
+      // FIXED: added to ensure dKey is a string for indexing
       const dKey = curr.toISOString().split('T'); 
       dailyData[dKey] = { rev: 0, pCost: 0, ownV: 0, extV: 0, salaries: 0, expenses: 0 };
       curr.setDate(curr.getDate() + 1);
@@ -247,7 +247,6 @@ const defaultDates = {
   );
 }
 
-// Keep the rest of your TrendChart, LegendItem, BigBar, ToggleBtn and ui object as they were
 const TrendChart = ({ dailyData, filters }: any) => {
   const dates = Object.keys(dailyData).sort();
   const width = 500; const height = 120;
