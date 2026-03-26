@@ -13,6 +13,7 @@ export default function CompleteCommandCenter() {
   const [viewMode, setViewMode] = useState<"BREAKDOWN" | "INFLOW">("BREAKDOWN");
 
 const defaultDates = {
+  // FIXED: added
   start: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T'),
   end: new Date().toISOString().split('T')
 };
@@ -49,40 +50,35 @@ const defaultDates = {
     const dailyData: any = {};
     
     // Initialize Dates
-// The line causing the Vercel error (Line 52)
-let curr = new Date(filters.startDate as unknown as string); 
-const end = new Date(filters.endDate as unknown as string);
+    let curr = new Date(filters.startDate as unknown as string); 
+    const end = new Date(filters.endDate as unknown as string);
 
-while (curr <= end) {
-  // Add here as well to keep the keys consistent
-  const dKey = curr.toISOString().split('T'); 
-dailyData[dKey] = { rev: 0, pCost: 0, ownV: 0, extV: 0, salaries: 0, expenses: 0 };
-  curr.setDate(curr.getDate() + 1);
-}
+    while (curr <= end) {
+      // FIXED: added
+      const dKey = curr.toISOString().split('T'); 
+      dailyData[dKey] = { rev: 0, pCost: 0, ownV: 0, extV: 0, salaries: 0, expenses: 0 };
+      curr.setDate(curr.getDate() + 1);
+    }
 
     // Process Orders & SKU Logic
     const filteredOrders = (data.orders || []).filter((o: any) => {
+      // FIXED: added
       const d = o.created_at?.split('T');
       const isDateMatch = d >= filters.startDate && d <= filters.endDate;
       
-      // If filtering by SKU, only show orders that actually contain that SKU
       const containsSku = filters.selectedSku === "ALL" || 
         o.order_items?.some((item: any) => item.product_id === filters.selectedSku);
       
       return isDateMatch && containsSku;
     }).map((o: any) => {
-      // Calculate specific metrics for this order based on SKU filter
       let orderRev = 0;
       let orderPCost = 0;
 
       o.order_items?.forEach((item: any) => {
-        // SKIP items that don't match the selected SKU
         if (filters.selectedSku !== "ALL" && item.product_id !== filters.selectedSku) return;
 
-        // Formula: boxes * (bottles per box) = total bottles
         const totalBottles = Number(item.qty_boxes || 0) * (item.products?.units_per_box || 1);
         
-        // Sum of all cost components for this specific product
         const unitCost = data.costs
           .filter((c: any) => c.product_id === item.product_id)
           .reduce((s: number, curr: any) => s + Number(curr.cost_per_unit || 0), 0);
@@ -95,6 +91,7 @@ dailyData[dKey] = { rev: 0, pCost: 0, ownV: 0, extV: 0, salaries: 0, expenses: 0
       const deliveryFee = Number(o.delivery_fee || 0);
 
       // Add to Daily Totals
+      // FIXED: added
       const dKey = o.created_at?.split('T');
       if (dailyData[dKey]) {
         dailyData[dKey].rev += orderRev;
@@ -112,16 +109,17 @@ dailyData[dKey] = { rev: 0, pCost: 0, ownV: 0, extV: 0, salaries: 0, expenses: 0
     });
 
     const expTotal = (data.expenses || []).filter((e: any) => {
+      // FIXED: added
       const d = (e.expense_date || e.created_at)?.split('T');
       return d >= filters.startDate && d <= filters.endDate;
     }).reduce((a: any, b: any) => a + Number(b.amount || 0), 0);
 
     const salTotal = [...(data.salaryAdvances || []), ...(data.salaryPayments || [])].filter((s: any) => {
+      // FIXED: added
       const d = (s.request_date || s.payment_date || s.created_at)?.split('T');
       return d >= filters.startDate && d <= filters.endDate;
     }).reduce((a: any, b: any) => a + Number(b.amount || 0), 0);
 
-    // Distribute fixed costs over the selected period for the chart
     const daysCount = Object.keys(dailyData).length || 1;
     Object.keys(dailyData).forEach(dk => {
       dailyData[dk].salaries = salTotal / daysCount;
@@ -249,7 +247,7 @@ dailyData[dKey] = { rev: 0, pCost: 0, ownV: 0, extV: 0, salaries: 0, expenses: 0
   );
 }
 
-// Re-usable UI Components (Logic-Integrated)
+// Keep the rest of your TrendChart, LegendItem, BigBar, ToggleBtn and ui object as they were
 const TrendChart = ({ dailyData, filters }: any) => {
   const dates = Object.keys(dailyData).sort();
   const width = 500; const height = 120;
