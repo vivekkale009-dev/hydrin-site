@@ -27,7 +27,7 @@ jobs:
           PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
           # Create a clear name: hydrin_backup_YYYY-MM-DD.sql
-          export BACKUP_FILE="hydrin_backup_$(date +%Y-%m-%d).sql"
+          export BACKUP_FILE="earthy_backup_$(date +%Y-%m-%d).sql"
           pg_dump "postgresql://postgres.xyyirkwiredufamtnqdu:$PGPASSWORD@aws-1-ap-southeast-2.pooler.supabase.com:6543/postgres?sslmode=disable" > $BACKUP_FILE
           echo "FINAL_FILE=$BACKUP_FILE" >> $GITHUB_ENV
 
