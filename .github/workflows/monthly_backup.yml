@@ -19,8 +19,8 @@ jobs:
         env:
           PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
-          # Using direct Pooler address and project-specific username
-          pg_dump "postgresql://postgres.xyyirkwiredufamtnqdu:$PGPASSWORD@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=disable" > backup_$(date +%Y-%m-%d).sql
+          # Trying the hyphenated tenant format for the pooler
+          pg_dump "postgresql://postgres-xyyirkwiredufamtnqdu:$PGPASSWORD@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=disable" > backup_$(date +%Y-%m-%d).sql
 
       - name: Upload Backup to GitHub
         uses: actions/upload-artifact@v4
