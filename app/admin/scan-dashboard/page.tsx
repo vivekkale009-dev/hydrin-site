@@ -166,6 +166,7 @@ async function toggleIpBlock(ip: string, isCurrentlyBlocked: boolean) {
           { label: "Expenses", href: "/admin/expenses" },
           { label: "Distributors", href: "/admin/distributors" },
           { label: "CRM", href: "/admin/crm" },
+		  { label: "Raw Materials", href: "/admin/raw-materials" },
           { label: "Marketing", href: "/admin/marketing" },
           { label: "Visitor Pass", href: "/admin/visitor-dashboard" },
 		  { label: "Invoices / GST Filing", href: "/admin/gst-filing" },
