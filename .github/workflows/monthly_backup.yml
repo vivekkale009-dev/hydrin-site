@@ -2,9 +2,8 @@ name: Monthly Database Backup
 
 on:
   schedule:
-    # Runs at 00:00 on the 1st of every month
     - cron: '0 0 1 * *'
-  workflow_dispatch: # Allows you to run it manually from the Actions tab
+  workflow_dispatch: 
 
 jobs:
   backup:
@@ -14,22 +13,19 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install PostgreSQL Client
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
       - name: Run Backup
         env:
-          # This pulls the password from your GitHub Settings > Secrets
           PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
-          # We use the -d flag to pass the full connection string you confirmed
-          # The password is safely inserted using the $PGPASSWORD variable
-          pg_dump -d "postgresql://postgres.xyyirkwiredufamtnqdu:$PGPASSWORD@aws-1-ap-southeast-2.pooler.supabase.com:6543/postgres?sslmode=disable&pgbouncer=true" > backup_$(date +%Y-%m-%d).sql
+          # Using your confirmed host/region (aws-1-ap-southeast-2)
+          # We removed ?pgbouncer=true as it causes errors with pg_dump
+          pg_dump "postgresql://postgres.xyyirkwiredufamtnqdu:$PGPASSWORD@aws-1-ap-southeast-2.pooler.supabase.com:6543/postgres?sslmode=disable" > backup_$(date +%Y-%m-%d).sql
 
       - name: Upload Backup to GitHub
         uses: actions/upload-artifact@v4
         with:
-          name: hydrin-db-backup-${{ github.run_id }}
+          name: hydrin-backup-${{ github.run_id }}
           path: backup_*.sql
           retention-days: 90
