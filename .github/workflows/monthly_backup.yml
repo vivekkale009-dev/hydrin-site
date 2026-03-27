@@ -20,7 +20,7 @@ jobs:
           PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          # Use port 6543 and the Project ID in the username
+          # Connecting using the Supabase Pooler (Port 6543)
           pg_dump "postgresql://postgres.xyyirkwiredufamtnqdu:$PGPASSWORD@$DB_URL:6543/postgres?sslmode=disable" > backup_$(date +%Y-%m-%d).sql
 
       - name: Upload Backup to GitHub
