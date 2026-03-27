@@ -2,8 +2,9 @@ name: Monthly Database Backup
 
 on:
   schedule:
+    # Runs at 00:00 on the 1st of every month
     - cron: '0 0 1 * *'
-  workflow_dispatch: 
+  workflow_dispatch: # Allows you to run it manually for testing
 
 jobs:
   backup:
@@ -12,15 +13,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install PostgreSQL Client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Install PostgreSQL Client 17
+        run: |
+          # Add the official PostgreSQL repository to get version 17
+          sudo apt install curl ca-certificates
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          sudo sh -c 'echo "deb [arch=amd64 signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          
+          # Update and install the matching client
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
 
       - name: Run Backup
         env:
           PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
-          # Using your confirmed host/region (aws-1-ap-southeast-2)
-          # We removed ?pgbouncer=true as it causes errors with pg_dump
+          # Use the exact host and region you confirmed earlier
+          # Note: Removed ?pgbouncer=true as it's not a valid pg_dump parameter
           pg_dump "postgresql://postgres.xyyirkwiredufamtnqdu:$PGPASSWORD@aws-1-ap-southeast-2.pooler.supabase.com:6543/postgres?sslmode=disable" > backup_$(date +%Y-%m-%d).sql
 
       - name: Upload Backup to GitHub
