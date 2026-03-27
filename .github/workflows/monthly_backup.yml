@@ -14,29 +14,29 @@ jobs:
 
       - name: Install PostgreSQL Client 17
         run: |
-          # Add official PostgreSQL repository
           sudo apt install curl ca-certificates
           sudo install -d /usr/share/postgresql-common/pgdg
           sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
           sudo sh -c 'echo "deb [arch=amd64 signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-          
-          # Install version 17
           sudo apt-get update
           sudo apt-get install -y postgresql-client-17
-
-          # FORCE the robot to use the new version 17 by adding it to its "Search Path"
           echo "/usr/lib/postgresql/17/bin" >> $GITHUB_PATH
 
       - name: Run Backup
         env:
           PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
-          # Now the robot will use pg_dump version 17 automatically
-          pg_dump "postgresql://postgres.xyyirkwiredufamtnqdu:$PGPASSWORD@aws-1-ap-southeast-2.pooler.supabase.com:6543/postgres?sslmode=disable" > backup_$(date +%Y-%m-%d).sql
+          # Create a clear name: hydrin_backup_YYYY-MM-DD.sql
+          export BACKUP_FILE="hydrin_backup_$(date +%Y-%m-%d).sql"
+          pg_dump "postgresql://postgres.xyyirkwiredufamtnqdu:$PGPASSWORD@aws-1-ap-southeast-2.pooler.supabase.com:6543/postgres?sslmode=disable" > $BACKUP_FILE
+          echo "FINAL_FILE=$BACKUP_FILE" >> $GITHUB_ENV
 
       - name: Upload Backup to GitHub
         uses: actions/upload-artifact@v4
         with:
-          name: hydrin-backup-${{ github.run_id }}
-          path: backup_*.sql
-          retention-days: 90
+          name: ${{ env.FINAL_FILE }}
+          path: ${{ env.FINAL_FILE }}
+          retention-days: 90 
+
+      - name: Success Notification Log
+        run: echo "Backup successfully created. Download from the Actions tab within 90 days."
