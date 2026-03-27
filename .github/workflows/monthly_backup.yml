@@ -21,7 +21,7 @@ jobs:
           DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           # We use port 6543 and add the Project ID to the username
-          pg_dump "postgresql://postgres.xyyirkwiredufamtnqdu:$PGPASSWORD@$DB_URL:6543/postgres?sslmode=disable" > backup_$(date +%Y-%m-%d).sql
+         pg_dump "postgresql://postgres.xyyirkwiredufamtnqdu:$PGPASSWORD@$DB_URL:6543/postgres?sslmode=disable" > backup_$(date +%Y-%m-%d).sql
 
       - name: Upload Backup to GitHub
         uses: actions/upload-artifact@v4
