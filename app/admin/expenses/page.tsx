@@ -57,6 +57,7 @@ export default function FinalExpenseDashboard() {
   const [supplierGstin, setSupplierGstin] = useState("");
   const [gstRate, setGstRate] = useState("18");
   const [isInterstate, setIsInterstate] = useState(false);
+  const [isRcm, setIsRcm] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [existingFileUrl, setExistingFileUrl] = useState<string | null>(null);
 
@@ -197,6 +198,7 @@ const onSave = async (e: React.FormEvent) => {
     formData.append("sgst_amount", taxCalc.sgst.toString());
     formData.append("igst_amount", taxCalc.igst.toString());
     formData.append("is_interstate", String(isInterstate));
+	formData.append("is_rcm", String(isRcm));
 	// Inside onSave function
 formData.append("invoice_no", invoiceNo); // Use the column name from your DB
 
@@ -235,6 +237,7 @@ formData.append("invoice_no", invoiceNo); // Use the column name from your DB
     setGstCategory(row.gst_category || "inputs"); // Added
     setRecoStatus(row.reco_status || "pending");   // Added
     setIsInterstate(row.is_interstate || false);
+	setIsRcm(row.is_rcm || false);
     setExistingFileUrl(row.attachment_url || null);
     if (row.category && row.category.startsWith("Misc:")) {
       setMainCat("Miscellaneous");
@@ -399,6 +402,10 @@ formData.append("invoice_no", invoiceNo); // Use the column name from your DB
 
             <label style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: 'bold'}}>
               <input type="checkbox" checked={isInterstate} onChange={e => setIsInterstate(e.target.checked)} /> Interstate (IGST)
+            </label>
+			
+			  <label style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: 'bold'}}>
+              <input type="checkbox" checked={isRcm} onChange={e => setIsRcm(e.target.checked)} /> Reverse Charge Mechanism (RCM)
             </label>
 
             <div style={{display:'flex', gap:'10px'}}>
