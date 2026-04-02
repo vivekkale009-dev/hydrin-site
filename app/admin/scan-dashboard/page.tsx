@@ -173,6 +173,7 @@ async function toggleIpBlock(ip: string, isCurrentlyBlocked: boolean) {
 		  { label: "Machine Maintenance", href: "/admin/machinery" },
           { label: "Careers", href: "/admin/careers-manager" },
           { label: "Letters", href: "/admin/letters" },
+		  { label: "Broadcast", href: "/admin/broadcast" },
           { label: "DB Health", href: "/admin/database-health" },
           { label: "Main Dashboard", href: "/admin/dashboard" },
         ].map((link) => (

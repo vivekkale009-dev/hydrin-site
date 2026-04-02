@@ -170,6 +170,18 @@ export default function AdminOrderCreatePage() {
       
       if (res.ok) {
         const data = await res.json();
+		// --- START OF CONTACT SYNC ---
+        // This part automatically adds/updates the person in your Broadcast List
+        fetch("/api/admin/broadcast/sync-contact", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phone_number: orderType === "distributor" ? selectedDistributor?.phone : consumerPhone,
+            name: orderType === "distributor" ? selectedDistributor?.name : billing.name,
+            category: orderType === "distributor" ? "Distributor" : "Customer"
+          })
+        }).catch(err => console.log("Broadcast sync failed, but order was saved."));
+        // --- END OF CONTACT SYNC ---
         alert(`Order ${data.uorn} Created Successfully!`);
         window.location.href = "/admin/orders";
       } else {
