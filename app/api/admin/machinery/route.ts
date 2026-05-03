@@ -1,13 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
-// Initialize with Service Role Key to bypass RLS on the server side
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY! 
 );
 
-// GET: Fetches all machines (Bypasses RLS to ensure UI always reflects data)
 export async function GET() {
   try {
     const { data, error } = await supabase
@@ -22,49 +20,39 @@ export async function GET() {
   }
 }
 
-// POST: Handles New Asset Registration and File Uploads
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     const machineData: any = {};
-    const id = formData.get('id'); // Used for matching in PUT/Edit scenarios
+    const id = formData.get('id');
     
-    // Define expected fields
-    const fields = ['machine_name', 'model_number', 'install_date', 'status', 'next_maintenance', 'vendor_contact', 'criticality'];
+    // Updated fields list to include video_url as a text field
+    const fields = ['machine_name', 'model_number', 'install_date', 'status', 'next_maintenance', 'vendor_contact', 'criticality', 'video_url'];
     fields.forEach(f => {
       const val = formData.get(f);
       if (val !== null) machineData[f] = val;
     });
 
-    // Handle File Uploads (Manual & Video)
-    const files = { 
-      manual: formData.get('manual') as File, 
-      video: formData.get('video') as File 
-    };
-    
-    for (const [key, file] of Object.entries(files)) {
-      // Only upload if a new file is actually provided
-      if (file && file.size > 0 && typeof file !== 'string') {
-        const fileName = `${Date.now()}_${file.name.replace(/\s/g, '_')}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('machinery-assets')
-          .upload(`${key}s/${fileName}`, file);
+    // Handle Manual PDF Upload only (Video is now handled as text above)
+    const manualFile = formData.get('manual') as File;
+    if (manualFile && manualFile.size > 0 && typeof manualFile !== 'string') {
+      const fileName = `${Date.now()}_${manualFile.name.replace(/\s/g, '_')}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('machinery-assets')
+        .upload(`manuals/${fileName}`, manualFile);
 
-        if (uploadError) throw uploadError;
-        machineData[`${key}_url`] = uploadData.path;
-      }
+      if (uploadError) throw uploadError;
+      machineData[`manual_url`] = uploadData.path;
     }
 
     let result;
     if (id) {
-      // UPDATE EXISTING ASSET
       result = await supabase
         .from('plant_machinery')
         .update(machineData)
         .eq('id', id)
         .select();
     } else {
-      // INSERT NEW ASSET
       result = await supabase
         .from('plant_machinery')
         .insert([machineData])
@@ -79,12 +67,10 @@ export async function POST(req: Request) {
   }
 }
 
-// PUT: Reuses POST logic for editing
 export async function PUT(req: Request) {
   return POST(req);
 }
 
-// DELETE: Removes the asset record (and triggers cascade for logs/files)
 export async function DELETE(req: Request) {
   try {
     const { searchParams } = new URL(req.url);

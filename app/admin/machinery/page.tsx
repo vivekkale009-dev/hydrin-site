@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-// Keep this for Storage access, but use API for DB records to bypass RLS
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
 export default function EarthyMachinery() {
@@ -20,18 +19,18 @@ export default function EarthyMachinery() {
 
   const [form, setForm] = useState({
     machine_name: "", model_number: "", install_date: "",
-    status: "Operating", criticality: "Medium", next_maintenance: "", vendor_contact: ""
+    status: "Operating", criticality: "Medium", next_maintenance: "", vendor_contact: "",
+    video_url: "" 
   });
   
   const [manualFile, setManualFile] = useState<File | null>(null);
-  const [videoFile, setVideoFile] = useState<File | null>(null);
 
   const getPublicUrl = (path: string) => {
     if (!path) return "";
+    if (path.includes('youtube.com') || path.includes('youtu.be')) return path;
     return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/machinery-assets/${path}`;
   };
 
-  // --- SURGICAL ADDITION: URGENCY CHECKER ---
   const isUrgent = (dateString: string) => {
     if (!dateString) return false;
     const today = new Date();
@@ -41,7 +40,6 @@ export default function EarthyMachinery() {
     return diffDays >= 0 && diffDays <= 15;
   };
 
-  // --- SURGICAL FIX: FETCH MACHINES VIA API (RLS BYPASS) ---
   const fetchMachines = async () => {
     try {
       const res = await fetch('/api/admin/machinery');
@@ -56,7 +54,6 @@ export default function EarthyMachinery() {
     }
   };
 
-  // --- SURGICAL FIX: FETCH LOGS VIA API (RLS BYPASS) ---
   const fetchLogs = async (machineId: string) => {
     try {
       const res = await fetch(`/api/admin/machinery/logs?machineId=${machineId}`);
@@ -69,7 +66,6 @@ export default function EarthyMachinery() {
     }
   };
 
-  // --- SURGICAL FIX: FETCH EXTRA FILES VIA API (RLS BYPASS) ---
   const fetchExtraFiles = async (machineId: string) => {
     try {
       const res = await fetch(`/api/admin/machinery/files?machineId=${machineId}`);
@@ -82,7 +78,6 @@ export default function EarthyMachinery() {
     }
   };
 
-  // --- SURGICAL FIX: DELETE FILE VIA API (RLS BYPASS) ---
   const handleDeleteFile = async (fileId: string, filePath: string) => {
     if (!confirm("Delete this technical file?")) return;
     try {
@@ -98,11 +93,10 @@ export default function EarthyMachinery() {
 
   const handleEdit = (m: any) => {
     setEditingId(m.id);
-    setForm({ ...m });
+    setForm({ ...m, video_url: m.video_url || "" });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // --- SURGICAL FIX: DELETE ASSET VIA API (RLS BYPASS) ---
   const handleDelete = async (id: string) => {
     if (!confirm("Confirm deletion of this asset?")) return;
     const res = await fetch(`/api/admin/machinery?id=${id}`, { method: 'DELETE' });
@@ -149,7 +143,6 @@ export default function EarthyMachinery() {
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => fd.append(k, v as string));
     if (manualFile) fd.append('manual', manualFile);
-    if (videoFile) fd.append('video', videoFile);
     if (editingId) fd.append('id', editingId);
 
     const res = await fetch('/api/admin/machinery', { 
@@ -160,8 +153,8 @@ export default function EarthyMachinery() {
     if (res.ok) {
       alert(editingId ? "Asset Updated" : "Asset Saved");
       setEditingId(null);
-      setForm({ machine_name: "", model_number: "", install_date: "", status: "Operating", criticality: "Medium", next_maintenance: "", vendor_contact: "" });
-      setManualFile(null); setVideoFile(null);
+      setForm({ machine_name: "", model_number: "", install_date: "", status: "Operating", criticality: "Medium", next_maintenance: "", vendor_contact: "", video_url: "" });
+      setManualFile(null);
       fetchMachines();
     }
     setSubmitting(false);
@@ -203,9 +196,17 @@ export default function EarthyMachinery() {
           <div style={ui.fileBox}><label style={ui.label}>📄 Manual (PDF)</label>
             <input type="file" accept=".pdf" onChange={e => setManualFile(e.target.files?.[0] || null)} />
           </div>
-          <div style={ui.fileBox}><label style={ui.label}>📽️ Training Video (MP4)</label>
-            <input type="file" accept="video/*" onChange={e => setVideoFile(e.target.files?.[0] || null)} />
+          
+          <div style={ui.fileBox}>
+            <label style={ui.label}>📽️ YouTube Training Links</label>
+            <textarea 
+              placeholder="Paste links here. Separate multiple links with a comma." 
+              style={{...ui.input, width: '100%', marginTop: '5px', height: '60px', resize: 'none'}} 
+              value={form.video_url} 
+              onChange={e => setForm({...form, video_url: e.target.value})} 
+            />
           </div>
+
           <button type="submit" disabled={submitting} style={ui.btn}>{submitting ? "Saving..." : editingId ? "UPDATE ASSET" : "DEPLOY ASSET"}</button>
           {editingId && <button onClick={() => setEditingId(null)} style={{...ui.btn, background:'#555', marginTop:'5px'}}>Cancel</button>}
         </form>
@@ -217,7 +218,6 @@ export default function EarthyMachinery() {
           <div style={ui.statsRow}>
             <div style={ui.statCard}><b>{machines.length}</b> <br/> Total Assets</div>
             <div style={ui.statCard}><b>{machines.filter(m => m.criticality === 'High').length}</b> <br/> Critical</div>
-            {/* SURGICAL ADDITION: URGENT STAT */}
             <div style={{...ui.statCard, color: '#cf1322', border: '1px solid #ffccc7'}}>
               <b>{machines.filter(m => isUrgent(m.next_maintenance)).length}</b> <br/> Due Soon
             </div>
@@ -230,6 +230,8 @@ export default function EarthyMachinery() {
           <div style={ui.grid}>
             {machines.map(m => {
               const urgent = isUrgent(m.next_maintenance);
+              const videoLinks = m.video_url ? m.video_url.split(',').map((url: string) => url.trim()).filter((url: string) => url !== "") : [];
+              
               return (
                 <div key={m.id} style={{
                   ...ui.card,
@@ -249,9 +251,19 @@ export default function EarthyMachinery() {
                     <p>SN: {m.model_number}</p>
                     <p>🔧 Next Service: <b style={{color: urgent ? '#cf1322' : 'inherit'}}>{m.next_maintenance}</b></p>
                   </div>
-                  <div style={ui.actions}>
+                  <div style={{...ui.actions, flexWrap: 'wrap'}}>
                     <button disabled={!m.manual_url} onClick={() => window.open(getPublicUrl(m.manual_url))} style={ui.actionBtn}>Manual</button>
-                    <button disabled={!m.video_url} onClick={() => window.open(getPublicUrl(m.video_url))} style={ui.actionBtn}>Video</button>
+                    
+                    {videoLinks.map((link: string, idx: number) => (
+                      <button 
+                        key={idx}
+                        onClick={() => window.open(link.startsWith('http') ? link : `https://www.youtube.com/watch?v=${link}`)} 
+                        style={{...ui.actionBtn, borderColor: '#ff0000', color: '#ff0000'}}
+                      >
+                        Video {videoLinks.length > 1 ? idx + 1 : ""}
+                      </button>
+                    ))}
+                    
                     <button onClick={() => { setSelectedMachine(m); fetchLogs(m.id); fetchExtraFiles(m.id); }} style={{...ui.actionBtn, background:'#1e3a3a', color:'#fff'}}>History</button>
                   </div>
                 </div>
@@ -329,6 +341,7 @@ export default function EarthyMachinery() {
     </div>
   );
 }
+
 
 const ui: any = {
   container: { display: 'flex', minHeight: '100vh', background: '#f9fbf9' },
