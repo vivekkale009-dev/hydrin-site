@@ -70,3 +70,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false }, { status: 500 });
   }
 }
+
+export async function GET() {
+  try {
+    const { google } = require("googleapis");
+    const auth = new google.auth.GoogleAuth({
+      credentials: JSON.parse(process.env.GOOGLE_CREDS_JSON!),
+      scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
+    });
+
+    const sheets = google.sheets({ version: "v4", auth });
+    
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: process.env.GOOGLE_SHEET_ID,
+      range: "Jobs!A:G", // Change "Jobs" if your sheet tab has a different name
+    });
+
+    return NextResponse.json(response.data.values || []);
+  } catch (error) {
+    console.error("Public fetch failed:", error);
+    return NextResponse.json({ error: "Unable to retrieve listings" }, { status: 500 });
+  }
+}

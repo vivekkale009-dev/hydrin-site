@@ -19,7 +19,7 @@ export default function CareersPage() {
 
   // Fetch Jobs from API
   useEffect(() => {
-    fetch("/api/admin/jobs")
+    fetch("/api/careers")
       .then((res) => res.json())
       .then((data) => {
         // Filter for "Active" (index 4) and skip headers
