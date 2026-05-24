@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
+import { google } from "googleapis";
 
 export async function POST(req: Request) {
   try {
@@ -22,7 +23,7 @@ export async function POST(req: Request) {
       },
     });
 
-    // 1. NOTIFICATION TO ADMIN (Simple & Functional)
+    // 1. NOTIFICATION TO ADMIN
     await transporter.sendMail({
       from: `"EarthySource Hiring" <${process.env.CAREERS_AUTH_USER}>`,
       to: process.env.CAREERS_MAIL_TO, 
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
       attachments: [{ filename: resume.name, content: buffer }],
     });
 
-    // 2. ACKNOWLEDGEMENT TO CANDIDATE (Attractive & Professional)
+    // 2. ACKNOWLEDGEMENT TO CANDIDATE
     const candidateHtml = `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; background-color: #fdfcf9;">
         <div style="background-color: #166534; padding: 40px 20px; text-align: center;">
@@ -73,7 +74,6 @@ export async function POST(req: Request) {
 
 export async function GET() {
   try {
-    const { google } = require("googleapis");
     const auth = new google.auth.GoogleAuth({
       credentials: JSON.parse(process.env.GOOGLE_CREDS_JSON!),
       scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
@@ -83,7 +83,7 @@ export async function GET() {
     
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: "Jobs!A:G", // Change "Jobs" if your sheet tab has a different name
+      range: "Jobs!A:G",
     });
 
     return NextResponse.json(response.data.values || []);
