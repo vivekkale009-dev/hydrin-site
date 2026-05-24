@@ -75,20 +75,22 @@ export async function POST(req: Request) {
 export async function GET() {
   try {
     const auth = new google.auth.GoogleAuth({
-      credentials: JSON.parse(process.env.GOOGLE_CREDS_JSON!),
+      credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON!),
       scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
     });
 
     const sheets = google.sheets({ version: "v4", auth });
     
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: "Jobs!A:G",
+      spreadsheetId: process.env.SHEET_ID,
+      range: "EarthyJobs!A:G", 
     });
 
     return NextResponse.json(response.data.values || []);
-  } catch (error) {
-    console.error("Public fetch failed:", error);
-    return NextResponse.json({ error: "Unable to retrieve listings" }, { status: 500 });
+  } catch (error: any) {
+    return NextResponse.json({ 
+      error: "Google Sheets connection failed", 
+      details: error.message || error 
+    }, { status: 500 });
   }
 }
