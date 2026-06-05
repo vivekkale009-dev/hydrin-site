@@ -12,12 +12,19 @@ export default function HomePage() {
   const brands = {
     aqion: {
       name: "AQION Premium",
-      desc: "Structured for maximum absorption with a perfect pH balance of 8.5+.",
+      desc: "Premium, ultra-pure packaged drinking water engineered for crisp taste and superior hydration.",
     },
     sanjivani: {
       name: "Sai Sanjivani",
-      desc: "Everyday hydration enriched with essential minerals for the whole family.",
+      desc: "Pure and safe everyday drinking water processed to the highest quality standards for healthy family hydration.",
     }
+  };
+
+  // Helper function to handle WhatsApp redirection safely
+  const handleWhatsAppOrder = (brandName: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevents the card from collapsing when clicking the button
+    const message = encodeURIComponent(`Hello, I would like to place an order for ${brandName} packaged drinking water. Please share pricing and delivery details.`);
+    window.open(`https://wa.me/917758877307?text=${message}`, "_blank");
   };
 
   return (
@@ -59,37 +66,81 @@ export default function HomePage() {
         <div className="hero-visual"></div>
       </section>
 
-      {/* 3. BRAND SECTION */}
-      <section id="brands" className="brand-section">
-        <h2 className="section-heading">Our Family of Brands</h2>
-        <div className="brand-grid">
-          <div className={`brand-card ${activeBrand === 'aqion' ? 'expanded' : ''}`} onClick={() => setActiveBrand(activeBrand === 'aqion' ? null : 'aqion')}>
-             <div className="water-drop-icon"><svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" /></svg></div>
-             <span className="brand-label">Premium Water</span>
-             <h3>AQION</h3>
-             {activeBrand === 'aqion' && (
-               <div className="animate-slide-up info-reveal">
-                  <p className="brand-info">{brands.aqion.desc}</p>
-                  <div className="tag-list"><span>✓ pH 8.5+</span><span>✓ Structured</span></div>
-               </div>
-             )}
-             <button className="view-more-pill">{activeBrand === 'aqion' ? 'Hide' : 'Details'}</button>
-          </div>
+     {/* 3. BRAND SECTION */}
+<section id="brands" className="brand-section">
+  {/* CHANGED SECTION HEADING TO USE TEXT-WHITE AND TEXT-GREEN FOR HIGH READABILITY */}
+  <h2 className="section-heading" style={{ color: '#ffffff' }}>
+     <span style={{ color: '#00e676' }}>Our Family of Brands</span>
+  </h2>
+  
+  <div className="brand-grid">
+    <div className={`brand-card ${activeBrand === 'aqion' ? 'expanded' : ''}`} onClick={() => setActiveBrand(activeBrand === 'aqion' ? null : 'aqion')}>
+       <div className="water-drop-icon"><svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" /></svg></div>
+       <span className="brand-label">Premium Water</span>
+       <h3>AQION</h3>
+       {activeBrand === 'aqion' && (
+         <div className="animate-slide-up info-reveal">
+            <p className="brand-info">{brands.aqion.desc}</p>
+			<span className="brand-label">AQION (Launching soon...!!!)</span>
+            <div className="tag-list"><span>✓ Premium Quality</span><span>✓ Pure Hydration</span></div>
+            {/* WHATSAPP ORDER NOW BUTTON */}
+            <button 
+              className="btn-primary" 
+              style={{ marginTop: '15px', width: '100%', padding: '10px', background: '#25D366', borderColor: '#25D366' }}
+              onClick={(e) => handleWhatsAppOrder("AQION Premium", e)}
+            >
+              💬 Order Now via WhatsApp
+            </button>
+         </div>
+       )}
+       <button className="view-more-pill">{activeBrand === 'aqion' ? 'Hide' : 'Details'}</button>
+    </div>
 
-          <div className={`brand-card ${activeBrand === 'sanjivani' ? 'expanded' : ''}`} onClick={() => setActiveBrand(activeBrand === 'sanjivani' ? null : 'sanjivani')}>
-             <div className="water-drop-icon secondary"><svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" /></svg></div>
-             <span className="brand-label">Standard Water</span>
-             <h3>SAI SANJIVANI</h3>
-             {activeBrand === 'sanjivani' && (
-               <div className="animate-slide-up info-reveal">
-                  <p className="brand-info">{brands.sanjivani.desc}</p>
-                  <div className="tag-list"><span>✓ Natural</span><span>✓ Everyday</span></div>
-               </div>
-             )}
-             <button className="view-more-pill">{activeBrand === 'sanjivani' ? 'Hide' : 'Details'}</button>
-          </div>
-        </div>
-      </section>
+    {/* PROFESSIONALLY STYLED SAI SANJIVANI SECTION */}
+    <div className={`brand-card ${activeBrand === 'sanjivani' ? 'expanded' : ''}`} onClick={() => setActiveBrand(activeBrand === 'sanjivani' ? null : 'sanjivani')}>
+       <div className="water-drop-icon secondary"><svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" /></svg></div>
+       <span className="brand-label">Standard Water</span>
+	    
+       <h3>SAI SANJIVANI</h3>
+       {activeBrand === 'sanjivani' && (
+         <div className="animate-slide-up info-reveal" style={{ textAlign: 'left', marginTop: '10px' }}>
+            {/* CLEAN PRODUCT DISPLAY SECTION */}
+            <div style={{ 
+              background: 'rgba(255, 255, 255, 0.05)', 
+              borderRadius: '8px', 
+              padding: '12px', 
+              marginBottom: '12px',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}>
+              <p className="brand-info" style={{ fontWeight: '500', marginBottom: '8px' }}>
+                {brands.sanjivani.desc}
+				
+              </p>
+			  		
+					<span className="brand-label">Sai sanjivani</span>
+              <div style={{ fontSize: '0.85rem', color: '#ccc', lineHeight: '1.4' }}>
+                <div style={{ marginBottom: '4px' }}>• Multi-stage purification process</div>
+                <div style={{ marginBottom: '4px' }}>• Tested and verified batch quality</div>
+                <div>• Available in standard consumer sizes</div>
+              </div>
+            </div>
+
+            <div className="tag-list"><span>✓ Trusted Everyday</span><span>✓ Mineral Enriched</span></div>
+            
+            {/* WHATSAPP ORDER NOW BUTTON */}
+            <button 
+              className="btn-primary" 
+              style={{ marginTop: '15px', width: '100%', padding: '10px', background: '#25D366', borderColor: '#25D366' }}
+              onClick={(e) => handleWhatsAppOrder("Sai Sanjivani", e)}
+            >
+              💬 Order Now via WhatsApp
+            </button>
+         </div>
+       )}
+       <button className="view-more-pill">{activeBrand === 'sanjivani' ? 'Hide' : 'Details'}</button>
+    </div>
+  </div>
+</section>
 
       {/* NEW: FOOTER SECTION */}
       <footer className="site-footer">

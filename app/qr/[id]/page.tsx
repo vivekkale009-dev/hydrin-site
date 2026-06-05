@@ -21,7 +21,7 @@ export default async function DistributorQRPage({ params }: { params: { id: stri
   }
 
   // Points to the internal verification page that your team scans
-  const origin = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const origin = process.env.NEXT_PUBLIC_SITE_URL || "http://earthysource.in";
   const verifyUrl = `${origin}/verify-gp/${params.id}`;
   const qrDataUrl = await QRCode.toDataURL(verifyUrl, { width: 600, margin: 2 });
 

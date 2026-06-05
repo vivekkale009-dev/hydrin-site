@@ -93,7 +93,7 @@ export default function AdminOrdersPage() {
       return;
     }
     const qrDisplayUrl = `${window.location.origin}/qr/${order.id}`;
-    const message = `*EARTHY SOURCE - DIGITAL PASS*%0A%0A*Order:* ${order.uorn}%0A*Status:* Ready%0A%0A${qrDisplayUrl}`;
+    const message = `*EARTHY SOURCE - DIGITAL PASS*%0A%0A*Order:* ${order.uorn}%0A*Status:* Ready%0A%0A*CLICK TO OPEN YOUR QR PASS:${qrDisplayUrl}`;
     window.open(`https://wa.me/91${whatsappNumber}?text=${message}`, "_blank");
   };
 
@@ -123,10 +123,10 @@ export default function AdminOrdersPage() {
           <select style={styles.input} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
              <option value="all">All Statuses</option>
              <option value="pending_verification">Pending Verification</option>
-             <option value="fully_paid">Paid</option>
+             <option value="payment_verified">Paid</option>
              <option value="partially_paid">Partially Paid</option>
 			 <option value="refunded">Refunded</option>
-			 <option value="cancelled">cancelled</option>
+			 <option value="cancelled">Cancelled</option>
 			 <option value="delivered">Delivered</option>
           </select>
 

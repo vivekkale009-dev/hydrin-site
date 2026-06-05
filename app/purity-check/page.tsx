@@ -373,7 +373,7 @@ if (accessCheck.blocked) {
           <div style={{ marginTop: "50px", textAlign: "center", padding: "40px", background: "linear-gradient(135deg, rgba(10,108,255,0.2) 0%, rgba(0,0,0,0.4) 100%)", borderRadius: "20px", border: "1px solid rgba(10,108,255,0.3)" }}>
             <h3 style={{ fontSize: "1.4rem", marginBottom: "10px" }}>Pure Water is just the beginning.</h3>
             <p style={{ color: "#ccc", marginBottom: "20px" }}>Discover our mission to bring sustainable, earth-friendly hydration to everyone.</p>
-            <a href="/"><button style={{ padding: "12px 30px", borderRadius: "30px", background: "#0A6CFF", color: "white", border: "none", fontWeight: 600, cursor: "pointer", boxShadow: "0 4px 15px rgba(10,108,255,0.4)" }}>Explore Earthy Source</button></a>
+            <a href="/"><button style={{ padding: "12px 30px", borderRadius: "30px", background: "#0A6CFF", color: "white", border: "none", fontWeight: 600, cursor: "pointer", boxShadow: "0 4px 15px rgba(10,108,255,0.4)" }}>Explore & Order Our Products </button></a>
           </div>
         </main>
       </BackgroundWrapper>
