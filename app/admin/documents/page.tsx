@@ -388,7 +388,15 @@ if (file) {
 
             <div style={{background: '#f8fafc', padding: '12px', borderRadius: '10px', fontSize: '11px', border: '1px dashed #cbd5e1', display: 'flex', justifyContent: 'space-between'}}>
                <span>Validity Tracker:</span>
-               <span style={{color: validityCalc.daysLeft < 0 || validityCalc.daysLeft <= 60 ? '#ef4444' : '#10b981', fontWeight: 'bold'}}>{validityCalc.statusText}</span>
+               <span 
+  style={{
+    color: (typeof validityCalc.daysLeft === 'number' && (validityCalc.daysLeft < 0 || validityCalc.daysLeft <= 60)) 
+      ? '#ef4444' 
+      : '#10b981', 
+    fontWeight: 'bold'
+  }}
+>
+  {validityCalc.statusText}</span>
             </div>
             
             <label style={ui.fLabel}>Internal Remarks</label>
