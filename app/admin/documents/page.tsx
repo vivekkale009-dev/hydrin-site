@@ -43,7 +43,7 @@ export default function DocumentDashboard() {
   const [documentNo, setDocumentNo] = useState("");
   const [issuingAuthority, setIssuingAuthority] = useState("");
   const [notes, setNotes] = useState(""); 
-  const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T'));
+  const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0]);
   const [expiryDate, setExpiryDate] = useState("");
   const [status, setStatus] = useState("active");
 
