@@ -18,7 +18,6 @@ const supabase = createClient(
 // ==== STATIC VALUES (not from Supabase) ====
 const STATIC_PLANT =
   "Gut No 253 Earthy Source Foods And Beverages Khairi nimgaon Shrirampur, Ahilyanagar";
-//const STATIC_LICENSE = "12345678901234";
 const STATIC_FSSAI = "11526074000094";
 
 export default function PurityCheck() {
