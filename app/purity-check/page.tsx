@@ -17,9 +17,9 @@ const supabase = createClient(
 
 // ==== STATIC VALUES (not from Supabase) ====
 const STATIC_PLANT =
-  "Gut N0 253 Earthy Source Foods And Beverages Khairi nimgaon Shrirampur, Ahilyanagar";
-const STATIC_LICENSE = "12345678901234";
-const STATIC_FSSAI = "12345678901234";
+  "Gut No 253 Earthy Source Foods And Beverages Khairi nimgaon Shrirampur, Ahilyanagar";
+//const STATIC_LICENSE = "12345678901234";
+const STATIC_FSSAI = "11526074000094";
 
 export default function PurityCheck() {
   const [batch, setBatch] = useState("");
@@ -213,7 +213,7 @@ if (accessCheck.blocked) {
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100);
-    doc.text(["Foods and Beverages", STATIC_PLANT, `FSSAI: ${STATIC_FSSAI}`, `License: ${STATIC_LICENSE}`], 40, 100);
+    doc.text(["Foods and Beverages", STATIC_PLANT, `FSSAI: ${STATIC_FSSAI}`], 40, 100);
 
     autoTable(doc, {
       startY: 160,
@@ -232,7 +232,7 @@ if (accessCheck.blocked) {
         ["pH Level (Range)", phRange],
         ["TDS Level (Range)", tdsRange],
         ["Product Status", "PASSED / QUALITY CHECKED"],
-        ["Standard Compliance", "BIS IS 14543"],
+        ["Standard Compliance", "FSS Act, 2006 (https://foscos.fssai.gov.in)"],
         ["Treatment Process", "RO + UV + Ozonation + Micron Filtration"],
       ],
     });
@@ -246,7 +246,7 @@ if (accessCheck.blocked) {
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(80);
-    doc.text("This certificate confirms that the mentioned batch has passed all physical, chemical, and microbiological tests in accordance with national safety standards for packaged drinking water. For any issue related to product please contact us at support@earthysource.in", 40, footerY + 20, { maxWidth: 380 });
+    doc.text("This certificate confirms that the mentioned batch has passed required physical, chemical, and microbiological tests in accordance with national safety standards for packaged drinking water. For any issue related to product please contact us at support@earthysource.in", 40, footerY + 20, { maxWidth: 380 });
 
     try {
       doc.addImage("/OxyHydraQualityCheck.png", "PNG", 430, footerY - 10, 100, 100);
