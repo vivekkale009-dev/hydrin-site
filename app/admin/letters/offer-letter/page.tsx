@@ -231,7 +231,7 @@ export default function OfferLetterPortal() {
 
       addH2("10. Leave Policy", 105);
       doc.setFont("helvetica", "normal");
-      const c10 = `You are eligible for leaves as per the Company's internal policy. All leaves must be applied for and approved in writing at least 7 days in advance. Unannounced absenteeism for more than 3 consecutive days will be treated as voluntary abandonment of service, leading to immediate termination.`;
+      const c10 = `You are eligible for leaves as per the Company's internal policy. All leaves must be applied for and approved in writing at least 7 days in advance. Unannounced absenteeism for more than 3 consecutive days will be treated as voluntary abandonment of service, leading to immediate termination. Additionally, please note that in the event of scheduled or unscheduled plant downtime, work will not be available, and such days will be treated as non-working days without pay.`;
       doc.text(doc.splitTextToSize(c10, 170), 20, 118);
 
       // Acceptance Box
