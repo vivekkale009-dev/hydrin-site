@@ -245,7 +245,7 @@ if (accessCheck.blocked) {
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(80);
-    doc.text("This certificate confirms that the mentioned batch has passed required physical, chemical, and microbiological tests in accordance with national safety standards for packaged drinking water. For any issue related to product please contact us at support@earthysource.in", 40, footerY + 20, { maxWidth: 380 });
+    doc.text("This batch has been manufactured under our quality control procedure and is intended to comply with the applicable requirenments for packaged drinking water under FSSAI regulations. Quality checks are carried out as part of our standard production process. For any issue related to product please contact us at support@earthysource.in", 40, footerY + 20, { maxWidth: 380 });
 
     try {
       doc.addImage("/OxyHydraQualityCheck.png", "PNG", 430, footerY - 10, 100, 100);
@@ -343,13 +343,13 @@ if (accessCheck.blocked) {
                     <h3 style={{ fontWeight: 600 }}>Chemical Safety</h3>
                     {/* COMMENTED OUT: pH display card text */}
                     {/* <p>pH Range: {data.ph_value ? `${(data.ph_value - 0.5).toFixed(1)} - ${(data.ph_value + 0.5).toFixed(1)}` : '6.5 - 8.5'}</p> */}
-                    <p>Meets BIS limits for all chemical parameters.</p>
+                    <p>Meets FSSAI limits for all chemical parameters.</p>
                   </div>
 
                   <div style={smallCard}>
                     <div style={{ fontSize: "2rem" }}>🔄</div>
                     <h3 style={{ fontWeight: 600 }}>Purification</h3>
-                    <p>RO + UV + UF + Ozonation process.</p>
+                    <p>RO + Micron Filter + UV + Ozonation process.</p>
                   </div>
 
                   <div style={smallCard}>

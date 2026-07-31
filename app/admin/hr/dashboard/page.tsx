@@ -197,6 +197,7 @@ export default function EliteHRDashboard() {
         </div>
 
         <div style={styles.tableCard}>
+		<div style={{ width: '100%', overflowX: 'auto' }}>
           <table style={styles.table}>
             <thead>
               <tr>
@@ -247,6 +248,7 @@ export default function EliteHRDashboard() {
             </tbody>
           </table>
         </div>
+		</div>
 
         {selectedEmp && (
           <div style={styles.drawerOverlay} onClick={() => setSelectedEmp(null)}>
@@ -407,7 +409,7 @@ const styles: any = {
   navLinkActive: { padding: '12px 16px', color: '#fff', background: '#2563eb', textDecoration: 'none', borderRadius: '10px', fontWeight: '600' },
   bulkBtn: { background: '#22c55e', color: '#fff', border: 'none', padding: '12px', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', marginTop:'20px' },
   main: { flex: 1, marginLeft: '260px', padding: '40px 60px', width: 'calc(100% - 260px)' },
-  topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' },
+  topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' },
   mainTitle: { margin: 0, fontSize: '28px', fontWeight: '800' },
   subTitle: { margin: 0, color: '#64748b' },
   statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '40px' },
@@ -418,14 +420,14 @@ const styles: any = {
   searchInput: { padding: '10px 15px', borderRadius: '10px', border: '1px solid #e2e8f0', width: '220px' },
   monthInput: { padding: '10px 15px', borderRadius: '10px', border: '1px solid #e2e8f0' },
   tableCard: { background: '#fff', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' },
-  table: { width: '100%', borderCollapse: 'collapse' },
+  table: { width: '100%', borderCollapse: 'collapse', minWidth: '700px' },
   th: { background: '#f8fafc', padding: '15px 24px', textAlign: 'left', color: '#64748b', fontSize: '12px', textTransform: 'uppercase' },
   td: { padding: '18px 24px', borderBottom: '1px solid #f1f5f9' },
   userBox: { display: 'flex', alignItems: 'center', gap: '12px' },
   userIcon: { width: '38px', height: '38px', background: '#e0e7ff', color: '#4338ca', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' },
   btnAction: { padding: '8px 16px', background: '#0f172a', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' },
   drawerOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'flex-end', zIndex: 100 },
-  drawer: { width: '480px', background: '#fff', height: '100vh', padding: '40px', overflowY: 'auto', boxShadow: '-10px 0 30px rgba(0,0,0,0.1)' },
+  drawer: { width: '100%', maxWidth: '480px', background: '#fff', height: '100vh', padding: '40px', overflowY: 'auto', boxShadow: '-10px 0 30px rgba(0,0,0,0.1)', boxSizing: 'border-box' },
   drawerHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', borderBottom: '1px solid #f1f5f9', paddingBottom: '20px' },
   closeBtn: { background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer' },
   tabBar: { display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: '20px', gap: '10px' },
