@@ -2,17 +2,14 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 import { NextResponse } from "next/server";
-//import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 export async function GET(
   req: Request, 
   { params }: { params: { id: string } }
 ) {
   try {
-    //const supabase = await createServerSupabaseClient();
-	const supabase = await createAdminClient();
-    // In some Next.js versions, params must be awaited
+    const supabase = await createAdminClient();
     const id = params.id; 
 
     if (!id) {
@@ -24,11 +21,10 @@ export async function GET(
       .from("distributors")
       .select("*")
       .eq("id", id)
-      .maybeSingle(); // Use maybeSingle to avoid throwing on 0 results
+      .maybeSingle();
 
     if (pErr) throw pErr;
     
-    // This is where your "Distributor not found" error is triggering
     if (!profile) {
       return NextResponse.json({ error: "Distributor not found in DB" }, { status: 404 });
     }

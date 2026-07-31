@@ -188,9 +188,9 @@ if (accessCheck.blocked) {
     if (!data) return;
     const doc = new jsPDF("p", "pt", "a4");
 
-    // Range calculations for PDF
-    const phRange = data.ph_value ? `${(data.ph_value - 0.5).toFixed(1)} - ${(data.ph_value + 0.5).toFixed(1)}` : "6.5 - 8.5 (Standard)";
-    const tdsRange = data.tds_value ? `${data.tds_value - 5} - ${data.tds_value + 5} mg/L` : "70 - 120 mg/L";
+    // Range calculations for PDF (Commented out along with usage)
+    // const phRange = data.ph_value ? `${(data.ph_value - 0.5).toFixed(1)} - ${(data.ph_value + 0.5).toFixed(1)}` : "6.5 - 8.5 (Standard)";
+    // const tdsRange = data.tds_value ? `${data.tds_value - 5} - ${data.tds_value + 5} mg/L` : "70 - 120 mg/L";
 
     try {
       doc.addImage("/EarthyLogo.JPG", "JPEG", 40, 15, 40, 40); 
@@ -223,13 +223,13 @@ if (accessCheck.blocked) {
       columnStyles: { 0: { fontStyle: "bold", cellWidth: 150 } },
       head: [["Attribute", "Batch Details"]],
       body: [
-		["Product Name", data.product_name],
+		    ["Product Name", data.product_name],
         ["Batch Number", data.batch_code],
         ["Manufacturing Date", data.production_date],
         ["Expiry Date", data.expiry_date],
         ["Net Quantity", data.net_quantity],
-        ["pH Level (Range)", phRange],
-        ["TDS Level (Range)", tdsRange],
+        // ["pH Level (Range)", phRange], // COMMENTED OUT: pH range row
+        // ["TDS Level (Range)", tdsRange], // COMMENTED OUT: TDS range row
         ["Product Status", "PASSED / QUALITY CHECKED"],
         ["Standard Compliance", "FSS Act, 2006 (https://foscos.fssai.gov.in)"],
         ["Treatment Process", "RO + UV + Ozonation + Micron Filtration"],
@@ -341,8 +341,8 @@ if (accessCheck.blocked) {
                   <div style={smallCard}>
                     <div style={{ fontSize: "2rem" }}>⚗️</div>
                     <h3 style={{ fontWeight: 600 }}>Chemical Safety</h3>
-                    {/* SURGICAL ADDITION: PH RANGE */}
-                    <p>pH Range: {data.ph_value ? `${(data.ph_value - 0.5).toFixed(1)} - ${(data.ph_value + 0.5).toFixed(1)}` : '6.5 - 8.5'}</p>
+                    {/* COMMENTED OUT: pH display card text */}
+                    {/* <p>pH Range: {data.ph_value ? `${(data.ph_value - 0.5).toFixed(1)} - ${(data.ph_value + 0.5).toFixed(1)}` : '6.5 - 8.5'}</p> */}
                     <p>Meets BIS limits for all chemical parameters.</p>
                   </div>
 
@@ -355,8 +355,8 @@ if (accessCheck.blocked) {
                   <div style={smallCard}>
                     <div style={{ fontSize: "2rem" }}>🪨</div>
                     <h3 style={{ fontWeight: 600 }}>Mineral Balance</h3>
-                    {/* SURGICAL ADDITION: TDS RANGE */}
-                    <p>TDS Range: {data.tds_value ? `${data.tds_value - 5} - ${data.tds_value + 5} mg/L` : '70 - 120 mg/L'}</p>
+                    {/* COMMENTED OUT: TDS display card text */}
+                    {/* <p>TDS Range: {data.tds_value ? `${data.tds_value - 5} - ${data.tds_value + 5} mg/L` : '70 - 120 mg/L'}</p> */}
                     <p>Essential minerals preserved.</p>
                   </div>
                 </div>
