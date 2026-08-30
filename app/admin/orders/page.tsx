@@ -30,6 +30,8 @@ export default function AdminOrdersPage() {
       filtered = filtered.filter((o) => 
         o.uorn?.toLowerCase().includes(q) || 
         o.distributor_name?.toLowerCase().includes(q) ||
+		o.billing_name?.toLowerCase().includes(q) ||
+		o.billing_address?.toLowerCase().includes(q) ||
         o.distributor_phone?.includes(q) || // Search by Mobile
         o.order_number?.toLowerCase().includes(q)
       );
@@ -147,8 +149,10 @@ export default function AdminOrdersPage() {
               <tr style={styles.theadRow}>
                 <th style={styles.th}>Order Details</th>
                 <th style={styles.th}>Distributor</th>
+				<th style={styles.th}>Customer Name</th>
                 <th style={styles.th}>Status</th>
                 <th style={styles.th}>Payable</th>
+				<th style={styles.th}>Pending</th>
                 <th style={styles.th}>GST Required</th> {/* Changed from GP Tracking */}
                 <th style={styles.th}>Actions</th>
               </tr>
@@ -164,10 +168,19 @@ export default function AdminOrdersPage() {
                     <div>{order.distributor_name}</div>
                     <div style={{ fontSize: '11px', color: '#888' }}>{order.distributor_phone}</div>
                   </td>
+				  
+				   <td style={styles.td}>
+                    <div>{order.billing_name}</div>
+                    <div style={{ fontSize: '11px', color: '#888' }}>{order.billing_address}</div>
+					<div style={{ fontSize: '11px', color: '#888' }}>{order.phone}</div>
+                  </td>
+				  
                   <td style={styles.td}>
                     <span style={getStatusBadge(order.status)}>{order.status?.replace('_', ' ')}</span>
                   </td>
                   <td style={styles.td}>₹{order.total_payable_amount}</td>
+				  
+				   <td style={styles.td}>₹{order.pending_amount}</td>
                   
                   {/* New GST Required Column */}
                   <td style={styles.td}>
