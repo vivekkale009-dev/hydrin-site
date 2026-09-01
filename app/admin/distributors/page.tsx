@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 
 export default function DistributorListPage() {
@@ -23,7 +23,12 @@ export default function DistributorListPage() {
     }
   }
 
-  useEffect(() => { fetchData(); }, []);
+useEffect(() => { fetchData(); }, []);
+
+  const grandTotalPending = useMemo(() => {
+    return list.reduce((sum, d) => sum + Number(d.total_pending || d.current_due || 0), 0);
+  }, [list]);
+
 
   // --- ACTIONS ---
   
@@ -94,7 +99,7 @@ export default function DistributorListPage() {
     <div style={styles.page}>
       <div style={styles.overlay} />
       <div style={styles.container}>
-        <div style={styles.header}>
+       <div style={styles.header}>
           <div>
             <h1 style={styles.heading}>Distributor Network</h1>
             <p style={styles.subHeading}>Click any distributor to view assigned orders and dues.</p>
@@ -102,6 +107,15 @@ export default function DistributorListPage() {
           <button onClick={() => router.push("/admin/distributors/create")} style={styles.registerBtn}>
             + Register Distributor
           </button>
+        </div>
+
+        <div style={styles.totalPendingBanner}>
+          <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Total Network Pending Dues:
+          </span>
+          <span style={{ fontSize: '22px', fontWeight: '800', color: '#ef4444' }}>
+            ₹{grandTotalPending.toLocaleString()}
+          </span>
         </div>
 
         <div style={styles.card}>
@@ -122,13 +136,14 @@ export default function DistributorListPage() {
                   <th style={styles.th}>Distributor Info</th>
                   <th style={styles.th}>City</th>
                   <th style={styles.th}>Rate/KM</th>
+				  <th style={styles.th}>Pending Dues</th>
                   <th style={styles.th}>Status</th>
                   <th style={styles.th}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={5} style={styles.loader}>Syncing with database...</td></tr>
+                  <tr><td colSpan={6} style={styles.loader}>Syncing with database...</td></tr>
                 ) : list.map((d) => (
                   <tr 
                     key={d.id} 
@@ -141,6 +156,14 @@ export default function DistributorListPage() {
                     </td>
                     <td style={styles.td}>{d.city || "—"}</td>
                     <td style={styles.td}>₹{d.delivery_rate_per_km}</td>
+                    <td style={styles.td}>
+                      <span style={{ 
+                        color: Number(d.total_pending || d.current_due || 0) > 0 ? '#ef4444' : '#10b981', 
+                        fontWeight: 'bold' 
+                      }}>
+                        ₹{Number(d.total_pending || d.current_due || 0).toLocaleString()}
+                      </span>
+                    </td>
                     <td style={styles.td}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <span style={{
@@ -199,5 +222,6 @@ const styles: any = {
   editBtn: { background: "#f1f5f9", border: "none", padding: "8px", borderRadius: "8px", cursor: "pointer" },
   blockBtn: { background: "#fff1f2", border: "none", padding: "8px", borderRadius: "8px", cursor: "pointer" },
   deleteBtn: { background: "#fef2f2", border: "none", padding: "8px", borderRadius: "8px", cursor: "pointer" },
-  loader: { textAlign: "center", padding: "40px", color: "#64748b", fontWeight: "600" }
+loader: { textAlign: "center", padding: "40px", color: "#64748b", fontWeight: "600" },
+  totalPendingBanner: { background: "rgba(255, 255, 255, 0.98)", padding: "20px 24px", borderRadius: "20px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.3)" }
 };

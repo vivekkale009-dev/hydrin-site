@@ -13,7 +13,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const q = searchParams.get("q")?.trim();
 
-    let query = supabase
+   let query = supabase
       .from("distributors")
       .select("*")
       .order("created_at", { ascending: false });
@@ -22,11 +22,30 @@ export async function GET(req: Request) {
       query = query.or(`name.ilike.%${q}%,phone.ilike.%${q}%`);
     }
 
-    const { data, error } = await query;
+    const { data: distributors, error: distError } = await query;
+    if (distError) throw distError;
 
-    if (error) throw error;
+    const { data: orders, error: ordError } = await supabase
+      .from("orders")
+      .select("distributor_id, pending_amount");
 
-    return NextResponse.json({ data });
+    if (ordError) {
+      console.error("Error fetching orders for calculation:", ordError);
+    }
+
+    const formattedData = (distributors || []).map((d: any) => {
+      const distributorOrders = (orders || []).filter(
+        (o: any) => o.distributor_id === d.id
+      );
+
+      const total_pending = distributorOrders.reduce(
+        (sum: number, o: any) => sum + Number(o.pending_amount || 0),
+        0
+      );
+
+      return { ...d, total_pending };
+    });
+    return NextResponse.json({ data: formattedData });
   } catch (err) {
     console.error("Distributor list error", err);
     return NextResponse.json(
