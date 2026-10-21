@@ -436,6 +436,19 @@
   background: #e4f8fc;
 }
 
+/* Batch Management — Light Orange */
+.es-dashboard-action.orange {
+  background: #fff0e2;
+}
+
+.es-dashboard-action.orange .es-dashboard-action-icon {
+  color: #c56a21;
+}
+
+.es-dashboard-action.orange .es-dashboard-action-arrow {
+  color: #c56a21;
+}
+
 .es-dashboard-action-icon {
   display: grid;
   place-items: center;
