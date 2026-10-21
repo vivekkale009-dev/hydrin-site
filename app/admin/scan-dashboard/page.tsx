@@ -155,7 +155,8 @@ async function toggleIpBlock(ip: string, isCurrentlyBlocked: boolean) {
         `}</style>
 
         {[
-          { label: "Overview", href: "/admin/scan-dashboard", active: true },
+          { label: "Home", href: "/admin/home" },
+		  { label: "Scans", href: "/admin/scan-dashboard", active: true },
           { label: "Analytics", href: "/admin/scan-dashboard/analytics" },
           { label: "Orders", href: "/admin/orders" },
           { label: "Inventory", href: "/admin/inventory" },

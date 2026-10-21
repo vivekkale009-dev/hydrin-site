@@ -66,7 +66,7 @@ export default function AdminLoginPage() {
       }
 
       localStorage.setItem("is_admin", "true"); 
-      router.push("/admin/scan-dashboard");
+      router.push("/admin/home");
     } catch (e) {
       setError("Verification failed.");
       setLoading(false);

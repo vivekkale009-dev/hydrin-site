@@ -229,3 +229,978 @@ html, body {
     width: 100% !important;
   }
 }
+
+
+
+/* =====================================================
+   EARTHY SOURCE ADMIN HOME — ALIGNMENT & MOBILE FIX
+   Append at the VERY BOTTOM of globals.css
+===================================================== */
+
+.es-admin-home,
+.es-admin-home * {
+  box-sizing: border-box;
+}
+
+.es-admin-home {
+  width: 100%;
+  min-width: 0;
+  min-height: 100vh;
+  height: auto !important;
+  margin: 0;
+  padding: 24px clamp(16px, 3vw, 42px) 24px;
+  overflow: visible !important;
+  position: relative !important;
+  inset: auto !important;
+  background:
+    radial-gradient(ellipse at 85% 0%, #e2efe5 0%, transparent 38%),
+    #f4f7f4 !important;
+  color: #203b32;
+  font-family: "Plus Jakarta Sans", Arial, sans-serif;
+}
+
+.es-admin-home a {
+  text-decoration: none;
+}
+
+/* ---------- BRAND HEADER ---------- */
+
+.es-admin-home .es-home-topbar {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+  margin: 0 0 22px;
+  padding: 0 2px;
+  background: transparent;
+  border: 0;
+}
+
+.es-admin-home .es-home-brand {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  color: #203b32;
+  text-decoration: none;
+}
+
+.es-admin-home .es-home-brand-symbol {
+  display: grid;
+  flex: 0 0 46px;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 1px solid rgba(226, 203, 140, .45);
+  border-radius: 14px;
+  background: #174b35;
+  color: #e5ce8b;
+  font-size: 25px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.es-admin-home .es-home-brand-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 0;
+}
+
+.es-admin-home .es-home-brand-copy strong {
+  color: #203b32;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.4;
+  letter-spacing: 1.5px;
+}
+
+.es-admin-home .es-home-brand-copy small {
+  color: #7c8d81;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 1.8px;
+}
+
+.es-admin-home .es-home-status {
+  display: inline-flex;
+  flex-direction: row;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 14px;
+  border: 1px solid #dfe9e1;
+  border-radius: 30px;
+  background: #fff;
+  color: #52695a;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.es-admin-home .es-home-status-dot {
+  display: block;
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #24a56a;
+}
+
+/* ---------- HERO ---------- */
+
+.es-admin-home .es-home-hero {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(230px, .65fr);
+  align-items: center;
+  justify-content: initial;
+  gap: clamp(20px, 4vw, 65px);
+  width: 100%;
+  min-width: 0;
+  min-height: 360px;
+  margin: 0;
+  padding: clamp(30px, 4.5vw, 64px);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 26px;
+  background: linear-gradient(115deg, #103628 0%, #176343 58%, #348765 100%);
+  color: #fff;
+  box-shadow: 0 18px 45px rgba(18, 65, 45, .13);
+}
+
+.es-admin-home .es-home-hero-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  max-width: 630px;
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.es-admin-home .es-home-eyebrow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 11px;
+  margin: 0 0 22px;
+  color: #e7d293;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.5;
+  letter-spacing: 2.5px;
+}
+
+.es-admin-home .es-home-eyebrow-line {
+  display: block;
+  flex: 0 0 25px;
+  width: 25px;
+  height: 2px;
+  background: #e2cb8c;
+}
+
+.es-admin-home .es-home-title {
+  margin: 0;
+  padding: 0;
+  color: #fff;
+  font-size: clamp(36px, 4.2vw, 60px);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -1.8px;
+  text-align: left;
+}
+
+.es-admin-home .es-home-title span {
+  color: #e2cb8c;
+}
+
+.es-admin-home .es-home-description {
+  max-width: 520px;
+  margin: 19px 0 0;
+  padding: 0;
+  color: #d8e9df;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.85;
+  text-align: left;
+}
+
+/* Keep both hero actions aligned and separated */
+
+.es-admin-home .es-home-hero-actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  width: 100%;
+  margin-top: 25px;
+}
+
+.es-admin-home .es-home-primary {
+  display: inline-flex;
+  flex-direction: row;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: auto;
+  max-width: 100%;
+  min-height: 48px;
+  margin: 0;
+  padding: 13px 19px;
+  border: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 11px;
+  background: linear-gradient(135deg, #ead79e, #c7a756);
+  color: #193b2b;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.4;
+  text-align: center;
+  text-decoration: none;
+  white-space: normal;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .12);
+  transition: transform .2s, box-shadow .2s;
+}
+
+.es-admin-home .es-home-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .2);
+}
+
+.es-admin-home .es-home-primary-plus {
+  font-size: 19px;
+  line-height: 1;
+}
+
+.es-admin-home .es-home-primary-arrow {
+  margin-left: 3px;
+  font-size: 15px;
+}
+
+.es-admin-home .es-home-secondary {
+  display: inline-flex;
+  flex-direction: row;
+  flex: 0 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: auto;
+  max-width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 10px 4px;
+  border: 0;
+  background: transparent;
+  color: #fff !important;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: left;
+  text-decoration: none !important;
+  white-space: normal;
+}
+
+.es-admin-home .es-home-secondary span {
+  color: #e2cb8c;
+}
+
+.es-admin-home .es-home-hero-note {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin: 22px 0 0;
+  color: #d1e3d7;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.es-admin-home .es-home-note-star {
+  color: #e2cb8c;
+  font-size: 17px;
+}
+
+/* Decorative emblem: keep it in its own centered column */
+
+.es-admin-home .es-home-art {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  flex: initial;
+  place-items: center;
+  justify-self: center;
+  width: min(100%, 290px);
+  height: 290px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.es-admin-home .es-home-art-ring {
+  position: absolute;
+  display: block;
+  border: 1px solid rgba(255, 255, 255, .17);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.es-admin-home .es-home-art-ring-one {
+  width: 88%;
+  height: 88%;
+}
+
+.es-admin-home .es-home-art-ring-two {
+  width: 70%;
+  height: 70%;
+  border-style: dashed;
+  animation: es-home-rotate 45s linear infinite;
+}
+
+.es-admin-home .es-home-art-orb {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 155px;
+  height: 155px;
+  min-width: 155px;
+  min-height: 155px;
+  padding: 15px;
+  border: 1px solid rgba(226, 203, 140, .65);
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 25%, #377b59, #143c2b 72%);
+  box-shadow: 0 15px 50px rgba(0, 0, 0, .22),
+    inset 0 0 25px rgba(255, 255, 255, .07);
+  text-align: center;
+}
+
+.es-admin-home .es-home-art-leaf {
+  margin: 0;
+  color: #e2cb8c;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.es-admin-home .es-home-art-wordmark {
+  margin: 0;
+  color: #fff;
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -2px;
+}
+
+.es-admin-home .es-home-art-caption {
+  margin: 0;
+  color: #e2cb8c;
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: 1.4px;
+}
+
+.es-admin-home .es-home-art-label {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: #d6e7db;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.es-admin-home .es-home-art-label span {
+  color: #e2cb8c;
+}
+
+.es-admin-home .es-home-art-label-top {
+  top: 12px;
+  right: 0;
+}
+
+.es-admin-home .es-home-art-label-bottom {
+  bottom: 12px;
+  left: 0;
+}
+
+.es-admin-home .es-home-hero-decoration {
+  position: absolute;
+  z-index: 0;
+  right: 34%;
+  bottom: -90px;
+  margin: 0;
+  color: rgba(255, 255, 255, .025);
+  font-size: clamp(150px, 20vw, 280px);
+  font-weight: 900;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* ---------- QUICK ACTIONS ---------- */
+
+.es-admin-home .es-home-section {
+  width: 100%;
+  min-width: 0;
+  margin: 38px 0 0;
+  padding: 0;
+}
+
+.es-admin-home .es-home-section-heading {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 21px;
+  padding: 0;
+}
+
+.es-admin-home .es-home-section-eyebrow {
+  margin: 0 0 8px;
+  color: #a18442;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.5;
+  letter-spacing: 2px;
+}
+
+.es-admin-home .es-home-section-heading h2 {
+  margin: 0;
+  color: #203b32;
+  font-size: clamp(21px, 2.2vw, 27px);
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: -.6px;
+}
+
+.es-admin-home .es-home-section-heading p {
+  margin: 8px 0 0;
+  color: #78877d;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.es-admin-home .es-home-count {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex: 0 0 auto;
+  gap: 5px;
+}
+
+.es-admin-home .es-home-count strong {
+  color: #1d6243;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.es-admin-home .es-home-count span {
+  color: #89978d;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.4;
+  letter-spacing: 1px;
+}
+
+/* Stable, responsive card grid */
+
+.es-admin-home .es-home-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 18px;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.es-admin-home .es-home-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  width: 100%;
+  min-width: 0;
+  min-height: 248px;
+  margin: 0;
+  padding: 22px;
+  overflow: hidden;
+  border: 1px solid #e0e9e1;
+  border-radius: 19px;
+  background: #fff;
+  color: #203b32;
+  text-align: left;
+  text-decoration: none;
+  box-shadow: 0 4px 15px rgba(26, 54, 40, .035);
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+
+.es-admin-home .es-home-card::after {
+  content: "";
+  position: absolute;
+  right: -36px;
+  bottom: -42px;
+  z-index: 0;
+  width: 105px;
+  height: 105px;
+  border-radius: 50%;
+  background: #eff6ef;
+  pointer-events: none;
+  transition: transform .2s ease;
+}
+
+.es-admin-home .es-home-card:hover {
+  transform: translateY(-4px);
+  border-color: #b2d3b9;
+  box-shadow: 0 13px 28px rgba(26, 70, 46, .09);
+}
+
+.es-admin-home .es-home-card:hover::after {
+  transform: scale(1.25);
+}
+
+.es-admin-home .es-home-card-top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.es-admin-home .es-home-card-index {
+  color: #9ba99f;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.5;
+  letter-spacing: 1px;
+}
+
+.es-admin-home .es-home-card-arrow {
+  color: #8b9e90;
+  font-size: 19px;
+  line-height: 1;
+}
+
+.es-admin-home .es-home-card-icon {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  flex: 0 0 48px;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin: 17px 0 0;
+  padding: 0;
+  border-radius: 14px;
+  background: #e9f4eb;
+  color: #17633e;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.es-admin-home .es-home-card-category {
+  position: relative;
+  z-index: 1;
+  margin: 16px 0 0;
+  color: #a18442;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.5;
+  letter-spacing: 1.4px;
+}
+
+.es-admin-home .es-home-card h3 {
+  position: relative;
+  z-index: 1;
+  margin: 7px 0 0;
+  padding: 0;
+  color: #203b32;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.es-admin-home .es-home-card p {
+  position: relative;
+  z-index: 1;
+  margin: 7px 0 0;
+  padding: 0;
+  color: #78857f;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.es-admin-home .es-home-card-bottom {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  margin: auto 0 0;
+  padding: 19px 0 0;
+  color: #24734b;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.es-admin-home .es-home-card-bottom-arrow {
+  font-size: 17px;
+  line-height: 1;
+}
+
+/* ---------- FOOTER ---------- */
+
+.es-admin-home .es-home-footer {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  margin: 34px 0 0;
+  padding: 22px 0 4px;
+  border-top: 1px solid #e0e8e1;
+  background: transparent;
+  color: #85928a;
+  font-size: 11px;
+  text-align: left;
+}
+
+.es-admin-home .es-home-footer-brand {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 9px;
+  color: #53665a;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.5;
+  letter-spacing: 1.2px;
+}
+
+.es-admin-home .es-home-footer-mark {
+  display: grid;
+  flex: 0 0 30px;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin: 0;
+  padding: 0;
+  border-radius: 9px;
+  background: #174b35;
+  color: #e5ce8b;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.es-admin-home .es-home-footer p {
+  margin: 0;
+  color: #89958c;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.es-admin-home .es-home-footer-tag {
+  color: #9aa69c;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: 1.4px;
+}
+
+/* ---------- TABLET ---------- */
+
+@media (max-width: 1100px) {
+  .es-admin-home .es-home-hero {
+    grid-template-columns: minmax(0, 1fr) 220px;
+    min-height: 330px;
+    padding: 34px;
+  }
+
+  .es-admin-home .es-home-art {
+    width: 220px;
+    height: 240px;
+  }
+
+  .es-admin-home .es-home-art-orb {
+    width: 135px;
+    height: 135px;
+    min-width: 135px;
+    min-height: 135px;
+  }
+
+  .es-admin-home .es-home-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---------- MOBILE ---------- */
+
+@media (max-width: 640px) {
+  .es-admin-home {
+    padding: 14px 13px 22px;
+    overflow-x: clip !important;
+  }
+
+  .es-admin-home .es-home-topbar {
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding: 0;
+  }
+
+  .es-admin-home .es-home-brand {
+    gap: 9px;
+  }
+
+  .es-admin-home .es-home-brand-symbol {
+    flex-basis: 39px;
+    width: 39px;
+    height: 39px;
+    border-radius: 11px;
+    font-size: 21px;
+  }
+
+  .es-admin-home .es-home-brand-copy strong {
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+
+  .es-admin-home .es-home-brand-copy small {
+    font-size: 8px;
+    letter-spacing: 1px;
+  }
+
+  .es-admin-home .es-home-status {
+    gap: 7px;
+    padding: 8px 9px;
+    font-size: 9px;
+  }
+
+  .es-admin-home .es-home-hero {
+    display: block;
+    width: 100%;
+    min-height: 0;
+    padding: 29px 21px 26px;
+    border-radius: 21px;
+  }
+
+  .es-admin-home .es-home-hero-content {
+    width: 100%;
+    max-width: none;
+    align-items: flex-start;
+  }
+
+  .es-admin-home .es-home-eyebrow {
+    gap: 8px;
+    margin-bottom: 19px;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+  }
+
+  .es-admin-home .es-home-eyebrow-line {
+    flex-basis: 19px;
+    width: 19px;
+  }
+
+  .es-admin-home .es-home-title {
+    font-size: clamp(36px, 10vw, 46px);
+    line-height: 1.09;
+    letter-spacing: -1.3px;
+  }
+
+  .es-admin-home .es-home-description {
+    margin-top: 15px;
+    font-size: 13px;
+    line-height: 1.8;
+  }
+
+  .es-admin-home .es-home-hero-actions {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 21px;
+  }
+
+  .es-admin-home .es-home-primary {
+    align-self: flex-start;
+    width: auto;
+    max-width: 100%;
+    min-height: 46px;
+    padding: 12px 15px;
+    font-size: 12px;
+  }
+
+  .es-admin-home .es-home-secondary {
+    align-self: flex-start;
+    min-height: 35px;
+    padding: 7px 0;
+    font-size: 12px;
+  }
+
+  .es-admin-home .es-home-hero-note {
+    align-items: flex-start;
+    margin-top: 17px;
+    font-size: 10px;
+  }
+
+  .es-admin-home .es-home-art {
+    display: none !important;
+  }
+
+  .es-admin-home .es-home-hero-decoration {
+    right: -10px;
+    bottom: -45px;
+    font-size: 150px;
+  }
+
+  .es-admin-home .es-home-section {
+    margin-top: 28px;
+  }
+
+  .es-admin-home .es-home-section-heading {
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .es-admin-home .es-home-section-eyebrow {
+    font-size: 8px;
+    letter-spacing: 1.5px;
+  }
+
+  .es-admin-home .es-home-section-heading h2 {
+    font-size: 21px;
+    line-height: 1.35;
+  }
+
+  .es-admin-home .es-home-section-heading p {
+    font-size: 12px;
+    line-height: 1.7;
+  }
+
+  .es-admin-home .es-home-count {
+    display: none;
+  }
+
+  .es-admin-home .es-home-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .es-admin-home .es-home-card {
+    min-height: 0;
+    padding: 19px;
+    border-radius: 17px;
+  }
+
+  .es-admin-home .es-home-card-icon {
+    margin-top: 13px;
+  }
+
+  .es-admin-home .es-home-card-category {
+    margin-top: 13px;
+  }
+
+  .es-admin-home .es-home-card h3 {
+    font-size: 16px;
+  }
+
+  .es-admin-home .es-home-card p {
+    font-size: 12px;
+  }
+
+  .es-admin-home .es-home-card-bottom {
+    padding-top: 14px;
+  }
+
+  .es-admin-home .es-home-footer {
+    align-items: center;
+    flex-direction: column;
+    gap: 9px;
+    margin-top: 25px;
+    padding-top: 18px;
+    text-align: center;
+  }
+
+  .es-admin-home .es-home-footer-brand {
+    justify-content: center;
+  }
+}
+
+/* Small phones */
+@media (max-width: 380px) {
+  .es-admin-home {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .es-admin-home .es-home-status {
+    font-size: 8px;
+    padding: 7px;
+  }
+
+  .es-admin-home .es-home-brand-copy strong {
+    font-size: 9px;
+    letter-spacing: .7px;
+  }
+
+  .es-admin-home .es-home-hero {
+    padding: 25px 17px;
+  }
+
+  .es-admin-home .es-home-title {
+    font-size: 35px;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .es-admin-home *,
+  .es-admin-home *::before,
+  .es-admin-home *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
