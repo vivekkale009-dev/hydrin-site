@@ -54,6 +54,14 @@ const quickLinks = [
     icon: "₹",
     color: "green",
   },
+    {
+    title: "Batch Management",
+    description: "Manage all batches for QC.",
+    href: "/admin/batches",
+    icon: "▤",
+    color: "yellow",
+  },
+  
   {
     title: "Inventory Management",
     description: "Stock and inventory operations.",
