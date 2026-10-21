@@ -163,6 +163,14 @@ export default function DistributorViewPage() {
           <div style={styles.sideCol}>
             <div style={{ ...styles.card, background: '#1e293b', color: '#fff' }}>
               <h3 style={{ ...styles.cardTitle, color: '#94a3b8' }}>Quick Actions</h3>
+			  
+<button
+  onClick={() => router.push(`/admin/distributors/${id}/payments`)}
+  style={styles.paymentBtn}
+>
+  💰 Record Distributor Payment
+</button>
+
               <button onClick={sendWhatsAppReminder} style={styles.whatsappBtn}>
                 Send WhatsApp Reminder
               </button>
@@ -195,5 +203,16 @@ const styles: any = {
   thRow: { textAlign: 'left', fontSize: '11px', color: '#94a3b8', borderBottom: '1px solid #eee' },
   td: { padding: '12px 0', fontSize: '14px', borderBottom: '1px solid #fafafa' },
   whatsappBtn: { width: '100%', background: '#25D366', color: '#fff', border: 'none', padding: '12px', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer' },
-  loader: { color: '#fff', textAlign: 'center', marginTop: '30vh' }
+  loader: { color: '#fff', textAlign: 'center', marginTop: '30vh' },
+  
+paymentBtn: {
+  width: '100%',
+  background: '#16a34a',
+  color: '#fff',
+  border: 'none',
+  padding: '12px',
+  borderRadius: '10px',
+  fontWeight: 'bold',
+  cursor: 'pointer',
+  marginBottom: '12px'}
 };
