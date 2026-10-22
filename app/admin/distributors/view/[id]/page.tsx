@@ -163,7 +163,18 @@ export default function DistributorViewPage() {
           <div style={styles.sideCol}>
             <div style={{ ...styles.card, background: '#1e293b', color: '#fff' }}>
               <h3 style={{ ...styles.cardTitle, color: '#94a3b8' }}>Quick Actions</h3>
-			  
+		
+<button
+  onClick={() => router.push(`/admin/distributors/${id}/ledger`)}
+  style={{
+    ...styles.paymentBtn,
+    background: "#2563eb",
+    marginBottom: "12px",
+  }}
+>
+  📄 View Distributor Ledger
+</button>
+	  
 <button
   onClick={() => router.push(`/admin/distributors/${id}/payments`)}
   style={styles.paymentBtn}
