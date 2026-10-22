@@ -95,6 +95,42 @@ export async function POST(req: Request) {
       .select().single();
 
     if (orderErr) throw orderErr;
+	
+	
+if (amountPaid > 0) {
+  const payerType =
+    orderType === "distributor" ||
+    orderType === "Distributor Sale"
+      ? "distributor"
+      : "customer";
+
+  const { error: paymentErr } = await supabase
+    .from("order_payments")
+    .insert({
+      order_id: order.id,
+      payer_type: payerType,
+      amount: amountPaid,
+      payment_method: paymentMethod || null,
+      transaction_id: transactionId || null,
+      note: "Initial payment received during order creation",
+      verified_by: "admin",
+      updated_by: "admin",
+    });
+
+  if (paymentErr) {
+    console.error("Initial Payment Record Error:", paymentErr.message);
+
+    return NextResponse.json(
+      {
+        error: `Order was created, but the initial payment could not be recorded: ${paymentErr.message}`,
+        orderId: order.id,
+        order_number: orderNo,
+      },
+      { status: 500 }
+    );
+  }
+}
+
 
     // 3. Insert Order Items
     const itemInserts = items.map((i: any) => ({
