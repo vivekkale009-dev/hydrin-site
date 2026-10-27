@@ -140,17 +140,54 @@ export default function DistributorViewPage() {
               </thead>
               <tbody>
                 {filteredOrders.length > 0 ? (
-                  filteredOrders.map((order: any) => (
-                    <tr key={order.id} style={styles.tr}>
-                      <td style={styles.td}>
-                        <div style={{ fontWeight: '600' }}>{order.uorn || order.id.slice(0,8)}</div>
-                        <small style={{ color: '#94a3b8' }}>{new Date(order.created_at).toLocaleDateString()}</small>
-                      </td>
+                 
+filteredOrders.map((order: any) => {
+  const isCancelled =
+    order.status?.toLowerCase() === "cancelled";
+
+  return (
+    <tr
+      key={order.id}
+      style={{
+        ...styles.tr,
+        backgroundColor: isCancelled ? "#fff0d6" : undefined,
+      }}
+    >
+      <td style={styles.td}>
+        <div style={{ fontWeight: "600" }}>
+          {order.uorn || order.id.slice(0, 8)}
+        </div>
+
+        {isCancelled && (
+          <span
+            style={{
+              display: "inline-block",
+              marginTop: "5px",
+              padding: "3px 8px",
+              backgroundColor: "#fed7aa",
+              color: "#9a3412",
+              borderRadius: "5px",
+              fontSize: "10px",
+              fontWeight: 800,
+            }}
+          >
+            CANCELLED
+          </span>
+        )}
+
+        <br />
+
+        <small style={{ color: "#94a3b8" }}>
+          {new Date(order.created_at).toLocaleDateString()}
+        </small>
+      </td>
+
                       <td style={styles.td}>₹{order.total_payable_amount || order.total}</td>
                       <td style={styles.td}>₹{order.amount_paid}</td>
                       <td style={styles.td}><span style={{ color: Number(order.pending_amount) > 0 ? '#ef4444' : '#10b981', fontWeight: 'bold' }}>₹{order.pending_amount}</span></td>
                     </tr>
-                  ))
+                 );
+})
                 ) : (
                   <tr>
                     <td colSpan={4} style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>No orders found for the selected timeframe.</td>
