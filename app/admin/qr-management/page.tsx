@@ -6,6 +6,14 @@ import Link from "next/link";
 import QRCode from "qrcode";
 import "./qr-management.css";
 
+type Product = {
+  id: string;
+  name: string;
+  volume_ml: number;
+  units_per_box: number;
+  bottles_per_box: number;
+};
+
 type Employee = {
   id: number;
   full_name: string;
@@ -28,6 +36,8 @@ type QRLabel = {
   status?: string;
   cancellation_reason?: string | null;
   created_at?: string;
+  sku_detail?: string | null;
+  product_id?: string | null;
 };
 
 type QRItem = {
@@ -37,6 +47,8 @@ type QRItem = {
   status: string;
   cancellation_reason?: string | null;
   created_at?: string;
+  sku_detail?: string | null;
+  product_id?: string | null;
 };
 
 function indiaDate() {
@@ -52,12 +64,27 @@ function displayDate() {
   }).format(new Date());
 }
 
+function formatGeneratedDate(value?: string) {
+  if (!value) return "Date unavailable";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Date unavailable";
+
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "Asia/Kolkata",
+  }).format(date);
+}
+
 export default function QRManagementPage() {
   // --------------------------------------------------
   // STATE
   // --------------------------------------------------
 
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
 
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
@@ -67,6 +94,7 @@ export default function QRManagementPage() {
   const [pinBatchNumber, setPinBatchNumber] = useState<number | null>(null);
 
   const [quantity, setQuantity] = useState("100");
+  const [selectedProductId, setSelectedProductId] = useState("");
 
   // QR items currently displayed or selected for printing.
   const [qrItems, setQrItems] = useState<QRItem[]>([]);
@@ -75,6 +103,7 @@ export default function QRManagementPage() {
   const [selectedBatchId, setSelectedBatchId] = useState("");
 
   const [loadingEmployees, setLoadingEmployees] = useState(true);
+  const [loadingProducts, setLoadingProducts] = useState(true);
   const [loadingBatches, setLoadingBatches] = useState(true);
   const [loadingPin, setLoadingPin] = useState(true);
   const [loadingQR, setLoadingQR] = useState(false);
@@ -88,6 +117,8 @@ export default function QRManagementPage() {
   // --------------------------------------------------
 
   const today = indiaDate();
+
+  const selectedProduct = products.find((product) => product.id === selectedProductId);
 
   const selectedEmployee = employees.find(
     (employee) => String(employee.id) === selectedEmployeeId
@@ -164,6 +195,39 @@ export default function QRManagementPage() {
       );
     } finally {
       setLoadingEmployees(false);
+    }
+  }, []);
+
+  // --------------------------------------------------
+  // LOAD ACTIVE SKUs FROM THE PRODUCTS MASTER TABLE
+  // --------------------------------------------------
+
+  const loadProducts = useCallback(async () => {
+    setLoadingProducts(true);
+
+    try {
+      const response = await fetch("/api/admin/qr/products", {
+        cache: "no-store",
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Unable to load products.");
+      }
+
+      const activeProducts: Product[] = data.products || [];
+      setProducts(activeProducts);
+      setSelectedProductId((current) =>
+        current && activeProducts.some((product) => product.id === current)
+          ? current
+          : activeProducts[0]?.id || ""
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load products.");
+      setProducts([]);
+      setSelectedProductId("");
+    } finally {
+      setLoadingProducts(false);
     }
   }, []);
 
@@ -270,6 +334,8 @@ export default function QRManagementPage() {
             status: label.status || "unused",
             cancellation_reason: label.cancellation_reason || null,
             created_at: label.created_at,
+            sku_detail: label.sku_detail || "SKU not recorded",
+            product_id: label.product_id || null,
           };
         })
       );
@@ -291,9 +357,10 @@ export default function QRManagementPage() {
 
   useEffect(() => {
     loadEmployees();
+    loadProducts();
     loadBatches();
     loadDailyPin();
-  }, [loadEmployees, loadBatches, loadDailyPin]);
+  }, [loadEmployees, loadProducts, loadBatches, loadDailyPin]);
 
   // --------------------------------------------------
   // REFRESH
@@ -303,6 +370,7 @@ export default function QRManagementPage() {
     setError("");
     await Promise.all([
       loadEmployees(),
+      loadProducts(),
       loadBatches(),
       loadDailyPin(),
     ]);
@@ -441,6 +509,11 @@ export default function QRManagementPage() {
       return;
     }
 
+    if (!selectedProductId || !selectedProduct) {
+      setError("Please select an active SKU from the Products master.");
+      return;
+    }
+
     setLoadingQR(true);
 
     try {
@@ -449,7 +522,10 @@ export default function QRManagementPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ quantity: count }),
+        body: JSON.stringify({
+          quantity: count,
+          product_id: selectedProductId,
+        }),
       });
 
       const data = await response.json();
@@ -487,6 +563,9 @@ export default function QRManagementPage() {
             image,
             status: "unused",
             cancellation_reason: null,
+            created_at: label.created_at || new Date().toISOString(),
+            sku_detail: label.sku_detail || selectedProduct.name,
+            product_id: label.product_id || selectedProduct.id,
           };
         })
       );
@@ -891,6 +970,33 @@ export default function QRManagementPage() {
         <div className="es-qr-generate-row">
 
           <div>
+            <label htmlFor="qr-sku">SELECT SKU FROM PRODUCT MASTER</label>
+            <select
+              id="qr-sku"
+              className="es-qr-input"
+              value={selectedProductId}
+              onChange={(event) => setSelectedProductId(event.target.value)}
+              disabled={loadingQR || loadingProducts || products.length === 0}
+            >
+              <option value="">
+                {loadingProducts ? "Loading products..." : "Choose SKU"}
+              </option>
+              {products.map((product) => (
+                <option key={product.id} value={product.id}>
+                  {product.name} · {product.volume_ml >= 1000
+                    ? `${product.volume_ml / 1000} L`
+                    : `${product.volume_ml} ml`}
+                </option>
+              ))}
+            </select>
+            {selectedProduct && (
+              <small>
+                {selectedProduct.name} · {selectedProduct.units_per_box} units per box
+              </small>
+            )}
+          </div>
+
+          <div>
             <label htmlFor="qr-quantity">
               NUMBER OF QR LABELS
             </label>
@@ -913,7 +1019,7 @@ export default function QRManagementPage() {
           <button
             className="es-qr-button generate-button"
             onClick={generateQRLabels}
-            disabled={loadingQR || !currentBatch}
+            disabled={loadingQR || !currentBatch || !selectedProductId || loadingProducts || products.length === 0}
           >
             {loadingQR ? "Generating..." : "+ Generate QR Labels"}
           </button>
@@ -960,9 +1066,32 @@ export default function QRManagementPage() {
                       src={item.image}
                       alt={`Stock QR ${index + 1}`}
                     />
-                    <strong>EARTHY SOURCE</strong>
-                    <span>STOCK IDENTIFICATION</span>
-                    <small>
+                    <strong style={{ fontSize: "10px", letterSpacing: "1.1px", lineHeight: 1.2 }}>
+                      EARTHY SOURCE
+                    </strong>
+                    <span style={{ fontSize: "7px", letterSpacing: "1.2px", color: "#718096", marginTop: "2px" }}>
+                      STOCK IDENTIFICATION
+                    </span>
+                    <span style={{
+                      display: "inline-block",
+                      marginTop: "5px",
+                      padding: "3px 8px",
+                      border: "1px solid #d8e8e1",
+                      borderRadius: "10px",
+                      background: "#f3faf6",
+                      color: "#126b4b",
+                      fontSize: "8px",
+                      fontWeight: 700,
+                      lineHeight: 1.2,
+                      maxWidth: "90%",
+                      overflowWrap: "anywhere",
+                    }}>
+                      {item.sku_detail || "SKU not recorded"}
+                    </span>
+                    <small style={{ marginTop: "4px", fontSize: "7px", color: "#64748b" }}>
+                      GENERATED · {formatGeneratedDate(item.created_at)}
+                    </small>
+                    <small style={{ marginTop: "2px", fontSize: "7px", color: "#94a3b8", letterSpacing: "0.5px" }}>
                       QR {String(index + 1).padStart(3, "0")}
                     </small>
                   </div>
@@ -1095,6 +1224,14 @@ export default function QRManagementPage() {
 
                       <small>
                         ID: {item.id}
+                      </small>
+
+                      <small>
+                        SKU: {item.sku_detail || "SKU not recorded"}
+                      </small>
+
+                      <small>
+                        Generated: {formatGeneratedDate(item.created_at)}
                       </small>
 
                       <span

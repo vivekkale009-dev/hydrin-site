@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -21,7 +20,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase
       .from("qr_labels")
       .select(
-        "id, qr_batch_id, qr_token, status, created_at, registered_at, cancelled_at, cancellation_reason"
+        "id, qr_batch_id, qr_token, status, created_at, registered_at, cancelled_at, cancellation_reason, sku_detail, product_id"
       )
       .eq("qr_batch_id", batchId)
       .order("created_at", { ascending: true })
@@ -45,10 +44,7 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    let body: {
-      labelId?: string;
-      reason?: string;
-    };
+    let body: { labelId?: string; reason?: string };
 
     try {
       body = await request.json();
@@ -64,10 +60,7 @@ export async function PATCH(request: NextRequest) {
 
     if (!labelId || !reason) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "QR label ID and cancellation reason are required.",
-        },
+        { success: false, error: "QR label ID and cancellation reason are required." },
         { status: 400 }
       );
     }
@@ -81,7 +74,7 @@ export async function PATCH(request: NextRequest) {
 
     const supabase = createAdminClient();
 
-    // Only an unused label can be cancelled.
+    // Only an unused label can be cancelled. SKU metadata is not modified.
     const { data, error } = await supabase
       .from("qr_labels")
       .update({
