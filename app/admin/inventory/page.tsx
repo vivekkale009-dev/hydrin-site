@@ -1,7 +1,76 @@
-"use client";
-import { useEffect, useState, useMemo } from "react";
 
-const LOW_STOCK_THRESHOLD = 500; // Change this value to adjust the alert
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+
+const styles = `
+* { box-sizing: border-box; }
+.dashboard { min-height:100vh; padding:28px; background:#f4f7fb; color:#172033; }
+.wrap { max-width:1500px; margin:auto; }
+.header { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:25px; flex-wrap:wrap; }
+.heading h1 { font-size:25px; margin:0; font-weight:750; letter-spacing:-.6px; }
+.heading p { margin:6px 0 0; color:#718096; font-size:13px; }
+.actions { display:flex; gap:9px; flex-wrap:wrap; }
+.btn { border:0; border-radius:8px; padding:10px 15px; font-weight:650; cursor:pointer; font-size:12px; }
+.primary { background:#1769e0; color:white; }
+.secondary { background:white; color:#334155; border:1px solid #e2e8f0; }
+.btn:disabled { opacity:.6; cursor:wait; }
+.section { margin-top:25px; }
+.section-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:13px; flex-wrap:wrap; }
+.section-head h2 { font-size:16px; margin:0; font-weight:750; }
+.section-head p { font-size:12px; color:#8490a3; margin:4px 0 0; }
+.kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:13px; }
+.kpi { background:white; border:1px solid #e8edf4; border-radius:12px; padding:17px; box-shadow:0 2px 7px rgba(20,35,60,.035); }
+.kpi-label { color:#718096; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; }
+.kpi-value { font-size:25px; font-weight:750; margin-top:9px; letter-spacing:-.5px; }
+.kpi-note { font-size:11px; color:#94a3b8; margin-top:5px; }
+.green { color:#15945b; } .blue { color:#1769e0; } .red { color:#dc5252; } .orange { color:#d97706; }
+.panel { background:white; border:1px solid #e8edf4; border-radius:12px; overflow:hidden; box-shadow:0 2px 7px rgba(20,35,60,.035); }
+.panel-title { padding:15px 17px; border-bottom:1px solid #edf1f6; font-size:13px; font-weight:750; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+.panel-body { padding:16px; }
+.table-wrap { overflow-x:auto; width:100%; }
+table { width:100%; border-collapse:collapse; min-width:650px; }
+th { background:#f8fafc; color:#718096; font-size:10px; text-transform:uppercase; letter-spacing:.4px; text-align:left; padding:12px 13px; white-space:nowrap; }
+td { padding:12px 13px; border-bottom:1px solid #f0f3f7; font-size:12px; color:#3b475b; }
+tbody tr:last-child td { border-bottom:0; }
+tbody tr:hover { background:#fafcff; }
+.muted { color:#94a3b8; font-size:10px; margin-top:3px; }
+.filters { display:flex; gap:9px; flex-wrap:wrap; margin-bottom:13px; }
+.field { border:1px solid #e1e7ef; border-radius:8px; padding:10px 11px; font-size:12px; background:white; color:#334155; min-width:130px; outline:none; }
+.field:focus { border-color:#6da2ed; box-shadow:0 0 0 3px #1769e014; }
+.search { flex:1; min-width:220px; }
+.product-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; }
+.product { background:white; border:1px solid #e8edf4; border-radius:11px; padding:16px; }
+.product-name { font-size:14px; font-weight:750; margin-bottom:13px; }
+.product-stats { display:flex; gap:15px; flex-wrap:wrap; margin-bottom:14px; }
+.stat-label { font-size:10px; color:#8995a7; }
+.stat-value { font-size:17px; font-weight:750; margin-top:3px; }
+.production { display:flex; gap:8px; border-top:1px solid #edf1f6; padding-top:12px; }
+.production input { width:85px; }
+.production .btn { flex:1; }
+.location-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; }
+.location { border:1px solid #e8edf4; border-radius:9px; padding:13px; }
+.location-code { color:#1769e0; font-size:10px; font-weight:750; }
+.location-name { font-size:12px; font-weight:700; margin-top:5px; }
+.location-stock { font-size:20px; font-weight:750; margin-top:9px; }
+.location-note { font-size:10px; color:#8490a3; margin-top:4px; }
+.badge { display:inline-block; border-radius:5px; padding:4px 7px; font-size:10px; font-weight:700; background:#edf5ff; color:#2865b5; }
+.badge-green { background:#e9f8ef; color:#16804b; }
+.badge-orange { background:#fff4e5; color:#b66a09; }
+.badge-red { background:#fff0f0; color:#c13e3e; }
+.error { background:#fff0f0; border:1px solid #ffdada; color:#b42323; padding:13px; border-radius:9px; font-size:12px; }
+.empty { text-align:center; padding:25px; color:#94a3b8; font-size:12px; }
+.footer { margin-top:25px; color:#9aa5b5; font-size:10px; text-align:right; }
+ .refresh-meta { color:#8490a3; font-size:11px; margin-top:7px; }
+@media(max-width:650px) {
+ .dashboard { padding:16px 11px; }
+ .heading h1 { font-size:21px; }
+ .kpis { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+ .kpi { padding:12px; }
+ .kpi-value { font-size:20px; }
+ .panel-body { padding:11px; }
+}
+`;
 
 export default function InventoryPage() {
   const [items, setItems] = useState<any[]>([]);
@@ -12,336 +81,557 @@ export default function InventoryPage() {
   const [endDate, setEndDate] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [refSearch, setRefSearch] = useState("");
-  const [inputValues, setInputValues] = useState<{ [key: string]: string }>({});
+  const [inputValues, setInputValues] = useState<Record<string, string>>({});
   const [movementStats, setMovementStats] = useState({ produced: 0, sold: 0 });
+
+  const [qrData, setQrData] = useState<any>(null);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [qrError, setQrError] = useState("");
+  const [qrSearch, setQrSearch] = useState("");
+  const [qrLocationFilter, setQrLocationFilter] = useState("all");
+  const [qrProductFilter, setQrProductFilter] = useState("all");
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshLock = useRef(false);
 
   async function fetchInventory(silent = false) {
     try {
       if (!silent) setLoading(true);
-      const res = await fetch(`/api/admin/inventory?v=${Date.now()}`);
+
+      const res = await fetch(`/api/admin/inventory?v=${Date.now()}`, {
+        cache: "no-store",
+      });
       const json = await res.json();
+      if (!res.ok) throw new Error(json.message || "Inventory load failed");
+
       if (json.data) setItems(json.data);
 
       const params = new URLSearchParams();
       if (startDate) params.append("start", startDate);
       if (endDate) params.append("end", endDate);
-      const movRes = await fetch(`/api/admin/inventory/movements?${params.toString()}`);
+
+      const movRes = await fetch(
+        `/api/admin/inventory/movements?${params.toString()}`,
+        { cache: "no-store" }
+      );
       const movJson = await movRes.json();
-      
+      if (!movRes.ok) throw new Error(movJson.message || "Movement load failed");
+
       if (movJson.data) {
         setMovements(movJson.data);
-        const stats = movJson.data.reduce((acc: any, m: any) => {
-          if (m.movement_type === 'release') acc.produced += Number(m.qty_boxes || 0);
-          if (m.movement_type === 'deduct') acc.sold += Number(m.qty_boxes || 0);
-          return acc;
-        }, { produced: 0, sold: 0 });
-        setMovementStats(stats);
+        setMovementStats(
+          movJson.data.reduce(
+            (acc: any, m: any) => {
+              if (m.movement_type === "release") acc.produced += Number(m.qty_boxes || 0);
+              if (m.movement_type === "deduct") acc.sold += Number(m.qty_boxes || 0);
+              return acc;
+            },
+            { produced: 0, sold: 0 }
+          )
+        );
       }
-    } catch (e) {
-      console.error("Fetch error", e);
+    } catch (error) {
+      console.error("Inventory fetch error:", error);
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => { fetchInventory(); }, [startDate, endDate]);
+  async function fetchQrInventory(silent = false) {
+    try {
+      if (!silent) setQrLoading(true);
+      setQrError("");
 
-  const totalStockSummary = useMemo(() => {
-    return items.reduce((acc, item) => {
-      acc.totalAvailable += Number(item.available_boxes || 0);
-      return acc;
-    }, { totalAvailable: 0 });
-  }, [items]);
+      const res = await fetch(
+        `/api/admin/stock/dashboard?t=${Date.now()}`,
+        { cache: "no-store" }
+      );
+      const json = await res.json();
 
-  // NEW: SKU Wise Detailed Summary Calculation
-  const skuSummary = useMemo(() => {
-    return items.map(item => {
-      const skuMovements = movements.filter(m => m.product_id === item.product_id);
-      const boxesSold = skuMovements
-        .filter(m => m.movement_type === 'deduct')
-        .reduce((sum, m) => sum + Number(m.qty_boxes || 0), 0);
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || "QR stock load failed");
+      }
 
-      return {
-        name: item.product_name,
-        availableBoxes: item.available_boxes,
-        availableBottles: item.available_boxes * item.units_per_box,
-        soldBoxes: boxesSold,
-        soldBottles: boxesSold * item.units_per_box
-      };
-    });
-  }, [items, movements]);
+      setQrData(json);
+    } catch (error: any) {
+      console.error("QR inventory error:", error);
+      setQrError(error.message || "Unable to load QR stock");
+    } finally {
+      if (!silent) setQrLoading(false);
+    }
+  }
 
-  const filteredItems = useMemo(() => {
-    return items.filter(item => 
+  async function refreshDashboard(silent = false) {
+    if (refreshLock.current) return;
+    refreshLock.current = true;
+    setRefreshing(true);
+    try {
+      await Promise.all([fetchInventory(silent), fetchQrInventory(silent)]);
+      setLastUpdated(new Date());
+    } finally {
+      refreshLock.current = false;
+      setRefreshing(false);
+    }
+  }
+
+  useEffect(() => {
+    void refreshDashboard();
+  }, [startDate, endDate]);
+
+  useEffect(() => {
+    const refreshWhenActive = () => {
+      if (document.visibilityState === "visible") void refreshDashboard(true);
+    };
+    const interval = window.setInterval(refreshWhenActive, 30000);
+    window.addEventListener("focus", refreshWhenActive);
+    document.addEventListener("visibilitychange", refreshWhenActive);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshWhenActive);
+      document.removeEventListener("visibilitychange", refreshWhenActive);
+    };
+  }, [startDate, endDate]);
+
+  const totalAvailable = useMemo(
+    () => items.reduce((sum, item) => sum + Number(item.available_boxes || 0), 0),
+    [items]
+  );
+
+  const filteredItems = useMemo(
+    () => items.filter((item) =>
       item.product_name?.toLowerCase().includes(productSearch.toLowerCase())
+    ),
+    [items, productSearch]
+  );
+
+  const skuSummary = useMemo(() => items.map((item) => {
+    const sold = movements
+      .filter((m) => m.product_id === item.product_id && m.movement_type === "deduct")
+      .reduce((sum, m) => sum + Number(m.qty_boxes || 0), 0);
+
+    return {
+      ...item,
+      sold,
+      soldBottles: sold * Number(item.units_per_box || 0),
+      stockBottles: Number(item.available_boxes || 0) * Number(item.units_per_box || 0),
+    };
+  }), [items, movements]);
+
+  const filteredMovements = useMemo(() => movements.filter((m) => {
+    const product = items.find((i) => i.product_id === m.product_id);
+    const name = product?.product_name || "";
+    const ref = (m.order_number || m.notes || "").toLowerCase();
+
+    return (
+      name.toLowerCase().includes(productSearch.toLowerCase()) &&
+      (!typeFilter || m.movement_type === typeFilter) &&
+      ref.includes(refSearch.toLowerCase())
     );
-  }, [items, productSearch]);
+  }), [movements, items, productSearch, typeFilter, refSearch]);
 
-  const filteredMovements = useMemo(() => {
-    return movements.filter(m => {
-      const prod = items.find(i => i.product_id === m.product_id);
-      const productName = prod?.product_name || "";
-      const matchesProduct = productName.toLowerCase().includes(productSearch.toLowerCase());
-      const matchesType = typeFilter === "" || m.movement_type === typeFilter;
-      const matchesRef = (m.order_number || m.notes || "").toLowerCase().includes(refSearch.toLowerCase());
-      return matchesProduct && matchesType && matchesRef;
+  const qrSummary = qrData?.summary || {};
+  const qrUnits = qrData?.stockUnits || [];
+  const qrProducts = qrData?.byProduct || [];
+  const qrLocations = qrData?.byLocation || [];
+  const qrMovements = qrData?.movements || [];
+
+  const filteredQrUnits = useMemo(() => {
+    const search = qrSearch.toLowerCase();
+
+    return qrUnits.filter((unit: any) => {
+      const searchable = [
+        unit.product_name,
+        unit.location_name,
+        unit.location_code,
+        unit.lot_code,
+        unit.qr_token_short,
+        unit.qr_label_id,
+        unit.status,
+      ].some((v) => String(v || "").toLowerCase().includes(search));
+
+      return (
+        searchable &&
+        (qrLocationFilter === "all" || unit.location_id === qrLocationFilter) &&
+        (qrProductFilter === "all" || unit.product_id === qrProductFilter)
+      );
     });
-  }, [movements, productSearch, typeFilter, refSearch, items]);
+  }, [qrUnits, qrSearch, qrLocationFilter, qrProductFilter]);
 
-  const submitProduction = async (productId: string) => {
-    const qty = parseInt(inputValues[productId]);
-    if (!qty || qty <= 0) return alert("Enter a valid number");
+  async function submitProduction(productId: string) {
+    const qty = parseInt(inputValues[productId] || "", 10);
+    if (!qty || qty <= 0) {
+      alert("Enter a valid production quantity");
+      return;
+    }
+
     try {
       const res = await fetch("/api/admin/inventory/production", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ productId, qtyAdded: qty }),
       });
-      if (!res.ok) throw new Error("Failed to update");
-      alert("Production Logged Successfully");
-      setInputValues(prev => ({ ...prev, [productId]: "" }));
-      await fetchInventory(true); 
-    } catch (e: any) {
-      alert("Error: " + e.message);
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || "Production update failed");
+
+      alert("Production logged successfully");
+
+      setInputValues((prev) => ({ ...prev, [productId]: "" }));
+      await Promise.all([fetchInventory(true), fetchQrInventory()]);
+    } catch (error: any) {
+      alert("Error: " + error.message);
     }
-  };
+  }
 
-  if (loading) return <div style={styles.loading}>Loading Dashboard...</div>;
-
-  return (
-    <div style={styles.page}>
-      <div style={styles.overlay} />
-      <div style={styles.container}>
-        
-        <h1 style={{ color: "#fff", marginBottom: "20px" }}>📦 Inventory Dashboard</h1>
-
-     {/* TOP SUMMARY CARDS */}
-<div style={styles.summaryRow}>
-  <div style={styles.summaryCard}>
-    <span style={styles.sumLabel}>Period Production</span>
-    <span style={{...styles.sumVal, color: '#2ecc71'}}>+ {movementStats.produced} Boxes</span>
-    <span style={{fontSize: '11px', color: '#64748b'}}>Total boxes added to stock</span>
-  </div>
-
-  <div style={styles.summaryCard}>
-    <span style={styles.sumLabel}>Period Sold (Exited)</span>
-    <span style={{...styles.sumVal, color: '#e74c3c'}}>- {movementStats.sold} Boxes</span>
-    <span style={{fontSize: '11px', color: '#64748b'}}>Total boxes confirmed out</span>
-  </div>
-
-  <div style={styles.summaryCard}>
-    <span style={styles.sumLabel}>Period Net Change</span>
-    <span style={{
-      ...styles.sumVal, 
-      color: (movementStats.produced - movementStats.sold) >= 0 ? '#2ecc71' : '#e74c3c'
-    }}>
-      {(movementStats.produced - movementStats.sold) >= 0 ? '📈 +' : '📉 '}
-      {movementStats.produced - movementStats.sold} Boxes
-    </span>
-    <span style={{fontSize: '11px', color: '#64748b'}}>Inflow vs Outflow balance</span>
-  </div>
-
-  <div style={{...styles.summaryCard, background: '#1e293b', color: '#fff'}}>
-    <span style={{...styles.sumLabel, color: '#94a3b8'}}>Live Available Stock</span>
-    <span style={{...styles.sumVal, color: '#38bdf8'}}>{totalStockSummary.totalAvailable} Boxes</span>
-    <span style={{fontSize: '11px', color: '#94a3b8'}}>Current warehouse total</span>
-  </div>
-</div>
-
-        {/* NEW: SKU WISE DETAIL DASHBOARD */}
-        <div style={{...styles.logContainer, marginBottom: '30px', border: '2px solid #2563eb'}}>
-          <div style={{padding: '15px', background: '#2563eb', color: '#fff', fontWeight: 'bold'}}>SKU Level Summary (Live)</div>
-          <table style={styles.table}>
-            <thead>
-              <tr style={styles.thRow}>
-                <th style={styles.th}>Product SKU</th>
-                <th style={styles.th}>Sold (Boxes)</th>
-                <th style={styles.th}>Sold (Bottles)</th>
-                <th style={styles.th}>Stock (Boxes)</th>
-                <th style={styles.th}>Stock (Bottles)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {skuSummary.map((sku, idx) => (
-                <tr key={idx} style={styles.tr}>
-                  <td style={{...styles.td, fontWeight: 'bold'}}>{sku.name}</td>
-                  <td style={{...styles.td, color: '#dc3545'}}>{sku.soldBoxes}</td>
-                  <td style={{...styles.td, color: '#dc3545'}}>{sku.soldBottles}</td>
-                  <td style={{...styles.td, color: '#28a745', fontWeight: 'bold'}}>{sku.availableBoxes}</td>
-                  <td style={{...styles.td, color: '#28a745', fontWeight: 'bold'}}>{sku.availableBottles}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div style={styles.filterBar}>
-          <input 
-            style={{...styles.filterInput, flex: 2}} 
-            placeholder="🔍 Search Product SKU..." 
-            value={productSearch}
-            onChange={(e) => setProductSearch(e.target.value)}
-          />
-          <input type="date" style={styles.filterInput} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          <input type="date" style={styles.filterInput} value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-          <button onClick={() => {setStartDate(""); setEndDate("");}} style={styles.resetBtn}>Reset Dates</button>
-        </div>
-
-{/* PRODUCT CARDS WITH ALERT LOGIC */}
-<div style={styles.grid}>
-  {filteredItems.map((item) => {
-    const isNegative = item.available_boxes < 0;
-    const isLowStock = item.available_boxes < LOW_STOCK_THRESHOLD;
-
+  if (loading) {
     return (
-      <div 
-        key={item.product_id} 
-        style={{
-          ...styles.card, 
-          // RED for negative, ORANGE for low, WHITE for normal
-          backgroundColor: isNegative ? '#fef2f2' : (isLowStock ? '#fff7ed' : '#fff'),
-          border: isNegative ? '2px dashed #dc2626' : (isLowStock ? '2px solid #f97316' : 'none'),
-        }}
-      >
-        <div>
-          <h3 style={{...styles.prodName, color: isNegative ? '#dc2626' : '#1e293b'}}>
-            {item.product_name} 
-            {isNegative ? (
-              <span style={{color: '#dc2626', fontSize: '12px', marginLeft: '10px', fontWeight: 'bold'}}>🚨 STOCK DEFICIT</span>
-            ) : isLowStock && (
-              <span style={{color: '#f97316', fontSize: '12px', marginLeft: '10px'}}>⚠️ LOW STOCK</span>
-            )}
-          </h3>
-          <div style={{display: 'flex', gap: '10px'}}>
-              <span style={{...styles.badge, color: isNegative ? '#dc2626' : '#475569'}}>
-                Boxes: <strong>{item.available_boxes}</strong>
-              </span>
-              <span style={{...styles.badge, color: '#6366f1'}}>
-                Bottles: <strong>{item.available_boxes * item.units_per_box}</strong>
-              </span>
-              <span style={{...styles.badge, color: '#f59e0b', fontWeight: 'bold'}}>
-                Reserved: {item.reserved_boxes}
-              </span>
-          </div>
-        </div>
-        <div style={styles.actionGroup}>
-          <input 
-            type="number" 
-            style={styles.prodInput} 
-            value={inputValues[item.product_id] || ""}
-            placeholder="Qty"
-            onChange={(e) => setInputValues({...inputValues, [item.product_id]: e.target.value})}
-          />
-          <button onClick={() => submitProduction(item.product_id)} style={styles.addBtn}>+ Production</button>
-        </div>
+      <div className="dashboard">
+        <style>{styles}</style>
+        <div className="wrap">Loading stock details...</div>
       </div>
     );
-  })}
-</div>
+  }
 
-        {/* ACTIVITY LOG TABLE */}
-        <div style={{marginTop: '40px'}}>
-          <h2 style={{color: '#fff', marginBottom: '15px'}}>📜 Inventory Activity Log</h2>
-          <div style={{...styles.filterBar, marginBottom: '10px'}}>
-             <select 
-               style={{...styles.filterInput, flex: 1}} 
-               value={typeFilter} 
-               onChange={(e) => setTypeFilter(e.target.value)}
-             >
-                <option value="">All Movement Types</option>
-                <option value="release">RELEASE (Production)</option>
-                <option value="reserve">RESERVE (Order Created)</option>
-                <option value="deduct">DEDUCT (Vehicle Exited)</option>
-             </select>
-             <input 
-               style={{...styles.filterInput, flex: 2}} 
-               placeholder="🔍 Search Order Reference or Notes..." 
-               value={refSearch}
-               onChange={(e) => setRefSearch(e.target.value)}
-             />
+  return (
+    <div className="dashboard">
+      <style>{styles}</style>
+      <main className="wrap">
+        <header className="header">
+          <div className="heading">
+            <h1>Stock &amp; Warehouse</h1>
+            <p>See how many boxes are available, produced and sent out</p>
+            <div className="refresh-meta">
+              {lastUpdated ? `Last updated: ${lastUpdated.toLocaleTimeString("en-IN")}` : "Loading latest stock data..."}
+              {" · Auto-refresh every 30 seconds while this page is open"}
+            </div>
+          </div>
+          <div className="actions">
+            <button className="btn secondary" onClick={() => refreshDashboard(true)} disabled={refreshing}>
+              {refreshing ? "Refreshing..." : "↻ Refresh Stock"}
+            </button>
+          </div>
+        </header>
+
+        <section className="kpis">
+          <Kpi label="Total Boxes Available" value={totalAvailable} note="Ready for new orders" color="blue" />
+          <Kpi label="Boxes Produced" value={movementStats.produced} note="Boxes added in selected dates" color="green" />
+          <Kpi label="Boxes Sent Out" value={movementStats.sold} note="Boxes sent from the plant" color="red" />
+          <Kpi label="QR-Tracked Boxes Available" value={qrSummary.availableBoxes ?? "—"} note="Available boxes recorded by QR labels" color="green" />
+          <Kpi label="QR-Tracked Boxes Sent Out" value={qrSummary.dispatchedBoxes ?? "—"} note="Boxes sent out with QR tracking" color="orange" />
+          <Kpi label="QR Stock Records" value={qrSummary.totalStockUnits ?? "—"} note="Registered pallets or stock groups" color="blue" />
+        </section>
+        <p className="refresh-meta" style={{ marginTop: 10 }}>The first stock total is used for orders. QR-tracked stock shows boxes recorded against QR labels. These are two views of stock, so do not add them together.</p>
+
+        <section className="section">
+          <div className="section-head">
+            <div>
+              <h2>Stock by Product</h2>
+              <p>Current available stock and add-production entry</p>
+            </div>
+            <input
+              className="field search"
+              placeholder="Search product..."
+              value={productSearch}
+              onChange={(e) => setProductSearch(e.target.value)}
+            />
           </div>
 
-          <div style={styles.logContainer}>
-            <table style={styles.table}>
-              <thead>
-                <tr style={styles.thRow}>
-                  <th style={styles.th}>Date</th>
-                  <th style={styles.th}>Product</th>
-                  <th style={styles.th}>Type</th>
-                  <th style={styles.th}>Qty (Boxes)</th>
-                  <th style={styles.th}>Qty (Bottles)</th>
-                  <th style={styles.th}>Order Reference / Notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredMovements.length > 0 ? filteredMovements.map((m) => {
-                  const product = items.find(i => i.product_id === m.product_id);
-                  const bottleQty = Number(m.qty_boxes || 0) * (product?.units_per_box || 0);
-                  return (
-                    <tr key={m.id} style={styles.tr}>
-                      <td style={styles.td}>{new Date(m.created_at).toLocaleString()}</td>
-                      <td style={styles.td}>{product?.product_name || '...'}</td>
-                      <td style={styles.td}>
-                          <span style={{
-                              padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold',
-                              background: 
-                                  m.movement_type === 'release' ? '#dcfce7' : 
-                                  m.movement_type === 'reserve' ? '#fef3c7' : '#fee2e2',
-                              color: 
-                                  m.movement_type === 'release' ? '#166534' : 
-                                  m.movement_type === 'reserve' ? '#92400e' : '#991b1b'
-                          }}>
-                              {m.movement_type.toUpperCase()}
-                          </span>
-                      </td>
-                      <td style={styles.td}>{m.qty_boxes}</td>
-                      <td style={{...styles.td, color: '#6366f1'}}>{bottleQty}</td>
-                      <td style={{...styles.td, color: '#2563eb', fontWeight: 'bold'}}>
-                          {m.order_number || m.notes || "—"}
-                      </td>
+          <div className="product-grid">
+            {filteredItems.map((item) => {
+              const stock = Number(item.available_boxes || 0);
+              const low = stock < 500;
+
+              return (
+                <div className="product" key={item.product_id}>
+                  <div className="product-name">{item.product_name}</div>
+                  <div className="product-stats">
+                    <div>
+                      <div className="stat-label">Boxes available</div>
+                      <div className={`stat-value ${stock < 0 ? "red" : low ? "orange" : "green"}`}>{stock.toLocaleString("en-IN")}</div>
+                    </div>
+                    <div>
+                      <div className="stat-label">Reserved for orders</div>
+                      <div className="stat-value">{Number(item.reserved_boxes || 0).toLocaleString("en-IN")}</div>
+                    </div>
+                    <div>
+                      <div className="stat-label">Bottles</div>
+                      <div className="stat-value">{(stock * Number(item.units_per_box || 0)).toLocaleString("en-IN")}</div>
+                    </div>
+                  </div>
+                  <div className="production">
+                    <input
+                      className="field"
+                      type="number"
+                      min="1"
+                      placeholder="Boxes"
+                      value={inputValues[item.product_id] || ""}
+                      onChange={(e) => setInputValues((prev) => ({ ...prev, [item.product_id]: e.target.value }))}
+                    />
+                    <button className="btn primary" onClick={() => submitProduction(item.product_id)}>
+                      + Add Produced Boxes
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+            {filteredItems.length === 0 && <div className="panel empty">No products found.</div>}
+          </div>
+        </section>
+
+        <section className="section">
+          <div className="section-head">
+            <div>
+              <h2>Sales &amp; Stock by Product</h2>
+              <p>Boxes and bottles sent out, plus current stock</p>
+            </div>
+          </div>
+          <div className="panel">
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Product</th><th>Boxes sent out</th><th>Bottles sent out</th><th>Boxes available</th><th>Bottles available</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {skuSummary.map((item: any) => (
+                    <tr key={item.product_id}>
+                      <td><strong>{item.product_name}</strong></td>
+                      <td>{item.sold}</td>
+                      <td>{item.soldBottles}</td>
+                      <td className="green"><strong>{item.available_boxes}</strong></td>
+                      <td>{item.stockBottles}</td>
                     </tr>
-                  );
-                }) : (
-                  <tr><td colSpan={6} style={{textAlign: 'center', padding: '30px', color: '#666'}}>No matching movements found.</td></tr>
-                )}
-              </tbody>
-            </table>
+                  ))}
+                  {skuSummary.length === 0 && <tr><td colSpan={5} className="empty">No stock information available.</td></tr>}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      </div>
+        </section>
+
+        <section className="section">
+          <div className="section-head">
+            <div>
+              <h2>QR-Tracked Stock</h2>
+              <p>Stock recorded using QR labels and its storage location</p>
+            </div>
+            <button className="btn secondary" onClick={() => refreshDashboard(true)} disabled={refreshing || qrLoading}>
+              {refreshing || qrLoading ? "Refreshing..." : "↻ Refresh QR Details"}
+            </button>
+          </div>
+
+          {qrError && <div className="error">{qrError}</div>}
+
+          {!qrData && !qrError && <div className="panel empty">Loading QR stock...</div>}
+
+          {qrData && (
+            <>
+              <div className="kpis">
+                <Kpi label="Boxes Available" value={qrSummary.availableBoxes || 0} color="green" />
+                <Kpi label="Total Boxes Registered" value={qrSummary.totalProducedBoxes || 0} color="blue" />
+                <Kpi label="Boxes Sent Out" value={qrSummary.dispatchedBoxes || 0} color="orange" />
+                <Kpi label="Boxes on Hold" value={qrSummary.qualityHoldBoxes || 0} color="red" />
+                <Kpi label="Damaged / Removed Boxes" value={qrSummary.scrappedBoxes || 0} color="blue" />
+                <Kpi label="QR Labels Registered" value={qrSummary.registeredQrs || 0} color="blue" />
+              </div>
+
+              <div className="section">
+                <div className="panel">
+                  <div className="panel-title">QR Stock by Product</div>
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Product</th><th>Stock groups</th><th>Total boxes registered</th><th>Boxes available</th><th>Boxes sent out</th><th>On hold</th><th>Damaged / removed</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {qrProducts.map((p: any) => (
+                          <tr key={p.productId}>
+                            <td><strong>{p.productName}</strong></td>
+                            <td>{p.stockUnits}</td>
+                            <td>{p.producedBoxes}</td>
+                            <td className="green"><strong>{p.availableBoxes}</strong></td>
+                            <td>{p.dispatchedBoxes}</td>
+                            <td>{p.qualityHoldBoxes}</td>
+                            <td>{p.scrappedBoxes}</td>
+                          </tr>
+                        ))}
+                        {qrProducts.length === 0 && <tr><td colSpan={7} className="empty">No QR-tracked stock registered.</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div className="section">
+                <div className="section-head">
+                  <div><h2>Where Stock Is Kept</h2><p>Available boxes at each storage location</p></div>
+                </div>
+                <div className="location-grid">
+                  {qrLocations.map((loc: any) => (
+                    <div className="location" key={loc.locationId}>
+                      <div className="location-code">{loc.locationCode}</div>
+                      <div className="location-name">{loc.locationName}</div>
+                      <div className="location-stock green">{loc.availableBoxes} boxes</div>
+                      <div className="location-note">{loc.stockUnits} stock units · On hold: {loc.qualityHoldBoxes}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="section">
+                <div className="panel">
+                  <div className="panel-title">
+                    <span>QR Label Stock List</span>
+                    <span className="badge">{filteredQrUnits.length} records</span>
+                  </div>
+                  <div className="panel-body">
+                    <div className="filters">
+                      <input className="field search" placeholder="Search product, QR label, batch or location..." value={qrSearch} onChange={(e) => setQrSearch(e.target.value)} />
+                      <select className="field" value={qrProductFilter} onChange={(e) => setQrProductFilter(e.target.value)}>
+                        <option value="all">All products</option>
+                        {qrProducts.map((p: any) => <option key={p.productId} value={p.productId}>{p.productName}</option>)}
+                      </select>
+                      <select className="field" value={qrLocationFilter} onChange={(e) => setQrLocationFilter(e.target.value)}>
+                        <option value="all">All locations</option>
+                        {qrLocations.map((loc: any) => <option key={loc.locationId} value={loc.locationId}>{loc.locationCode}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>QR label</th><th>Product</th><th>Storage location</th><th>Batch</th><th>Starting boxes</th><th>Boxes available</th><th>Boxes sent out</th><th>On hold</th><th>Damaged / removed</th><th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredQrUnits.map((unit: any) => (
+                          <tr key={unit.id}>
+                            <td><strong>{unit.qr_token_short || "—"}</strong><div className="muted">{unit.qr_label_id}</div></td>
+                            <td>{unit.product_name}</td>
+                            <td><strong>{unit.location_code || "—"}</strong><div className="muted">{unit.location_name}</div></td>
+                            <td>{unit.lot_code}</td>
+                            <td>{unit.original_boxes}</td>
+                            <td className="green"><strong>{unit.available_boxes}</strong></td>
+                            <td>{unit.dispatched_boxes}</td>
+                            <td>{unit.quality_hold_boxes}</td>
+                            <td>{unit.scrapped_boxes}</td>
+                            <td><span className={`badge ${unit.available_boxes > 0 ? "badge-green" : ""}`}>{unit.status || "unknown"}</span></td>
+                          </tr>
+                        ))}
+                        {filteredQrUnits.length === 0 && <tr><td colSpan={10} className="empty">No matching QR stock records.</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div className="section">
+                <div className="panel">
+                  <div className="panel-title">Recent QR Stock Updates</div>
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr><th>Date</th><th>Product</th><th>QR label</th><th>What happened</th><th>Boxes</th><th>From location</th><th>To location</th><th>Updated by</th></tr>
+                      </thead>
+                      <tbody>
+                        {qrMovements.map((m: any) => (
+                          <tr key={m.id}>
+                            <td>{new Date(m.created_at).toLocaleString()}</td>
+                            <td>{m.product_name}</td>
+                            <td>{m.qr_token_short || "—"}</td>
+                            <td><span className="badge">{movementLabel(m.movement_type)}</span></td>
+                            <td>{m.quantity_boxes}</td>
+                            <td>{m.from_location || "—"}</td>
+                            <td>{m.to_location || "—"}</td>
+                            <td>{m.performed_by || "—"}</td>
+                          </tr>
+                        ))}
+                        {qrMovements.length === 0 && <tr><td colSpan={8} className="empty">No QR stock updates recorded.</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </section>
+
+        <section className="section">
+          <div className="section-head">
+            <div>
+              <h2>Stock History</h2>
+              <p>Production entries, order reservations and boxes sent out</p>
+            </div>
+          </div>
+          <div className="panel">
+            <div className="panel-body">
+              <div className="filters">
+                <input type="date" className="field" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                <input type="date" className="field" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                <select className="field" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+                  <option value="">All activity</option>
+                  <option value="release">Production</option>
+                  <option value="reserve">Order reserved</option>
+                  <option value="deduct">Sent out from plant</option>
+                </select>
+                <input className="field search" placeholder="Search order number or details..." value={refSearch} onChange={(e) => setRefSearch(e.target.value)} />
+                <button className="btn secondary" onClick={() => { setStartDate(""); setEndDate(""); setTypeFilter(""); setRefSearch(""); }}>Reset filters</button>
+              </div>
+            </div>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Date</th><th>Product</th><th>What happened</th><th>Boxes</th><th>Bottles</th><th>Order number / Details</th></tr>
+                </thead>
+                <tbody>
+                  {filteredMovements.map((m: any) => {
+                    const product = items.find((i) => i.product_id === m.product_id);
+                    const bottles = Number(m.qty_boxes || 0) * Number(product?.units_per_box || 0);
+
+                    return (
+                      <tr key={m.id}>
+                        <td>{new Date(m.created_at).toLocaleString()}</td>
+                        <td>{product?.product_name || "—"}</td>
+                        <td><span className={`badge ${m.movement_type === "release" ? "badge-green" : m.movement_type === "deduct" ? "badge-red" : "badge-orange"}`}>{movementLabel(m.movement_type)}</span></td>
+                        <td>{m.qty_boxes}</td>
+                        <td>{bottles}</td>
+                        <td>{m.order_number || m.notes || "—"}</td>
+                      </tr>
+                    );
+                  })}
+                  {filteredMovements.length === 0 && <tr><td colSpan={6} className="empty">No matching stock history found.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <div className="footer">Earthy Source Foods & Beverages · Stock &amp; Warehouse</div>
+      </main>
     </div>
   );
 }
 
-// Keep your existing styles object exactly as is, it will work with the new elements.
-const styles: any = {
-  page: { minHeight: "100vh", backgroundImage: "url('/hero-deep.jpg')", backgroundSize: "cover", position: "relative", padding: "40px 20px" },
-  overlay: { position: "absolute", inset: 0, background: "rgba(15, 23, 42, 0.9)" },
-  container: { position: "relative", zIndex: 1, maxWidth: "1100px", margin: "0 auto" },
-  summaryRow: { 
-  display: 'grid', 
-  gridTemplateColumns: 'repeat(4, 1fr)', // Changed from 3 to 4
-  gap: '15px', 
-  marginBottom: '20px' 
-},
-  summaryCard: { background: '#fff', padding: '20px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' },
-  sumLabel: { fontSize: '12px', color: '#64748b', fontWeight: 'bold' },
-  sumVal: { fontSize: '24px', fontWeight: 'bold', display: 'block', marginTop: '5px' },
-  filterBar: { display: 'flex', gap: '10px', marginBottom: '20px', background: 'rgba(255,255,255,0.05)', padding: '15px', borderRadius: '12px' },
-  filterInput: { padding: '12px', borderRadius: '8px', border: 'none', fontSize: '14px' },
-  resetBtn: { padding: '12px', borderRadius: '8px', border: 'none', cursor: 'pointer', background: '#334155', color: '#fff' },
-  grid: { display: 'flex', flexDirection: 'column', gap: '10px' },
-  card: { background: '#fff', borderRadius: '15px', padding: '15px 25px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.3s ease' },
-  prodName: { margin: 0, fontSize: '18px', color: '#1e293b' },
-  badge: { fontSize: '13px', color: '#475569' },
-  actionGroup: { display: 'flex', gap: '10px' },
-  prodInput: { width: '80px', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', textAlign: 'center' },
-  addBtn: { background: '#2563eb', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' },
-  logContainer: { background: '#fff', borderRadius: '15px', overflow: 'hidden' },
-  table: { width: '100%', borderCollapse: 'collapse' },
-  thRow: { background: '#f8fafc', borderBottom: '2px solid #e2e8f0' },
-  th: { padding: '15px', textAlign: 'left', fontSize: '12px', color: '#64748b' },
-  tr: { borderBottom: '1px solid #f1f5f9' },
-  td: { padding: '15px', fontSize: '14px' },
-  loading: { color: '#fff', textAlign: 'center', marginTop: '100px' }
-};
+function movementLabel(type: string) {
+  if (type === "release" || type === "production_in") return "Production added";
+  if (type === "reserve") return "Reserved for order";
+  if (type === "deduct" || type === "dispatch_out") return "Sent out";
+  if (type === "adjustment_in") return "Opening stock added";
+  return type?.replaceAll("_", " ") || "—";
+}
+
+function Kpi({ label, value, note, color = "blue" }: any) {
+  return (
+    <div className="kpi">
+      <div className="kpi-label">{label}</div>
+      <div className={`kpi-value ${color}`}>
+        {typeof value === "number" ? value.toLocaleString("en-IN") : value}
+      </div>
+      {note && <div className="kpi-note">{note}</div>}
+    </div>
+  );
+}

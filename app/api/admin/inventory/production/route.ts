@@ -1,33 +1,84 @@
-export const dynamic = 'force-dynamic';
+
+import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import { randomUUID } from "crypto";
+
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-import { createClient } from "@supabase/supabase-js";
-import { NextResponse } from "next/server";
-
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function POST(req: Request) {
   try {
-    const { productId, qtyAdded } = await req.json();
+    const body = await req.json();
 
-    // 1. Log the movement using 'release' to satisfy the DB constraint
-    const { error: logErr } = await supabase.from("inventory_movements").insert({
-      product_id: productId,
-      movement_type: 'release', 
-      qty_boxes: Number(qtyAdded),
-      notes: "Manual Production Entry"
-    });
-    if (logErr) throw logErr;
+    const productId = String(body.productId || "");
+    const qtyAdded = Number(body.qtyAdded);
 
-    // 2. Update the balance using the RPC
-    const { error: rpcErr } = await supabase.rpc('increment_inventory', { 
-      row_id: productId, 
-      qty: Number(qtyAdded) 
-    });
-    if (rpcErr) throw rpcErr;
+    // Generate an ID if the frontend has not supplied one.
+    const entryId = String(body.entryId || randomUUID());
 
-    return NextResponse.json({ success: true });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    if (!productId) {
+      return NextResponse.json(
+        { success: false, error: "Product is required" },
+        { status: 400 }
+      );
+    }
+
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(productId)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid product ID" },
+        { status: 400 }
+      );
+    }
+
+    if (!Number.isSafeInteger(qtyAdded) || qtyAdded <= 0) {
+      return NextResponse.json(
+        { success: false, error: "Enter a valid positive whole-number quantity" },
+        { status: 400 }
+      );
+    }
+
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(entryId)
+    ) {
+      return NextResponse.json(
+        { success: false, error: "Invalid production entry ID" },
+        { status: 400 }
+      );
+    }
+
+    const { data, error } = await supabase.rpc(
+      "register_manual_production",
+      {
+        p_entry_id: entryId,
+        p_product_id: productId,
+        p_qty_boxes: qtyAdded,
+      }
+    );
+
+    if (error) {
+      console.error("Manual production error:", error);
+
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json(data);
+  } catch (error: any) {
+    console.error("Production API error:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message || "Production entry failed",
+      },
+      { status: 500 }
+    );
   }
 }

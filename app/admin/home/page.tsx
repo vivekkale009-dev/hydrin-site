@@ -61,6 +61,29 @@ const quickLinks = [
   icon: "▤",
   color: "orange",
 },
+
+  {
+    title: "Daily Costing",
+    description: "Manage Daily Costing of SKU",
+    href: "/admin/costing/entries",
+    icon: "♧",
+    color: "purple",
+  },
+  
+   {
+    title: "QR Management",
+    description: "Manage QR for Inventory Registration",
+    href: "/admin/qr-management",
+    icon: "₹",
+    color: "green",
+  },
+    {
+    title: "Fund Allocation",
+    description: "Raw materail, labour funallocation.",
+    href: "/admin/fund-allocation",
+    icon: "▦",
+    color: "yellow",
+  },
   
   {
     title: "Inventory Management",
