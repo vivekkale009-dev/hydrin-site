@@ -6,10 +6,11 @@ import Swal from 'sweetalert2';
 export default function AdminOrderCreatePage() {
   const [consumerPhone, setConsumerPhone] = useState("");
   const [orderType, setOrderType] = useState("distributor");
-  const [deliveryType, setDeliveryType] = useState("delivery");
+  const [deliveryType, setDeliveryType] = useState("pickup");
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<any[]>([]);
   const [selectedDistributor, setSelectedDistributor] = useState<any>(null);
+  const [distributorPrices, setDistributorPrices] = useState<Record<string, string>>({});
   
   const [vanSearch, setVanSearch] = useState("");
   const [vanResults, setVanResults] = useState<any[]>([]);
@@ -24,21 +25,36 @@ export default function AdminOrderCreatePage() {
   const [paymentMethod, setPaymentMethod] = useState("");
   const [transactionId, setTransactionId] = useState("");
 
-  const [gstEnabled, setGstEnabled] = useState(true);
+  const [gstEnabled, setGstEnabled] = useState(false);
   const [hsnList, setHsnList] = useState<any[]>([]);
   const [selectedHsn, setSelectedHsn] = useState<any>(null);
   const [states, setStates] = useState<any[]>([]);
-  const [billing, setBilling] = useState({ name: "", address: "", state: "", gstin: "" });
-  const [shipping, setShipping] = useState({ name: "", address: "", state: "", gstin: "" });
-  const [isSameAddress, setIsSameAddress] = useState(false);
+  const [billing, setBilling] = useState({ name: "", address: "", state: "Maharashtra", gstin: "" });
+  const [shipping, setShipping] = useState({ name: "", address: "", state: "Maharashtra", gstin: "" });
+  const [isSameAddress, setIsSameAddress] = useState(true);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     fetch("/api/products-basic").then(r => r.json()).then(setProducts);
     fetch("/api/admin/hsn-codes").then(r => r.json()).then(d => setHsnList(d.data || []));
-    fetch("/api/admin/states").then(r => r.json()).then(d => setStates(d.data || []));
+    fetch("/api/admin/states").then(r => r.json()).then(d => {
+      const stateRows = d.data || [];
+      setStates(stateRows);
+      const maharashtra = stateRows.find((state: any) =>
+        String(state.name || "").trim().toLowerCase() === "maharashtra"
+      );
+      const defaultState = maharashtra?.name || "Maharashtra";
+      setBilling(current => ({ ...current, state: current.state || defaultState }));
+      setShipping(current => ({ ...current, state: current.state || defaultState }));
+    });
   }, []);
+
+  // Keep Ship To synchronized with Bill To while Same is checked.
+  // This also handles the initial checked state and async state-option loading.
+  useEffect(() => {
+    if (isSameAddress) setShipping({ ...billing });
+  }, [billing, isSameAddress]);
 
   const totalBoxes = items.reduce((sum, i) => sum + Number(i.qty_boxes || 0), 0);
   const itemsSubtotal = items.reduce((sum, i) => sum + (Number(i.qty_boxes || 0) * Number(i.price_per_box || 0)), 0);
@@ -64,6 +80,52 @@ export default function AdminOrderCreatePage() {
     setResults(d.data || []);
   }
 
+  async function selectDistributor(d: any) {
+    setSelectedDistributor(d);
+    setRatePerKm(d.delivery_rate_per_km || 0);
+    setDistributorPrices({});
+
+    // Match the distributor's saved text state to the exact state option value.
+    const distributorState = String(d.state || "").trim();
+    const matchingState = states.find((state: any) =>
+      String(state.name || "").trim().toLowerCase() === distributorState.toLowerCase()
+    );
+    const maharashtra = states.find((state: any) =>
+      String(state.name || "").trim().toLowerCase() === "maharashtra"
+    );
+
+    setBilling(current => ({
+      ...current,
+      name: d.name || "",
+      address: d.address || "",
+      state: matchingState?.name || maharashtra?.name || "Maharashtra",
+    }));
+    setResults([]);
+    setSearch("");
+
+    // Load the saved per-box rates for this distributor.
+    try {
+      const response = await fetch(`/api/admin/distributors/${d.id}/prices`);
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Unable to load distributor prices.");
+
+      const priceMap: Record<string, string> = {};
+      (result.data || []).forEach((row: any) => {
+        if (row.product_id && row.price_per_box != null) {
+          priceMap[String(row.product_id)] = String(row.price_per_box);
+        }
+      });
+      setDistributorPrices(priceMap);
+      setItems(current => current.map(item => ({
+        ...item,
+        price_per_box: priceMap[String(item.product_id)] || "",
+      })));
+    } catch (error) {
+      console.error("Failed to load distributor SKU prices:", error);
+      alert("Distributor selected, but saved SKU rates could not be loaded. Please enter rates manually.");
+    }
+  }
+
   async function searchVans(q: string) {
     setVanSearch(q);
     if (!q) return setVanResults([]);
@@ -74,7 +136,15 @@ export default function AdminOrderCreatePage() {
 
   function addProduct(p: any) {
     if (items.find(i => i.product_id === p.id)) return;
-    setItems([...items, { product_id: p.id, name: p.name, qty_boxes: 1, price_per_box: "" }]);
+    const savedRate = selectedDistributor
+      ? distributorPrices[String(p.id)] || ""
+      : "";
+    setItems([...items, {
+      product_id: p.id,
+      name: p.name,
+      qty_boxes: 1,
+      price_per_box: savedRate,
+    }]);
   }
 
   async function submitOrder() {
@@ -196,16 +266,55 @@ export default function AdminOrderCreatePage() {
   }
 
   return (
-    <div style={styles.page}>
+    <div style={styles.page} className="create-order-page">
+      <style jsx global>{`
+        @media (max-width: 640px) {
+          .create-order-page { padding: 10px 6px !important; min-height: 100svh; }
+          .create-order-card { padding: 18px 12px !important; border-radius: 14px !important; }
+          .create-order-card h1 { font-size: 20px !important; margin-bottom: 18px !important; }
+          .create-order-grid { grid-template-columns: minmax(0, 1fr) !important; gap: 10px !important; }
+          .create-order-page input, .create-order-page select {
+            width: 100% !important; min-width: 0 !important; min-height: 44px !important;
+            font-size: 16px !important; box-sizing: border-box !important;
+          }
+          .create-order-page button { min-height: 40px; touch-action: manipulation; }
+          .create-order-card > div { min-width: 0; }
+          .create-order-item {
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 36px !important;
+            gap: 8px !important; padding: 10px !important; align-items: center !important;
+          }
+          .create-order-item > span {
+            grid-column: 1 / -1; overflow-wrap: anywhere; font-weight: 600; line-height: 1.35;
+          }
+          .create-order-item input {
+            width: 100% !important; min-width: 0 !important; min-height: 44px !important;
+            box-sizing: border-box !important; font-size: 16px !important;
+          }
+          .create-order-item button { min-width: 36px; min-height: 44px; }
+          .create-order-modal {
+            width: calc(100% - 20px) !important; max-width: 100% !important; max-height: 92svh !important;
+            overflow-y: auto !important; -webkit-overflow-scrolling: touch; padding: 18px 12px !important;
+            border-radius: 16px !important; box-sizing: border-box !important;
+          }
+          .create-order-modal-actions { flex-direction: column !important; gap: 8px !important; }
+          .create-order-modal-actions button { width: 100% !important; min-height: 48px !important; }
+          .create-order-page table { width: 100% !important; table-layout: fixed; }
+          .create-order-page th, .create-order-page td { overflow-wrap: anywhere; }
+        }
+        @media (max-width: 380px) {
+          .create-order-card { padding: 15px 9px !important; }
+          .create-order-item { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 32px !important; }
+        }
+      `}</style>
       <div style={styles.overlay} />
       <div style={styles.container}>
-        <div style={styles.card}>
+        <div style={styles.card} className="create-order-card">
           <h1 style={styles.heading}>Create New Sales Order</h1>
 
           {/* 1. ENTITY & VAN */}
           <div style={styles.section}>
             <h3 style={styles.sectionTitle}>1. Customer & Logistics</h3>
-            <div style={styles.grid2}>
+            <div style={styles.grid2} className="create-order-grid">
               <select style={styles.input} value={orderType} onChange={e => setOrderType(e.target.value)}>
                 <option value="distributor">Distributor Sale</option>
                 <option value="end_consumer">Direct Consumer</option>
@@ -239,7 +348,7 @@ export default function AdminOrderCreatePage() {
                     )}
                     <div style={styles.dropdown}>
                       {results.map(d => (
-                        <div key={d.id} style={{ ...styles.searchItem, background: distributorBg(d) }} onClick={() => { setSelectedDistributor(d); setRatePerKm(d.delivery_rate_per_km || 0); setResults([]); setSearch(""); }}>
+                        <div key={d.id} style={{ ...styles.searchItem, background: distributorBg(d) }} onClick={() => selectDistributor(d)}>
                           <strong>{d.name}</strong> — {d.phone}
                           <div style={styles.small}>Pending: ₹{d.pending_amount} | Unpaid Orders: {d.unpaid_order_count}</div>
                         </div>
@@ -280,12 +389,12 @@ export default function AdminOrderCreatePage() {
           <div style={styles.section}>
             <h3 style={styles.sectionTitle}>2. Delivery & Address</h3>
             {deliveryType === "delivery" && (
-              <div style={{ ...styles.grid2, marginBottom: 15 }}>
+              <div style={{ ...styles.grid2, marginBottom: 15 }} className="create-order-grid">
                 <input style={styles.input} type="number" placeholder="Distance (Km)" value={distanceKm || ""} onChange={e => setDistanceKm(Number(e.target.value))} />
                 <input style={styles.input} type="number" placeholder="Rate / Km" value={ratePerKm || ""} onChange={e => setRatePerKm(Number(e.target.value))} />
               </div>
             )}
-            <div style={styles.grid2}>
+            <div style={styles.grid2} className="create-order-grid">
                <div style={styles.subBox}>
                   <h4 style={styles.smallHeading}>Bill To *</h4>
                   <input style={styles.inputSmall} placeholder="Name(Mandatory) *" value={billing.name} onChange={e => setBilling({...billing, name: e.target.value})} />
@@ -298,7 +407,7 @@ export default function AdminOrderCreatePage() {
                <div style={styles.subBox}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <h4 style={styles.smallHeading}>Ship To *</h4>
-                    <label style={styles.checkboxLabel}><input type="checkbox" checked={isSameAddress} onChange={e => { setIsSameAddress(e.target.checked); if(e.target.checked) setShipping({...billing}); }} /> Same</label>
+                    <label style={styles.checkboxLabel}><input type="checkbox" checked={isSameAddress} onChange={e => { setIsSameAddress(e.target.checked); if(e.target.checked) setShipping({ ...billing }); }} /> Same</label>
                   </div>
                   {!isSameAddress && (
                     <>
@@ -316,12 +425,32 @@ export default function AdminOrderCreatePage() {
 
           {/* 3. ITEMS & PAYMENT */}
           <div style={styles.section}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 15 }}>
-              <h3 style={styles.sectionTitle}>3. Products & Payment</h3>
-              <label style={styles.checkboxLabel}><input type="checkbox" checked={gstEnabled} onChange={e => setGstEnabled(e.target.checked)} /> GST</label>
+            <h3 style={styles.sectionTitle}>3. Products & Payment</h3>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{
+                ...styles.checkboxLabel,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px 14px',
+                border: '1px solid #2563eb',
+                borderRadius: 8,
+                background: '#eff6ff',
+                color: '#1d4ed8',
+                fontSize: 14,
+                fontWeight: 800
+              }}>
+                <input
+                  type="checkbox"
+                  checked={gstEnabled}
+                  onChange={e => setGstEnabled(e.target.checked)}
+                  style={{ width: 17, height: 17, accentColor: '#2563eb' }}
+                />
+                GST
+              </label>
             </div>
             {gstEnabled && (
-              <div style={{ ...styles.grid2, marginBottom: 15 }}>
+              <div style={{ ...styles.grid2, marginBottom: 15 }} className="create-order-grid">
                 <input style={styles.input} placeholder="GSTIN (Mandatory) *" value={billing.gstin} onChange={e => setBilling({...billing, gstin: e.target.value})} />
                 <select style={styles.input} value={selectedHsn?.id || ""} onChange={e => setSelectedHsn(hsnList.find(h => h.id === e.target.value))}>
                    <option value="">Select HSN (Mandatory) *</option>
@@ -333,7 +462,7 @@ export default function AdminOrderCreatePage() {
               {products.map(p => <button key={p.id} type="button" style={styles.productBadge} onClick={() => addProduct(p)}>+ {p.name}</button>)}
             </div>
             {items.map(i => (
-              <div key={i.product_id} style={styles.itemRow}>
+              <div key={i.product_id} style={styles.itemRow} className="create-order-item">
                 <span>{i.name}</span>
                 <input style={styles.qtyInput} type="number" value={i.qty_boxes} onChange={e => setItems(items.map(it => it.product_id === i.product_id ? {...it, qty_boxes: e.target.value} : it))} />
                 <input style={styles.qtyInput} placeholder="Rate" value={i.price_per_box} onChange={e => setItems(items.map(it => it.product_id === i.product_id ? {...it, price_per_box: e.target.value} : it))} />
@@ -341,7 +470,7 @@ export default function AdminOrderCreatePage() {
               </div>
             ))}
 
-            <div style={{ ...styles.grid2, marginTop: 20 }}>
+            <div style={{ ...styles.grid2, marginTop: 20 }} className="create-order-grid">
                <input style={styles.input} type="number" placeholder="Paid Amount" value={paidAmount || ""} onChange={e => setPaidAmount(Number(e.target.value))} />
                <select style={styles.input} value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>
                   <option value="">Payment Mode</option>
@@ -384,7 +513,7 @@ export default function AdminOrderCreatePage() {
       {/* REVIEW MODAL */}
       {isReviewOpen && (
         <div style={styles.modalOverlay}>
-          <div style={styles.modalContent}>
+          <div style={styles.modalContent} className="create-order-modal">
             <h2 style={{ marginBottom: 20, borderBottom: '2px solid #eee', paddingBottom: 10 }}>Final Review</h2>
             
             <div style={styles.subBox}>
@@ -413,7 +542,7 @@ export default function AdminOrderCreatePage() {
               </tbody>
             </table>
 
-            <div style={{ display: 'flex', gap: 10, marginTop: 30 }}>
+            <div style={{ display: 'flex', gap: 10, marginTop: 30 }} className="create-order-modal-actions">
               <button style={{ ...styles.mainSubmit, background: '#64748b' }} onClick={() => setIsReviewOpen(false)} disabled={isSubmitting}>Edit</button>
               <button 
                 style={{ ...styles.mainSubmit, opacity: isSubmitting ? 0.6 : 1 }} 

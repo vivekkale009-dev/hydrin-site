@@ -1,10 +1,9 @@
-export const dynamic = 'force-dynamic';
+
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 import { NextResponse } from "next/server";
-import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server";
-//import { createServerSupabaseClient } from "@/lib/supabase/server";
-//export const dynamic = 'force-dynamic';
+import { createAdminClient } from "@/lib/supabase/server";
 
 export async function GET(req: Request) {
   try {
@@ -15,8 +14,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ data: [] });
     }
 
-    //const supabase = await createServerSupabaseClient();
-	const supabase = await createAdminClient();
+    const supabase = await createAdminClient();
 
     const { data, error } = await supabase.rpc(
       "search_distributors_with_dues",
@@ -28,11 +26,17 @@ export async function GET(req: Request) {
       throw error;
     }
 
-    // 🔒 Normalize output (no undefined, no null surprises)
     const normalized = (data || []).map((d: any) => ({
       id: d.id,
       name: d.name,
       phone: d.phone,
+
+      // Distributor address details
+      address: d.address || "",
+      city: d.city || "",
+      state: d.state || "",
+      pincode: d.pincode || "",
+
       pending_amount: Number(d.pending_amount || 0),
       unpaid_order_count: Number(d.unpaid_order_count || 0),
       credit_enabled: Boolean(d.credit_enabled),
@@ -44,6 +48,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ data: normalized });
   } catch (err) {
     console.error("❌ Distributor search failed", err);
+
     return NextResponse.json(
       { error: "Failed to search distributors" },
       { status: 500 }
