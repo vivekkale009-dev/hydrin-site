@@ -5,39 +5,56 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+const PAGE_SIZE = 1000;
+
 export async function GET() {
   try {
     const supabase = createAdminClient();
 
-    const { count, error: countError } = await supabase
-      .from("employees")
-      .select("*", { count: "exact", head: true });
+    const employees: {
+      id: number;
+      full_name: string;
+      role: string | null;
+      contact_number: string | null;
+      is_active: boolean | null;
+    }[] = [];
 
-    if (countError) throw countError;
+    let offset = 0;
+    let totalCount = 0;
 
-    const { data: jayvant, error: jayvantError } = await supabase
-      .from("employees")
-      .select("id, full_name, employee_no, is_active")
-      .eq("id", 30)
-      .maybeSingle();
+    while (true) {
+      const { data, error, count } = await supabase
+        .from("employees")
+        .select(
+          "id, full_name, role, contact_number, is_active",
+          { count: "exact" }
+        )
+        .order("full_name", { ascending: true })
+        .order("id", { ascending: true })
+        .range(offset, offset + PAGE_SIZE - 1);
 
-    if (jayvantError) throw jayvantError;
+      if (error) throw error;
 
-    const { data, error } = await supabase
-      .from("employees")
-      .select("id, full_name, role, contact_number, is_active")
-      .order("full_name", { ascending: true });
+      if (count !== null) {
+        totalCount = count;
+      }
 
-    if (error) throw error;
+      const page = data ?? [];
+
+      if (page.length === 0) break;
+
+      employees.push(...page);
+      offset += page.length;
+
+      if (employees.length >= totalCount) break;
+    }
 
     return NextResponse.json(
       {
         success: true,
-        databaseCount: count,
-        returnedCount: data?.length ?? 0,
-        jayvantFound: !!jayvant,
-        jayvant,
-        employees: data ?? [],
+        databaseCount: totalCount,
+        returnedCount: employees.length,
+        employees,
       },
       {
         headers: {
@@ -46,12 +63,15 @@ export async function GET() {
       }
     );
   } catch (error) {
-    console.error("Employee diagnostic error:", error);
+    console.error("Employee API error:", error);
 
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unable to load employee records.",
       },
       { status: 500 }
     );
