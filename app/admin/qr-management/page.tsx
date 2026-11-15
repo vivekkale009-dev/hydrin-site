@@ -93,6 +93,9 @@ export default function QRManagementPage() {
   const [pin, setPin] = useState("");
   const [pinBatchNumber, setPinBatchNumber] = useState<number | null>(null);
 
+  // IMPORTANT: Store today's batch ID directly from the Daily PIN API.
+  const [pinBatchId, setPinBatchId] = useState("");
+
   const [quantity, setQuantity] = useState("100");
   const [selectedProductId, setSelectedProductId] = useState("");
 
@@ -118,7 +121,9 @@ export default function QRManagementPage() {
 
   const today = indiaDate();
 
-  const selectedProduct = products.find((product) => product.id === selectedProductId);
+  const selectedProduct = products.find(
+    (product) => product.id === selectedProductId
+  );
 
   const selectedEmployee = employees.find(
     (employee) => String(employee.id) === selectedEmployeeId
@@ -209,6 +214,7 @@ export default function QRManagementPage() {
       const response = await fetch("/api/admin/qr/products", {
         cache: "no-store",
       });
+
       const data = await response.json();
 
       if (!response.ok || !data.success) {
@@ -216,14 +222,19 @@ export default function QRManagementPage() {
       }
 
       const activeProducts: Product[] = data.products || [];
+
       setProducts(activeProducts);
+
       setSelectedProductId((current) =>
         current && activeProducts.some((product) => product.id === current)
           ? current
           : activeProducts[0]?.id || ""
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load products.");
+      setError(
+        err instanceof Error ? err.message : "Unable to load products."
+      );
+
       setProducts([]);
       setSelectedProductId("");
     } finally {
@@ -279,10 +290,18 @@ export default function QRManagementPage() {
 
       setPin(data.pin || "");
       setPinBatchNumber(data.batch?.batch_number ?? null);
+
+      // CRITICAL FIX:
+      // Save the actual batch ID returned by the PIN API.
+      setPinBatchId(data.batch?.id || "");
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Unable to load today's PIN."
       );
+
+      setPin("");
+      setPinBatchNumber(null);
+      setPinBatchId("");
     } finally {
       setLoadingPin(false);
     }
@@ -345,6 +364,7 @@ export default function QRManagementPage() {
       setError(
         err instanceof Error ? err.message : "Unable to load QR labels."
       );
+
       setQrItems([]);
     } finally {
       setLoadingLabels(false);
@@ -368,6 +388,7 @@ export default function QRManagementPage() {
 
   const refreshAll = async () => {
     setError("");
+
     await Promise.all([
       loadEmployees(),
       loadProducts(),
@@ -406,8 +427,12 @@ export default function QRManagementPage() {
         throw new Error(data.error || "PIN generation failed.");
       }
 
-      setPin(data.pin);
+      setPin(data.pin || "");
       setPinBatchNumber(data.batch?.batch_number ?? null);
+
+      // CRITICAL FIX:
+      // Update the batch ID immediately after PIN regeneration.
+      setPinBatchId(data.batch?.id || "");
 
       setSuccess(
         `New PIN generated. Previous PIN invalidated. Version #${data.batch?.batch_number}.`
@@ -504,8 +529,13 @@ export default function QRManagementPage() {
       return;
     }
 
-    if (!currentBatch) {
-      setError("Generate today's PIN before generating QR labels.");
+    // CRITICAL FIX:
+    // Do not depend on currentBatch from the batch-history API.
+    // Use the batch ID returned by the Daily PIN API.
+    if (!pin || !pinBatchId) {
+      setError(
+        "Today's PIN or production batch is unavailable. Please refresh the page or generate today's PIN."
+      );
       return;
     }
 
@@ -571,7 +601,9 @@ export default function QRManagementPage() {
       );
 
       setQrItems(items);
-      setSelectedBatchId(currentBatch.id);
+
+      // Use the Daily PIN API's batch ID, not the batch-history result.
+      setSelectedBatchId(pinBatchId);
 
       setSuccess(
         `${items.length} QR labels generated successfully. They are ready to print.`
@@ -981,6 +1013,7 @@ export default function QRManagementPage() {
               <option value="">
                 {loadingProducts ? "Loading products..." : "Choose SKU"}
               </option>
+
               {products.map((product) => (
                 <option key={product.id} value={product.id}>
                   {product.name} · {product.volume_ml >= 1000
@@ -989,6 +1022,7 @@ export default function QRManagementPage() {
                 </option>
               ))}
             </select>
+
             {selectedProduct && (
               <small>
                 {selectedProduct.name} · {selectedProduct.units_per_box} units per box
@@ -1019,16 +1053,28 @@ export default function QRManagementPage() {
           <button
             className="es-qr-button generate-button"
             onClick={generateQRLabels}
-            disabled={loadingQR || !currentBatch || !selectedProductId || loadingProducts || products.length === 0}
+            disabled={
+              loadingQR ||
+              loadingPin ||
+              !pin ||
+              !pinBatchId ||
+              !selectedProductId ||
+              loadingProducts ||
+              products.length === 0
+            }
           >
-            {loadingQR ? "Generating..." : "+ Generate QR Labels"}
+            {loadingQR
+              ? "Generating..."
+              : loadingPin
+                ? "Loading PIN..."
+                : "+ Generate QR Labels"}
           </button>
 
         </div>
 
-        {!currentBatch && !loadingBatches && (
+        {!loadingPin && (!pin || !pinBatchId) && (
           <p className="es-qr-warning">
-            Generate today's PIN before generating QR labels.
+            Today's PIN or production batch is unavailable. Generate today's PIN or refresh the page before generating QR labels.
           </p>
         )}
 
@@ -1066,12 +1112,15 @@ export default function QRManagementPage() {
                       src={item.image}
                       alt={`Stock QR ${index + 1}`}
                     />
+
                     <strong style={{ fontSize: "10px", letterSpacing: "1.1px", lineHeight: 1.2 }}>
                       EARTHY SOURCE
                     </strong>
+
                     <span style={{ fontSize: "7px", letterSpacing: "1.2px", color: "#718096", marginTop: "2px" }}>
                       STOCK IDENTIFICATION
                     </span>
+
                     <span style={{
                       display: "inline-block",
                       marginTop: "5px",
@@ -1088,9 +1137,11 @@ export default function QRManagementPage() {
                     }}>
                       {item.sku_detail || "SKU not recorded"}
                     </span>
+
                     <small style={{ marginTop: "4px", fontSize: "7px", color: "#64748b" }}>
                       GENERATED · {formatGeneratedDate(item.created_at)}
                     </small>
+
                     <small style={{ marginTop: "2px", fontSize: "7px", color: "#94a3b8", letterSpacing: "0.5px" }}>
                       QR {String(index + 1).padStart(3, "0")}
                     </small>
